@@ -2,7 +2,24 @@
 
 ## Статус
 
-Целевая платформа — `net10.0`, SDK-style .NET. Созданы решение `agent-bridge.slnx` и пустой проект ядра `agent-bridge.csproj` в корне решения, формирующий `AgentBridge.dll`. Ниже используются рабочие названия будущих типов и остальных сборок. Логика, публичные сигнатуры и проекты адаптеров ещё не реализованы.
+Целевая платформа — `net10.0`, SDK-style .NET. Существующее ядро `agent-bridge.csproj` сохранено в корне рядом с `agent-bridge.slnx`. Добавлены отдельные проекты транспорта, хранения и тестов; все шесть проектов прошли адресный compile-check. Логика и публичные сигнатуры ещё не реализованы; названия типов ниже остаются проектируемыми.
+
+## Фактические проекты
+
+| Путь от корня | Сборка / назначение | ProjectReference |
+| --- | --- | --- |
+| `agent-bridge.csproj` | `AgentBridge.dll`, ядро/Application | Нет |
+| `adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj` | `AgentBridge.CodexLb.dll` | Ядро |
+| `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро |
+| `tests/AgentBridge.Tests/AgentBridge.Tests.csproj` | Проверки ядра | Ядро |
+| `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |
+| `tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj` | Проверки хранения | EF-хранилище |
+
+Во всех проектах включены nullable и генерация XML-документации. Корневой glob исключает `adapters`, `tests`, `test` и вложенные `bin/obj/artifacts`; результаты сборки соседних проектов не компилируются в ядро. Production-проекты используют обычный `Microsoft.NET.Sdk`, не содержат PackageReference и явных framework references. По вычисленным MSBuild-ссылкам ядру доступен только стандартный `Microsoft.NETCore.App`; зависимостей ASP.NET Core, WPF, Telegram, EFCoreLibrary, HttpClientLibrary и провайдеров БД нет.
+
+Тестовые проекты используют `Microsoft.NET.Test.Sdk 18.0.1`, `xunit 2.9.3` и `xunit.runner.visualstudio 3.1.5`. Их стандартные SDK-артефакты предназначены только для test runner; приложение и собственный host не создаются. Тестовых сценариев пока нет; пустые сборки проверены компиляцией, runner не запускался. Обычный `dotnet test`/xUnit разрешён для изолированных unit-тестов по мере их появления. Конкретные команды и результаты находятся в [этапе 01](<../Plans/AgentBridge Initial Implementation/01-solution-foundation.md>).
+
+HttpClientLibrary и EFCoreLibrary остаются обязательными основами будущих адаптеров, но на этапе основы не подключены. Эта граница не разрешает обход библиотек или изменение их контрактов. Нормативные требования [agent-runtime](../../openspec/specs/agent-runtime/spec.md) сохранены: новое поведение не вводится.
 
 ## Границы
 

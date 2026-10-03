@@ -1,3 +1,12 @@
 <Solution>
   <Project Path="agent-bridge.csproj" />
+  <Folder Name="/Adapters/">
+    <Project Path="adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/AgentBridge.Tests/AgentBridge.Tests.csproj" />
+    <Project Path="tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj" />
+    <Project Path="tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj" />
+  </Folder>
 </Solution>

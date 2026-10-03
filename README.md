@@ -4,11 +4,22 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
 
-Создан минимальный каркас .NET 10: решение `agent-bridge.slnx` и проект ядра [agent-bridge.csproj](agent-bridge.csproj) в корне решения. Логика и публичный C# API ещё не реализованы. Следующий порядок описывает согласованную будущую интеграцию.
+Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров и три проекта изолированных тестов. Логика и публичный C# API ещё не реализованы. Следующий порядок описывает согласованную будущую интеграцию.
+
+| Проект | Сборка / назначение | Текущие production-ссылки |
+| --- | --- | --- |
+| [agent-bridge.csproj](agent-bridge.csproj) | `AgentBridge.dll`, ядро/Application | Нет |
+| [AgentBridge.CodexLb](adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj) | `AgentBridge.CodexLb.dll`, транспортный адаптер | Ядро |
+| [AgentBridge.Persistence.EfCore](adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj) | `AgentBridge.Persistence.EfCore.dll`, общее хранилище | Ядро |
+| [AgentBridge.Tests](tests/AgentBridge.Tests/AgentBridge.Tests.csproj) | Изолированные проверки ядра | Ядро |
+| [AgentBridge.CodexLb.Tests](tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj) | Изолированные проверки транспорта | Адаптер codex-lb |
+| [AgentBridge.Persistence.EfCore.Tests](tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj) | Изолированные проверки хранения | EF-хранилище |
+
+Тестовая инфраструктура — xUnit; тестовых сценариев пока нет. Production-проекты не содержат PackageReference. HttpClientLibrary, EFCoreLibrary и провайдеры будут подключены на соответствующих этапах, после согласования необходимых контрактов. Результаты адресной сборки всех шести проектов: [этап 01](<Documentation/Plans/AgentBridge Initial Implementation/01-solution-foundation.md>).
 
 ## Подключение
 
-Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Проект собирается в `AgentBridge.dll`; внешний HTTP и работа с БД в каркасе отсутствуют.
+Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в три DLL из таблицы; внешний HTTP и работа с БД в каркасе отсутствуют.
 
 1. Добавить в .NET 10-приложение ссылки на DLL ядра, адаптера codex-lb и выбранной инфраструктуры хранения вместе с зависимостями времени выполнения. AgentBridge не распространяется NuGet-пакетом.
 2. Подключить совместимые DLL EFCoreLibrary и HttpClientLibrary. Выбрать SQLite или PostgreSQL и соответствующий EF Core provider.
