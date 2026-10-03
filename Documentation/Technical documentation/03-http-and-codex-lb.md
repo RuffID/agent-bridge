@@ -4,7 +4,7 @@
 
 Все исходящие HTTP-запросы адаптера выполняются через HttpClientLibrary из `D:\Media\User\source\repos\work\HttpClientLibrary`.
 
-По повторной статической проверке этапа 00 от 2026-10-03 [проект библиотеки](../../../work/HttpClientLibrary/HttpClientLibrary.csproj) поддерживает `net8.0;net10.0`, имеет `FileVersion=0.0.0.4` и Logging Abstractions `10.0.2`. AgentBridge использует вариант .NET 10; соответствие готовой DLL этим исходникам пока не проверено.
+На этапе 00 исходный [проект библиотеки](../../../work/HttpClientLibrary/HttpClientLibrary.csproj) имел FileVersion 0.0.0.4. На согласованном этапе 04 реализована версия 0.0.0.5 с прежними `net8.0;net10.0` и Logging Abstractions `10.0.2`. Сборки и изолированные тесты обоих TFM проверены, FileVersion/TFM/MVID/hash build DLL сверены с тестовыми копиями. AgentBridge.CodexLb пока ссылается только на ядро: проверка DLL библиотеки не означает интеграцию адаптера. Точные результаты: [этап 04](<../Plans/AgentBridge Initial Implementation/04-httpclientlibrary-logging.md>).
 
 | Реальный тип | Использование |
 | --- | --- |
@@ -12,7 +12,7 @@
 | `HttpRequestOptions` | Метод, URL, заголовки и тело запроса |
 | `SendWithResponseAsync<T>` / `HttpResponseResult<T>` | JSON вместе со статусом и заголовками |
 | `SendStreamAsync` / `HttpStreamResponseResult` | Поток SSE вместе со статусом и заголовками |
-| `HttpRequestFailedException` | Ошибка HTTP с фактическим статусом и ограниченным response snippet |
+| `HttpRequestFailedException` / `HttpErrorResponseDetails` | HTTP-статус, безопасный Message, raw снимок error headers и ограниченного тела с явной полнотой |
 
 SSE-парсер относится к адаптеру codex-lb: общий HTTP-клиент предоставляет поток, а адаптер понимает события Responses. Потоковый результат освобождается через `Dispose`/`DisposeAsync`. Если используется `ContentFactory`, каждый её вызов создаёт новый HttpContent; владение передаётся библиотеке.
 
@@ -84,13 +84,23 @@ HTTP 2xx или полученный text delta сами по себе не до
 
 ## Принятое логирование
 
-Пользователь выбрал: по умолчанию только статус и безопасные метаданные; содержимое HTTP-ответов допускается только по явной настройке. Секреты не становятся безопасными для логирования даже при включённой диагностике содержимого.
+Пользователь согласовал default-safe и только opt-in `JsonStructure`. HttpClientLoggingOptions.ErrorContentMode по умолчанию None. Структурная сводка не является текстом содержимого; исходные имена полей и любые значения исключены. SanitizedText и sanitizer не реализованы.
 
-Развитие этого поведения относится к самой HttpClientLibrary. Настоящий этап фиксирует контракт и не изменяет её код. Не следует считать будущую настройку уже существующим свойством `HttpRequestOptions`.
+Прежний `HttpApiClient(HttpClient, ILogger<HttpApiClient>, JsonSerializerOptions? = null)` сохранён. Новые перегрузки добавляют обязательные четвёртый HttpClientLoggingOptions и пятый HttpErrorResponseOptions; третий null однозначен. HttpRequestOptions.CorrelationId принимает необязательный непустой GUID, не отправляемый серверу.
 
-Фактический gap этапа 04: [HttpErrorResponseHandler.ThrowIfFailedAsync](../../../work/HttpClientLibrary/Clients/HttpErrorResponseHandler.cs) безусловно пишет Warning с URL, reason и snippet. [ReadErrorSnippetAsync](../../../work/HttpClientLibrary/Clients/HttpResponseMetadataReader.cs) читает до 2000 символов для text/JSON/problem+json либо отсутствующего Content-Type, заменяет переводы строк, но не редактирует секреты. Успешные ответы эти классы не логируют; переключателя содержимого в HttpRequestOptions нет.
+Событие 5100/HttpResponseReceived содержит только Method из закрытого набора (либо Other), числовой StatusCode, сгенерированный RequestId, CorrelationId, ResponseKind и ElapsedToHeadersMs. 2xx — Information, остальные статусы — Warning. Это получение заголовков, не успех JSON/SSE. URL/userinfo/path/query, reason, headers, body, snippet и Exception не передаются logger. HttpRequestFailedException.Message теперь только `HTTP <status>.`; raw Url/Reason/ResponseSnippet сохранены для совместимости и не предназначены для логирования.
 
-Дополнительное подтверждённое ограничение: [HttpRequestFailedException](../../../work/HttpClientLibrary/Exceptions/HttpRequestFailedException.cs) содержит URL/status/reason/snippet, но не response headers. Snippet может оборваться внутри JSON, поэтому type/code/param нельзя гарантированно извлечь из каждого HTTP-отказа; server correlation и Retry-After из заголовков также недоступны. Точный контракт развития библиотеки здесь не выбран и требует отдельного согласования перед зависимой реализацией; отсутствие данных нельзя выдавать за доказательство безопасного retry.
+При JsonStructure дополнительное событие 5101/HttpErrorContentSummary содержит RequestId, фиксированный ContentState, RootKind и счётчики объектов/массивов/свойств/скаляров. JSON разбирается лишь при Complete; невалидный/неполный ответ даёт фиксированный признак пропуска. Успешный SSE не читается ради диагностики. Приложение отвечает за свои scopes/enrichers, handlers и логирование raw результатов.
+
+## Транспортный контракт HTTP-ошибки этапа 04
+
+Отдельно согласован и реализован ErrorResponse в HttpRequestFailedException: независимый case-insensitive снимок response/content headers с неизменяемыми значениями, BodyText и BodyState. Старый четырёхпараметрический конструктор исключения даёт ErrorResponse=null. Совпадающие имена заголовков сохраняют обе группы значений.
+
+HttpErrorResponseOptions.MaxBodyBytes по умолчанию 65536. Чтение ограничено лимитом плюс один проверочный байт, без доверия к Content-Length, с cancellation. Complete содержит полный текст, Truncated — декодируемый prefix, остальные состояния Empty/UnsupportedContent/InvalidEncoding — null. Complete не гарантирует валидность JSON. Поддерживается строгий UTF-8 (BOM допустим) для text/*, application/json, *+json и отсутствующего Content-Type; иная объявленная кодировка/тип — UnsupportedContent. Незавершённый UTF-8 символ на лимите исключается из prefix, реальные неверные байты дают InvalidEncoding без replacement chars. Непрочитанный остаток не проверяется.
+
+ResponseSnippet остаётся ограниченным 2000 UTF-16 символами preview с заменой CR/LF. Для type/code/param будущий адаптер разбирает BodyText только при Complete и валидном envelope. Он же интерпретирует server correlation и Retry-After, проверяет безопасность возвращаемых полей. Raw headers/body могут содержать секреты и не логируются даже при JsonStructure. Неполнота или отсутствие полей не доказывают безопасность retry. Протокольная нормализация и реализация этапов 13–15 здесь не выполнены.
+
+Пример будущего подключения: приложение передаёт свой ILogger и `new HttpClientLoggingOptions { ErrorContentMode = HttpErrorContentLogMode.JsonStructure }` четвёртым аргументом. Проверки без сети и ограничения кодировок описаны также в [README HttpClientLibrary](../../../work/HttpClientLibrary/README.md).
 
 ## Источники
 
