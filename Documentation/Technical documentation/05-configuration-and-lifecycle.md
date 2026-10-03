@@ -4,11 +4,61 @@
 
 Привязка настроек выполняется в composition root подключающего приложения через групповые DI-расширения. Прикладные сценарии получают типизированные options, а не `IConfiguration`.
 
-Рабочие группы: `AgentOptions`, `CodexLbOptions`, `DatabaseOptions`, `DialogRetentionOptions`, `ContextCompactionOptions`. Это обязанности будущих типов, а не уже существующий публичный API.
+На этапе 02 реализованы следующие публичные группы. Имена свойств одновременно служат ключами binding; значения по умолчанию переопределяются приложением.
+
+| Пространство имён / тип | Свойства и пробные значения |
+| --- | --- |
+| `AgentBridge.Configuration.AgentOptions` | `Instructions` (необязательно), `MaxToolSteps = 8` |
+| `AgentBridge.Configuration.DialogRetentionOptions` | `RetentionPeriod = 7 дней`, `SoftContentLimitBytes = 10 485 760` |
+| `AgentBridge.Configuration.ContextCompactionOptions` | `TokenThreshold = 32 000`, `InputTokenReserve = 4096`, `MaxPasses = 3` |
+| `AgentBridge.CodexLb.Configuration.CodexLbOptions` | Обязательные `BaseAddress`, `Model`; `ReasoningEffort = "medium"`, необязательный секрет `SharedApiKey`, `GenerationTimeout` и `CompactTimeout` по 180 секунд |
+| `AgentBridge.Persistence.EfCore.Configuration.DatabaseOptions` | Обязательные `Provider` и секрет `ConnectionString`; провайдер не задан по умолчанию |
+
+`DatabaseProvider` содержит `SQLite` и `PostgreSql`; nullable-свойство отличает отсутствие выбора от неизвестного числового значения. Это конфигурационный контракт, не регистрация готового EF-провайдера.
+
+Фактические расширения composition root:
+
+```csharp
+using AgentBridge.Configuration;
+using AgentBridge.CodexLb.Configuration;
+using AgentBridge.Persistence.EfCore.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+// configuration и services принадлежат приложению.
+services.AddAgentBridgeConfiguration(configuration.GetSection("AgentBridge"));
+services.AddCodexLbConfiguration(configuration.GetSection("AgentBridge:CodexLb"));
+services.AddDatabaseConfiguration(configuration.GetSection("AgentBridge:Database"));
+```
+
+Первое расширение привязывает подразделы `Agent`, `Retention`, `Compaction`; два других получают непосредственно раздел своих настроек. Все расширения имеют программные перегрузки с `Action<TOptions>`. В ядре обязательный callback для `AgentOptions` и необязательные callbacks для хранения и compact; например:
+
+```csharp
+services.AddAgentBridgeConfiguration(
+    agent => agent.MaxToolSteps = 5,
+    retention => retention.RetentionPeriod = TimeSpan.FromDays(14),
+    compaction => compaction.TokenThreshold = 24_000);
+```
+
+Ни файл appsettings, ни ASP.NET Core, ни host не обязательны. `IConfiguration` не регистрируется расширениями как зависимость сценариев. Обработчики инструментов и источники контекста регистрируются программно на последующих этапах, а не именами в options.
+
+### Валидация и применение
+
+Options проверяются при получении `Value`/`CurrentValue`, включая новые scope и reload. Зарегистрирован стандартный `IStartupValidator` через `ValidateOnStart`; приложение без host может явно вызвать `serviceProvider.GetRequiredService<IStartupValidator>().Validate()` сразу после построения своего контейнера. Одна регистрация `IServiceCollection` или `BuildServiceProvider` сами по себе не запускают проверку значений.
+
+Локальные ошибки дают `OptionsValidationException` с именами полей и причиной без значений. Ошибки формата binding (например, неизвестное имя enum или неверный TimeSpan) дают явный `InvalidOperationException` от Microsoft.Extensions. Обязательны модель, адрес, провайдер и непустая строка подключения. Инструкции и общий ключ необязательны: инструкции может сформировать приложение на обращение, а индивидуальные ключи предоставляются отдельно. Уже заданный пустой/пробельный общий ключ считается ошибкой.
+
+Период, мягкий порог байтов, порог токенов и числа шагов/проходов должны быть положительными; запас токенов допускает ноль. Сумма порога и запаса проверяется на переполнение локального `int`, а не на бюджет модели. Deadline положительный и не превышает `4 294 967 294` миллисекунды (диапазон таймера .NET). Адрес — абсолютный HTTP(S), без userinfo, query и fragment; путь префикса разрешён.
+
+Непустые модель и effort сохраняются без подмены. Wire-контракт codex-lb принимает effort как строку; перечень доступных значений, поддержка `medium`, модельный бюджет и политика ключа проверяются по серверному каталогу на этапе 13. Успешная локальная проверка не обещает доступности модели или compact.
+
+`IOptions<T>` фиксирует полученное значение; `IOptionsSnapshot<T>` фиксирует его на scope; `IOptionsMonitor<T>` получает обновления от источника конфигурации. Вызовы `Configure<T>` после binding позволяют приложению добавить override. Фиксация всего обращения и безопасный settings service относятся к последующим этапам. Сами options с ключом или строкой подключения нельзя сериализовать для UI или логирования; безопасный снимок здесь не реализован.
 
 `ContextCompactionOptions` содержит порог в токенах, запас бюджета и максимальное число проходов на обращение. Объём в `DialogRetentionOptions` измеряется на диалог в байтах содержимого; его порог мягкий. Провайдер и подключение задаются через `DatabaseOptions`.
 
-При создании сохраняются `CreatedAtUtc` и `ExpiresAtUtc = CreatedAtUtc + RetentionPeriod`. Начальный срок — 7 дней; активность и compact его не продлевают. UTC используется для хранения и сравнения, отображение в часовом поясе пользователя выполняет приложение.
+`DialogRetentionOptions.CalculateExpiresAtUtc(DateTimeOffset createdAtUtc)` уже вычисляет время создания плюс настроенный период, включая нестандартные 14 дней или 36 часов. Требуется нулевое UTC-смещение; неправильный UTC, неположительный период и переполнение даты дают явные ошибки. Метод не создаёт сущность, не меняет ранее вычисленную дату и не обращается к хранилищу.
+
+Сохранение `CreatedAtUtc` и `ExpiresAtUtc` при создании сущности реализуется на этапе 06. Начальный срок — 7 дней; активность и compact его не продлевают. UTC используется для хранения и сравнения, отображение в часовом поясе пользователя выполняет приложение.
 
 Чтение безопасных настроек, выбор модели/effort, ключи и Serilog описаны в [отдельном разделе](07-tokenizer-and-settings.md).
 

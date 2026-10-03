@@ -6,6 +6,7 @@
 - `AgentBridge.CodexLb.Tests` проверяет транспортный адаптер и ссылается на `AgentBridge.CodexLb`.
 - `AgentBridge.Persistence.EfCore.Tests` проверяет адаптацию хранения и ссылается на `AgentBridge.Persistence.EfCore`.
 - Тестовые зависимости: xUnit, Microsoft.NET.Test.Sdk и runner Visual Studio. Production-проекты не ссылаются на тесты, а корневой compile glob исключает весь каталог `tests`.
+- Проверки конфигурации используют Microsoft.Extensions.Configuration с in-memory источником и обычный ServiceProvider. Публичная граница — групповые DI-расширения, options и явный `IStartupValidator`, без хоста. Секреты в fixtures только синтетические.
 
 ## Правила проверки
 

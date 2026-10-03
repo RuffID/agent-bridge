@@ -2,7 +2,7 @@
 
 ## Статус
 
-Целевая платформа — `net10.0`, SDK-style .NET. Существующее ядро `agent-bridge.csproj` сохранено в корне рядом с `agent-bridge.slnx`. Добавлены отдельные проекты транспорта, хранения и тестов; все шесть проектов прошли адресный compile-check. Логика и публичные сигнатуры ещё не реализованы; названия типов ниже остаются проектируемыми.
+Целевая платформа — `net10.0`, SDK-style .NET. Существующее ядро `agent-bridge.csproj` сохранено в корне рядом с `agent-bridge.slnx`. Добавлены отдельные проекты транспорта, хранения и тестов; все шесть проектов прошли адресный compile-check. На этапе 02 реализованы типизированные options и групповые расширения регистрации; их фактический API описан в [конфигурации](05-configuration-and-lifecycle.md). Сценарии агента и названия типов в таблице проектируемых обязанностей ниже ещё не реализованы.
 
 ## Фактические проекты
 
@@ -15,9 +15,9 @@
 | `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |
 | `tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj` | Проверки хранения | EF-хранилище |
 
-Во всех проектах включены nullable и генерация XML-документации. Корневой glob исключает `adapters`, `tests`, `test` и вложенные `bin/obj/artifacts`; результаты сборки соседних проектов не компилируются в ядро. Production-проекты используют обычный `Microsoft.NET.Sdk`, не содержат PackageReference и явных framework references. По вычисленным MSBuild-ссылкам ядру доступен только стандартный `Microsoft.NETCore.App`; зависимостей ASP.NET Core, WPF, Telegram, EFCoreLibrary, HttpClientLibrary и провайдеров БД нет.
+Во всех проектах включены nullable и генерация XML-документации. Корневой glob исключает `adapters`, `tests`, `test` и вложенные `bin/obj/artifacts`; результаты сборки соседних проектов не компилируются в ядро. Production-проекты используют обычный `Microsoft.NET.Sdk`, без явных framework references. Ядро содержит `Microsoft.Extensions.Options.ConfigurationExtensions 10.0.3`, включая транзитивные options/configuration/DI abstractions; адаптеры используют эту общую зависимость через ProjectReference. ASP.NET Core, WPF, Telegram, EFCoreLibrary, HttpClientLibrary и провайдеры БД не подключены.
 
-Тестовые проекты используют `Microsoft.NET.Test.Sdk 18.0.1`, `xunit 2.9.3` и `xunit.runner.visualstudio 3.1.5`. Их стандартные SDK-артефакты предназначены только для test runner; приложение и собственный host не создаются. Тестовых сценариев пока нет; пустые сборки проверены компиляцией, runner не запускался. Обычный `dotnet test`/xUnit разрешён для изолированных unit-тестов по мере их появления. Конкретные команды и результаты находятся в [этапе 01](<../Plans/AgentBridge Initial Implementation/01-solution-foundation.md>).
+Тестовые проекты используют `Microsoft.NET.Test.Sdk 18.0.1`, `xunit 2.9.3` и `xunit.runner.visualstudio 3.1.5`, а также Microsoft.Extensions.Configuration/DependencyInjection `10.0.3` для in-memory настроек и контейнера. Их стандартные SDK-артефакты предназначены только для test runner; приложение и собственный host не создаются. На этапе 02 прошли 47 изолированных проверок конфигурации через публичную DI/options-границу: 18 ядра, 20 codex-lb, 9 БД. Конкретные команды и результаты находятся в [этапе 02](<../Plans/AgentBridge Initial Implementation/02-configuration-and-defaults.md>); исходная проверка каркаса — в [этапе 01](<../Plans/AgentBridge Initial Implementation/01-solution-foundation.md>).
 
 HttpClientLibrary и EFCoreLibrary остаются обязательными основами будущих адаптеров, но на этапе основы не подключены. Эта граница не разрешает обход библиотек или изменение их контрактов. Нормативные требования [agent-runtime](../../openspec/specs/agent-runtime/spec.md) сохранены: новое поведение не вводится.
 
