@@ -26,10 +26,14 @@ public static class PersistenceRegistrationExtensions
             switch (options.Provider)
             {
                 case DatabaseProvider.SQLite:
-                    builder.UseSqlite(options.ConnectionString);
+                    builder.UseSqlite(options.ConnectionString, sqlite => sqlite
+                        .MigrationsAssembly(AgentBridgeMigrationsAssemblies.SQLITE)
+                        .MigrationsHistoryTable(AgentBridgeMigrationsHistory.TABLE_NAME));
                     break;
                 case DatabaseProvider.PostgreSql:
-                    builder.UseNpgsql(options.ConnectionString);
+                    builder.UseNpgsql(options.ConnectionString, postgres => postgres
+                        .MigrationsAssembly(AgentBridgeMigrationsAssemblies.POSTGRESQL)
+                        .MigrationsHistoryTable(AgentBridgeMigrationsHistory.TABLE_NAME));
                     break;
                 default:
                     throw new InvalidOperationException("Требуется явный провайдер SQLite/PostgreSQL.");

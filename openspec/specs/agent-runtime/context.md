@@ -88,6 +88,8 @@ UTC ticks в INTEGER/bigint сохраняют точность и сортир�
 
 ## Поток одного обращения
 
+Этап 11 реализован и принят; запрещённые проверки пропущены. Отдельные AgentBridge.Persistence.Migrations.Sqlite/PostgreSql assemblies содержат factories общего контекста и сгенерированные InitialAgentBridgeSchema/designer/snapshot. Runtime/factories выбирают одинаковые assembly identities и отдельную служебную историю __AgentBridgeMigrationsHistory через AgentBridgeMigrationsHistory.TABLE_NAME; история EF не входит в пять mapped таблиц диалога. Например, SQLite сохраняет BINARY/INTEGER ticks, PostgreSQL — C/bigint ticks; snapshots соответствуют текущей relational model без SQL/Up/Down исполнения. Пользователь разрешил обе команды pinned dotnet-ef 10.0.11 с --no-build, выполнены SQLite → PostgreSQL однократно; namespace-based snapshot paths оставлены как создал tooling. После генерации 114 persistence tests (6 новых за этап), после history isolation — 6 адресных tests; обе серии 0 failed/0 skipped, builds 0 warnings/errors. Generated шесть файлов не изменены при history isolation. Реальное relational enforcement/restart не проверено; CLI validation не выполнена, change не архивирован. [Этап, точные commands и все 33 файла](<../../../Documentation/Plans/AgentBridge Initial Implementation/11-initial-provider-migrations.md>), [фактический API](<../../../Documentation/Technical documentation/11-provider-migrations.md>).
+
 1. Приложение передаёт сообщение и идентификаторы пользователя и диалога.
 2. AgentBridge загружает доступную историю и состояние контекста из настроенной БД.
 3. Зарегистрированные источники приложения предоставляют необходимый бизнес-контекст.

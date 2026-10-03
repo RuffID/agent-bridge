@@ -4,22 +4,24 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
 
-Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров и три проекта изолированных тестов. Этапы 00–08 приняты; этап 09 реализован и принят; этап 10 реализован и принят; этапы 11–25 не начаты. Запрещённые проверки пропущены. Доступны настройки, безопасная диагностика, защищённый Domain, прикладные порты, persistence DTO/EF-маппинг, base read/staging adapters и защищённое чтение с явным SQLite/PostgreSQL. Write ports/UoW и валидирующий Domain Restore реализованы. Сценарий агента, транспорт, migrations/startup ещё не реализованы. Следующий порядок описывает согласованную будущую интеграцию.
+Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров, два provider migrations проекта и три проекта изолированных тестов. Этапы 00–10 приняты; этап 11 реализован и принят; этапы 12–25 не начаты. Запрещённые проверки пропущены. Доступны настройки, безопасная диагностика, защищённый Domain, прикладные порты, persistence DTO/EF-маппинг, base read/staging adapters и защищённое чтение с явным SQLite/PostgreSQL. Write ports/UoW и валидирующий Domain Restore реализованы. Сценарий агента, транспорт и startup ещё отсутствуют. Следующий порядок описывает согласованную будущую интеграцию.
 
 | Проект | Сборка / назначение | Текущие production-ссылки |
 | --- | --- | --- |
 | [agent-bridge.csproj](agent-bridge.csproj) | `AgentBridge.dll`, ядро/Application | Нет |
 | [AgentBridge.CodexLb](adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj) | `AgentBridge.CodexLb.dll`, транспортный адаптер | Ядро |
 | [AgentBridge.Persistence.EfCore](adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj) | `AgentBridge.Persistence.EfCore.dll`, общее хранилище | Ядро, EFCoreLibrary |
+| [AgentBridge.Persistence.Migrations.Sqlite](adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj) | SQLite design-time factory; InitialAgentBridgeSchema сгенерирована | EF-хранилище |
+| [AgentBridge.Persistence.Migrations.PostgreSql](adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj) | PostgreSQL design-time factory; InitialAgentBridgeSchema сгенерирована | EF-хранилище |
 | [AgentBridge.Tests](tests/AgentBridge.Tests/AgentBridge.Tests.csproj) | Изолированные проверки ядра | Ядро |
 | [AgentBridge.CodexLb.Tests](tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj) | Изолированные проверки транспорта | Адаптер codex-lb |
-| [AgentBridge.Persistence.EfCore.Tests](tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj) | Изолированные проверки хранения | EF-хранилище |
+| [AgentBridge.Persistence.EfCore.Tests](tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj) | Изолированные проверки хранения и design-time моделей | EF-хранилище, оба migrations проекта |
 
 Тестовая инфраструктура — xUnit. На этапе 02 прошли 47 изолированных проверок настроек; на этапе 03 — 36 тестов ядра, включая 18 новых проверок диагностики. Ядро использует Microsoft.Extensions.Options.ConfigurationExtensions и Microsoft.Extensions.Logging `10.0.3`; адаптеры получают общие зависимости транзитивно. Serilog `4.3.0` и Serilog.Extensions.Logging `10.0.0` подключены только в тестах ядра для проверки pipeline приложения. На этапе 04 HttpClientLibrary 0.0.0.5 получила default-safe/opt-in JsonStructure и ограниченный error contract; по 44 теста прошли на net8/net10, проверено происхождение DLL. EF-адаптер подключает EFCoreLibrary с этапа 08; HTTP-ссылка остаётся этапу транспорта. Команды и результаты: [этап 02](<Documentation/Plans/AgentBridge Initial Implementation/02-configuration-and-defaults.md>), [этап 03](<Documentation/Plans/AgentBridge Initial Implementation/03-serilog-integration.md>), [этап 04](<Documentation/Plans/AgentBridge Initial Implementation/04-httpclientlibrary-logging.md>).
 
 ## Подключение
 
-Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в три DLL из таблицы; HTTP ещё не реализован; EF-хранилище имеет read/write ports, но migrations/startup ещё не подключены.
+Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в пять DLL из таблицы; HTTP ещё не реализован; EF-хранилище имеет read/write ports и выбирает provider migrations assembly, generated миграции созданы, startup ещё отсутствует. При обслуживании схемы приложение должно поставлять DLL выбранного provider проекта. [Фабрики, схема и ограничения этапа 11](<Documentation/Technical documentation/11-provider-migrations.md>).
 
 1. Добавить в .NET 10-приложение ссылки на DLL ядра, адаптера codex-lb и выбранной инфраструктуры хранения вместе с зависимостями времени выполнения. AgentBridge не распространяется NuGet-пакетом.
 2. Подключить совместимые DLL EFCoreLibrary и HttpClientLibrary. Выбрать SQLite или PostgreSQL и соответствующий EF Core provider.

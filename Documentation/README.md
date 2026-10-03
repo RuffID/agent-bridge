@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–08 приняты. Доступны настройки/DI, безопасная диагностика, защищённый Domain, прикладные порты и persistence DTO/EF-маппинг. Этап 09 реализован и принят: base read/staging adapters и защищённое чтение; 71 изолированный persistence-тест, 37 новых. Запрещённые проверки пропущены. Этап 10 реализован и принят: сценарные write UoW и Domain Restore; 107 core/108 persistence tests. Этапы 11–25 не начаты; migrations/startup, сценарий агента и транспорт ещё не реализованы; restart/атомарность на БД не подтверждены. [Адаптеры этапа 09](<Technical documentation/02-efcorelibrary.md#адаптеры-этапа-09>).
+AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–10 приняты. Доступны настройки/DI, безопасная диагностика, защищённый Domain, прикладные порты, persistence DTO/EF-маппинг, base read/staging adapters, защищённое чтение, write UoW и Domain Restore. Этап 11 реализован и принят: отдельные provider projects/factories и выбор migrations assembly; 114 persistence tests (6 новых); после изоляции history — 6 адресных тестов. Запрещённые проверки пропущены. Этапы 12–25 не начаты; startup, сценарий агента и транспорт ещё отсутствуют; restart/атомарность на БД не подтверждены. [Адаптеры этапа 09](<Technical documentation/02-efcorelibrary.md#адаптеры-этапа-09>).
 
 ## Бизнес-логика
 
@@ -27,6 +27,7 @@ AgentBridge — библиотека ИИ-агентов для .NET 10, под�
 8. [Доменное состояние диалога](<Technical documentation/08-dialog-domain-state.md>)
 9. [Прикладные контракты](<Technical documentation/09-application-ports.md>)
 10. [Сценарные Unit of Work](<Technical documentation/10-scenario-unit-of-work.md>)
+11. [Provider-specific миграции](<Technical documentation/11-provider-migrations.md>)
 
 ## Требования
 

@@ -6,6 +6,30 @@
 
 ## Требования
 
+### Requirement: Раздельные миграции выбранного провайдера
+
+AgentBridge MUST предоставлять независимые SQLite/PostgreSQL migrations assemblies и snapshots для одного общего AgentBridgeDbContext. Runtime и design-time MUST выбирать одну и ту же устойчивую identity по provider. Эти проекты MUST владеть только таблицами AgentBridge и MUST NOT добавлять host или зависимости в Domain/Application. Design-time factory MUST создавать контекст без открытия соединения, SQL, применения схемы или чтения секретов приложения.
+
+Runtime и design-time MUST явно выбирать отдельную служебную историю `__AgentBridgeMigrationsHistory` и MUST NOT использовать общий ledger `__EFMigrationsHistory` подключающего приложения. Служебная история EF MUST оставаться отдельной от пяти mapped таблиц диалога и MUST NOT добавляться как persistence entity в модель AgentBridge.
+
+#### Scenario: Изолированная история миграций
+
+- **WHEN** SQLite или PostgreSQL options создаются runtime регистрацией либо design-time factory
+- **THEN** provider history repository получает имя __AgentBridgeMigrationsHistory
+- **AND** выбор истории не меняет snapshot или схему пяти mapped таблиц.
+
+#### Scenario: Создание модели для выбранного провайдера
+
+- **WHEN** tooling использует SQLite или PostgreSQL target/startup проект
+- **THEN** factory создаёт общий AgentBridgeDbContext с выбранным provider и его отдельной migrations assembly
+- **AND** runtime выбирает ту же assembly identity.
+
+#### Scenario: Сохранение принятых границ схемы
+
+- **WHEN** создаётся provider-specific модель
+- **THEN** сохраняются только собственные таблицы, составные keys/FK, cascade, UTC ticks, BINARY/C collation и expiry/Id index
+- **AND** owner-list index и таблицы подключающего приложения не добавляются.
+
 ### Requirement: Короткое атомарное сохранение
 
 Write ports MUST выполнять проверку существования, владельца, явного UTC срока и исходного incarnation/revision в одной транзакционной границе с записью root и детей через EFCoreLibrary. Изменение MUST повышать revision. Read ports MUST оставаться отдельными. Сеть и инструменты MUST NOT выполняться внутри transaction. Один scoped-контекст MUST NOT использоваться параллельно; tracked state MUST очищаться до возврата из операции.

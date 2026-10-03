@@ -3,6 +3,8 @@
   <Folder Name="/Adapters/">
     <Project Path="adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="tests/AgentBridge.Tests/AgentBridge.Tests.csproj" />
