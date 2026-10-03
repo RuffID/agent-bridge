@@ -54,7 +54,7 @@ Application получает узкие предметные порты AgentBri
 
 SQLite и PostgreSQL используют собственные EF-провайдеры. Общие сценарии и базовые репозитории остаются одинаковыми; схема и миграции должны учитывать выбранный provider.
 
-Очистка истёкших диалогов выполняется теми же базовыми read/delete-операциями. Check/backup/migrate использует библиотечный adapter и развиваемый контракт обслуживания EFCoreLibrary. Порядок и анализ AquaByte-Ledger: [обслуживание БД](06-database-maintenance.md).
+Очистка истёкших диалогов выполняется теми же базовыми read/delete-операциями. На этапе 05 в EFCoreLibrary отдельно реализованы `IDatabaseMaintenance<TKey>`, общий Relational coordinator и optional SQLite/PostgreSQL/SQL Server/MySQL модули. Основной CRUD-проект остаётся `0.0.4` с EF `10.0.3`; maintenance использует Relational `10.0.11`, поэтому приложение согласует EF10 graph и выбирает provider. В AgentBridge новые provider options и ссылки не добавлены: подключение адаптера и startup относится к последующим этапам. API, SingleInitializer, scope backup и ограничения проверки: [обслуживание БД](06-database-maintenance.md).
 
 ## Источники
 
