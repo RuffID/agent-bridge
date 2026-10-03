@@ -1,5 +1,7 @@
 # Доступ к данным через EFCoreLibrary
 
+Текущий write API этапа 10: [сценарные Unit of Work](10-scenario-unit-of-work.md). Реализован и принят; запрещённые проверки пропущены. `AddAgentBridgePersistence` регистрирует все существующие read/write ports, общий scope/session/gate. Исторические разделы 08–09 ниже описывают границы тех этапов, а не отсутствие текущего write path.
+
 ## Обязательное решение
 
 Вся работа с БД AgentBridge строится на EFCoreLibrary. Исходники: `D:\Media\User\source\repos\work\EFCoreLibrary`.

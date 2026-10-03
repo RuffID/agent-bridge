@@ -5,6 +5,7 @@ using AgentBridge.Application.Results;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Repositories;
+using AgentBridge.Persistence.EfCore.UnitOfWork;
 
 namespace AgentBridge.Persistence.EfCore.Reading;
 
@@ -12,11 +13,12 @@ namespace AgentBridge.Persistence.EfCore.Reading;
 /// <remarks>Повторное чтение root отклоняет изменившуюся жизнь/версию без скрытого retry.
 /// Это не транзакционный снимок; token требует атомарной проверки сценарием записи этапа 10.</remarks>
 public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
-    ModelStepRecordQueries steps, ContextRecordQueries contexts) : IDialogReader
+    ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate) : IDialogReader
 {
     /// <inheritdoc/>
     public async Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default)
     {
+        using IDisposable lease = gate.Enter();
         ArgumentNullException.ThrowIfNull(access);
         cancellationToken.ThrowIfCancellationRequested();
         Guid dialogId = access.DialogId.Value;

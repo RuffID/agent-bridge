@@ -24,6 +24,17 @@ internal class FakeBaseRepository<TEntity> :
     public Exception? ReadException { get; set; }
     public Action? BeforeRead { get; set; }
 
+    /// <summary>Очищает изолированный staged пакет после fake transaction; исходные строки не меняет.</summary>
+    public void ClearStaging()
+    {
+        Created.Clear();
+        Updated.Clear();
+        Deleted.Clear();
+        CreatedRange = null;
+        UpdatedRange = null;
+        DeletedRange = null;
+    }
+
     /// <inheritdoc/>
     public Task<TEntity?> GetItemByPredicateAsync(Expression<Func<TEntity, bool>> predicate, bool asNoTracking = false,
         Func<IQueryable<TEntity>, IQueryable<TEntity>>? include = null, CancellationToken ct = default)

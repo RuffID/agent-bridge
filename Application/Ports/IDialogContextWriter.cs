@@ -10,7 +10,7 @@ public interface IDialogContextWriter
     /// принимает следующую версию окна и сохраняет историю. Отказ оставляет прежнее окно актуальным.</summary>
     /// <remarks>Prefix не откатывается и не включает InProgress/дыры. Compaction должен иметь статус Completed;
     /// метаданные prefix не дают права пропустить отдельные элементы. Полный envelope сохраняется отдельно от input-items.
-    /// Сеть завершена до вызова; будущий адаптер использует общий сценарный scope/UoW.</remarks>
+    /// Сеть завершена до вызова; EF-адаптер использует общий сценарный scope/UoW.</remarks>
     Task<ServiceResult<DialogWriteToken>> SaveAsync(DialogAccess access, DialogWriteToken expected,
         long throughTurnSequence, ModelResponse compaction, CancellationToken cancellationToken = default);
 }

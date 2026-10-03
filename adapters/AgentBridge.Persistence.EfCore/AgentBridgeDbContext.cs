@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AgentBridge.Persistence.EfCore;
 
-/// <summary>Общий контекст persistence DTO; операции выполняются через EFCoreLibrary и будущие сценарные UoW.</summary>
+/// <summary>Общий контекст persistence DTO; операции выполняются через EFCoreLibrary и сценарные UoW.</summary>
 public class AgentBridgeDbContext : DbContext
 {
     /// <summary>Получает options выбранного приложением провайдера; не открывает соединение.</summary>

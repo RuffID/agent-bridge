@@ -4,7 +4,7 @@ namespace AgentBridge.Persistence.EfCore.Repositories;
 
 /// <summary>Делегирует staging строк базовым репозиториям; не сохраняет и не подтверждает прикладную операцию.</summary>
 /// <remarks>Используется только инфраструктурой сценария после проверок и доменного изменения.
-/// Все операции участвуют в общей scoped session; сохранение и rollback принадлежат будущему scope этапа 10.</remarks>
+/// Все операции участвуют в общей scoped session; сохранение и rollback принадлежат общему scope этапа 10.</remarks>
 public class RecordStaging<TEntity>(
     IContextCreateItemRepository<TEntity, AgentBridgeContextKey> creator,
     IContextUpdateItemRepository<TEntity, AgentBridgeContextKey> updater,

@@ -21,7 +21,7 @@ public class ExpiredDialogReaderTests
         repository.Records.AddRange([
             Record("00000000-0000-0000-0000-000000000004", now.AddTicks(1)),
             Record("00000000-0000-0000-0000-000000000003", now), second, first]);
-        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository));
+        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
         using CancellationTokenSource source = new();
         ServiceResult<IReadOnlyList<DialogWriteToken>> result = await reader.ReadAsync(now, 2, source.Token);
         Assert.True(result.Success);
@@ -43,7 +43,7 @@ public class ExpiredDialogReaderTests
     public async Task EmptyCandidatesAreSuccessful()
     {
         FakeBaseRepository<DialogRecord> repository = new();
-        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository));
+        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
         Assert.Empty((await reader.ReadAsync(DateTimeOffset.UnixEpoch, 1)).Data!);
     }
 
@@ -54,7 +54,7 @@ public class ExpiredDialogReaderTests
     public async Task InvalidLimitFailsBeforeBaseRead(int limit)
     {
         FakeBaseRepository<DialogRecord> repository = new();
-        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository));
+        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch, limit));
         Assert.Equal(0, repository.ReadCalls);
     }
@@ -64,7 +64,7 @@ public class ExpiredDialogReaderTests
     public async Task NonUtcFailsBeforeBaseRead()
     {
         FakeBaseRepository<DialogRecord> repository = new();
-        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository));
+        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
         await Assert.ThrowsAsync<ArgumentException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch.ToOffset(TimeSpan.FromHours(1)), 1));
         Assert.Equal(0, repository.ReadCalls);
     }
@@ -74,7 +74,7 @@ public class ExpiredDialogReaderTests
     public async Task CallerCancellationPropagates()
     {
         FakeBaseRepository<DialogRecord> repository = new();
-        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository));
+        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
         using CancellationTokenSource source = new();
         source.Cancel();
         OperationCanceledException error = await Assert.ThrowsAsync<OperationCanceledException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch, 1, source.Token));

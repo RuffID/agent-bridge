@@ -35,6 +35,8 @@ public class Dialog
     public DateTimeOffset ExpiresAtUtc { get; }
     /// <summary>Версия агрегата; каждое успешное изменение делает предыдущие снимки устаревшими.</summary>
     public long Revision { get; private set; }
+    /// <summary>Время последнего принятого изменения; сохраняется вместе с revision.</summary>
+    public DateTimeOffset LastChangedAtUtc => _lastChangedAtUtc;
     /// <summary>Признак явного доменного удаления; физическое удаление выполняется хранилищем.</summary>
     public bool IsDeleted { get; private set; }
     /// <summary>Обращения в порядке начала, доступные только для чтения.</summary>
@@ -57,6 +59,94 @@ public class Dialog
         }
 
         return new Dialog(id, ownerId, createdAtUtc, expiresAtUtc);
+    }
+
+    /// <summary>Восстанавливает живой сохранённый агрегат, проверяя всю хронологию и историю без проигрывания mutations.</summary>
+    /// <remarks>Удалённые агрегаты не восстанавливаются. Локальный lifetime остаётся новым для этого экземпляра;
+    /// сохраняемый incarnation проверяется внешней атомарной границей до вызова фабрики.</remarks>
+    public static Dialog Restore(DialogId id, DialogOwnerId ownerId, DateTimeOffset createdAtUtc,
+        DateTimeOffset expiresAtUtc, long revision, DateTimeOffset lastChangedAtUtc,
+        IEnumerable<DialogTurnSnapshot> turns, IEnumerable<DialogContextSnapshot> contexts)
+    {
+        ArgumentNullException.ThrowIfNull(turns);
+        ArgumentNullException.ThrowIfNull(contexts);
+        Dialog dialog = Create(id, ownerId, createdAtUtc, expiresAtUtc);
+        ArgumentOutOfRangeException.ThrowIfNegative(revision);
+        EnsureUtc(lastChangedAtUtc, nameof(lastChangedAtUtc));
+        if (lastChangedAtUtc < createdAtUtc || lastChangedAtUtc >= expiresAtUtc)
+        {
+            throw new ArgumentException("Время сохранённого изменения вне жизни диалога.");
+        }
+
+        HashSet<Guid> ids = [];
+        DateTimeOffset previousStart = createdAtUtc;
+        long minimumRevision = 0;
+        foreach (DialogTurnSnapshot turn in turns)
+        {
+            ArgumentNullException.ThrowIfNull(turn);
+            EnsureUtc(turn.StartedAtUtc, nameof(turns));
+            if (turn.FinishedAtUtc is DateTimeOffset finish)
+            {
+                EnsureUtc(finish, nameof(turns));
+            }
+            if (turn.Id == Guid.Empty || !ids.Add(turn.Id) || turn.Sequence != dialog._turns.Count + 1L ||
+                !Enum.IsDefined(turn.Status) || turn.StartedAtUtc < previousStart || turn.StartedAtUtc > lastChangedAtUtc ||
+                (turn.Status == DialogTurnStatus.InProgress) != (turn.FinishedAtUtc is null) ||
+                turn.FinishedAtUtc < turn.StartedAtUtc || turn.FinishedAtUtc > lastChangedAtUtc)
+            {
+                throw new ArgumentException("Некорректное сохранённое обращение.");
+            }
+            dialog._turns.Add(new DialogTurn(turn.Id, turn.Sequence, turn.StartedAtUtc, turn.Status, turn.FinishedAtUtc));
+            previousStart = turn.StartedAtUtc;
+            minimumRevision = checked(minimumRevision + (turn.Status == DialogTurnStatus.InProgress ? 1 : 2));
+        }
+        DateTimeOffset previousContext = createdAtUtc;
+        foreach (DialogContextSnapshot context in contexts)
+        {
+            ArgumentNullException.ThrowIfNull(context);
+            EnsureUtc(context.CreatedAtUtc, nameof(contexts));
+            if (context.Version != dialog._contextStates.Count + 1L ||
+                context.ThroughTurnSequence < (dialog.ActiveContext?.ThroughTurnSequence ?? 0) ||
+                context.ThroughTurnSequence > dialog._turns.Count || context.CreatedAtUtc < previousContext ||
+                context.CreatedAtUtc > lastChangedAtUtc ||
+                dialog._turns.Take((int)context.ThroughTurnSequence).Any(turn =>
+                    turn.FinishedAtUtc is null || turn.FinishedAtUtc > context.CreatedAtUtc))
+            {
+                throw new ArgumentException("Некорректная сохранённая версия контекста.");
+            }
+            dialog._contextStates.Add(new DialogContextState(context.Version, context.ThroughTurnSequence, context.CreatedAtUtc));
+            previousContext = context.CreatedAtUtc;
+            minimumRevision = checked(minimumRevision + 1);
+        }
+        if (revision < minimumRevision || (revision == 0 && lastChangedAtUtc != createdAtUtc) ||
+            (revision > minimumRevision && dialog._turns.Count == 0))
+        {
+            throw new ArgumentException("Версия не соответствует сохранённым изменениям.");
+        }
+        dialog.Revision = revision;
+        dialog._lastChangedAtUtc = lastChangedAtUtc;
+        return dialog;
+    }
+
+    /// <summary>Принимает промежуточные данные выполняющегося обращения и инвалидирует прежний snapshot.</summary>
+    public DialogMutationResult TryAppendTurn(DialogOwnerId ownerId, DialogStateVersion version, Guid turnId, DateTimeOffset nowUtc)
+    {
+        DialogMutationResult result = CheckVersion(ownerId, version, nowUtc);
+        if (result != DialogMutationResult.Success)
+        {
+            return result;
+        }
+        DialogTurn? turn = _turns.Find(item => item.Id == turnId);
+        if (turn is null)
+        {
+            return DialogMutationResult.TurnNotFound;
+        }
+        if (turn.Status != DialogTurnStatus.InProgress)
+        {
+            return DialogMutationResult.TurnAlreadyFinished;
+        }
+        CommitRevision(NextRevision(nowUtc), nowUtc);
+        return DialogMutationResult.Success;
     }
 
     /// <summary>Проверяет истечение, включая точное равенство времени сроку.</summary>

@@ -307,7 +307,7 @@ public class DialogReaderTests
         {
             Dialogs.Records.Add(Dialog);
             Reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(Dialogs), Dialogs),
-                new(Turns), new(Items), new(Steps), new(Contexts));
+                new(Turns), new(Items), new(Steps), new(Contexts), new());
         }
 
         /// <summary>Фиксирует владельца и явное время; системные часы не используются.</summary>
