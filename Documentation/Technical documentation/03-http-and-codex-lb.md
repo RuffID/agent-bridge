@@ -4,7 +4,7 @@
 
 Все исходящие HTTP-запросы адаптера выполняются через HttpClientLibrary из `D:\Media\User\source\repos\work\HttpClientLibrary`.
 
-По статической проверке 2026-10-03 библиотека поддерживает `net8.0;net10.0`, JSON и потоковые ответы. AgentBridge использует вариант .NET 10.
+По повторной статической проверке этапа 00 от 2026-10-03 [проект библиотеки](../../../work/HttpClientLibrary/HttpClientLibrary.csproj) поддерживает `net8.0;net10.0`, имеет `FileVersion=0.0.0.4` и Logging Abstractions `10.0.2`. AgentBridge использует вариант .NET 10; соответствие готовой DLL этим исходникам пока не проверено.
 
 | Реальный тип | Использование |
 | --- | --- |
@@ -16,6 +16,18 @@
 
 SSE-парсер относится к адаптеру codex-lb: общий HTTP-клиент предоставляет поток, а адаптер понимает события Responses. Потоковый результат освобождается через `Dispose`/`DisposeAsync`. Если используется `ContentFactory`, каждый её вызов создаёт новый HttpContent; владение передаётся библиотеке.
 
+### Фактическое поведение HTTP-обёрток
+
+| Источник | Подтверждённый контракт |
+| --- | --- |
+| [HttpJsonResponseClient.SendWithResponseAsync / ReadBodyAsync](../../../work/HttpClientLibrary/Clients/HttpJsonResponseClient.cs) | `ResponseHeadersRead`, затем чтение JSON с cancellation; 204/205 или `Content-Length: 0` дают пустое тело. Для `T=string` возвращается текст. Request/response освобождаются внутри вызова. |
+| [HttpStreamingResponseClient.SendStreamAsync](../../../work/HttpClientLibrary/Clients/HttpStreamingResponseClient.cs) | `ResponseHeadersRead`, проверка статуса до выдачи потока; при ошибке освобождает request/response, при успехе response принадлежит возвращённой обёртке. Cancellation дальнейшего чтения передаёт потребитель потока. |
+| [HttpResponseMetadataReader.ExtractHeaders](../../../work/HttpClientLibrary/Clients/HttpResponseMetadataReader.cs) | Успешные JSON/stream-обёртки содержат response и content headers в словаре без учёта регистра. |
+| [HttpRequestMessageFactory.Create](../../../work/HttpClientLibrary/Clients/HttpRequestMessageFactory.cs) | Пустой URL, Body вместе с ContentFactory, BodyContentType вместе с ContentFactory, HttpContent в Body и тело GET/HEAD отклоняются. Строковый Body по умолчанию `text/plain`, объект — JSON. |
+| [Serializer](../../../work/HttpClientLibrary/Clients/Serializer.cs) | По умолчанию camelCase и пропуск null. Для snake_case Responses нужны явные имена JSON-полей либо переданные настройки; автоматически snake_case не возникает. |
+
+Повторов и собственного deadline в этих реализациях нет: они используют переданный HttpClient и cancellation. Настройки и дополнительные handlers подключающего приложения этой статической проверкой не проверялись.
+
 ## Проверка текущего codex-lb
 
 Контракты сверены с локальными исходниками 2026-10-03. Проверка статическая; работа живого сервера и конкретного upstream не проверялась.
@@ -26,6 +38,8 @@ SSE-парсер относится к адаптеру codex-lb: общий HTT
 | `POST /v1/responses/compact` | Сжатие; итоговый JSON с каноническим новым окном контекста |
 | `GET /v1/models` | Актуальный каталог доступных моделей |
 
+Точки входа: [v1_responses](../../../codex-lb/app/modules/proxy/api.py#L1350), [v1_responses_compact](../../../codex-lb/app/modules/proxy/api.py#L6981), [v1_models](../../../codex-lb/app/modules/proxy/api.py#L1712). `/v1/responses/` зарегистрирован отдельно как эквивалент без redirect; для models и compact в этом роутере отдельной регистрации завершающего `/` нет. Адаптеру достаточно канонических адресов таблицы; поведение redirect живого сервера не проверялось.
+
 Для авторизации используется Bearer API-ключ codex-lb, предоставленный приложением. Ключ не является upstream-ключом OpenAI и не помещается в payload модели.
 
 Responses принимает `model`, `input`, `instructions`, `tools`, `tool_choice`, настройки reasoning и другие поддержанные поля. `input` содержит сообщения и элементы протокола, включая результаты инструментов и сохраняемое состояние. Список только текстовых сообщений недостаточен для общего агента.
@@ -34,11 +48,29 @@ Responses принимает `model`, `input`, `instructions`, `tools`, `tool_ch
 
 Каталог моделей следует читать через `/v1/models`, а не переносить фиксированный список из старого бота.
 
+### Карта wire-контрактов
+
+| Область | Подтверждение в текущем исходном коде |
+| --- | --- |
+| Запрос Responses | [V1ResponsesRequest](../../../codex-lb/app/core/openai/v1_requests.py#L37): непустой `model`; `input` — строка или массив либо альтернативный `messages`. Оба не допускаются, кроме `messages` с пустым `input=[]`. Дополнительные JSON-поля разрешены; это не обещает их поддержку каждым upstream. `stream=true` выбирает SSE, false/отсутствие — JSON. |
+| Элементы и функции | [ResponsesRequest](../../../codex-lb/app/core/openai/requests.py#L643) принимает структурированный input и tools; [enforce_strict_function_tools_format](../../../codex-lb/app/modules/proxy/request_policy.py#L966) проверяет плоский Responses tool `{type:"function", name, parameters, strict}`. Для `strict=true` проверяется schema; неверная schema даёт `invalid_function_parameters`. Вызовы/результаты функций и их `call_id` нельзя заменить текстовыми сообщениями. |
+| Контроли | [ResponsesReasoning](../../../codex-lb/app/core/openai/requests.py#L614): `effort`, `summary` и дополнительные поля. `include` проверяется по allowlist; `reasoning.encrypted_content` входит в него. `store` принудительно false. `truncation=auto/disabled` проходит валидацию и удаляется из ChatGPT-bound payload; другие значения отклоняются. |
+| JSON-результат | [OpenAIResponsePayload / ResponseUsage](../../../codex-lb/app/core/openai/models.py): id, status, error, usage и дополнительные поля, включая output. usage содержит input/output/total tokens и details. [Коллектор](../../../codex-lb/app/modules/proxy/api.py#L8895) различает completed/incomplete/failed/error; HTTP 2xx не заменяет проверку status. |
+| Каталог | [ModelListResponse / ModelListItem / ModelMetadata](../../../codex-lb/app/modules/proxy/schemas.py#L202): `{object:"list", data:[...]}`, элементы id/object/created/owned_by, metadata с context_window, supported_reasoning_levels (`effort`, `description`), default_reasoning_level и флагами возможностей. [Сборка каталога](../../../codex-lb/app/modules/proxy/api.py#L4013) объединяет registry/fallback и enabled model sources, фильтрует по ключу. Пустой data допустим; поле created формируется при запросе и не является версией модели. |
+
+В [context.md codex-lb](../../../codex-lb/openspec/specs/responses-api-compat/context.md) ещё есть утверждения об отклонении `store=true` и любого `truncation`. Они расходятся с текущими валидаторами; для truncation актуальное поведение дополнительно подтверждено [нормативной спецификацией](../../../codex-lb/openspec/specs/responses-api-compat/spec.md#L3233). Это наблюдение сверки, не изменение требований или файлов шлюза.
+
 ## Compact
 
 `/v1/responses/compact` сохраняет raw upstream-форму нового окна контекста. Выход может содержать сообщения и непрозрачные compaction-элементы, включая `encrypted_content`. Результат сохраняется как состояние протокола, не только как извлечённый текст.
 
 codex-lb самостоятельно выбирает поддержанный upstream-механизм compact. AgentBridge использует публичный endpoint и не дублирует внутреннюю маршрутизацию proxy. Недоступность upstream-compact возвращается как явная ошибка; подмена обычным запросом генерации с инструкцией «сожми» не выполняется незаметно.
+
+Точный запрос описан [V1ResponsesCompactRequest](../../../codex-lb/app/core/openai/v1_requests.py#L131): model, input/messages, instructions, reasoning и дополнительные поля. [CompactResponsePayload](../../../codex-lb/app/core/openai/models.py#L132) требует непустой discriminator `object`, начинающийся с `response.compact`, и сохраняет дополнительные поля. В [upstream-нормализаторе](../../../codex-lb/app/core/clients/proxy.py#L1655) уже compact-shaped JSON сохраняется; обычный Responses-результат может преобразовываться в `response.compaction` с compaction item. Поэтому «raw» здесь означает сохранение полученного канонического JSON адаптером AgentBridge, а не побайтовое отсутствие преобразований внутри шлюза.
+
+[Текущий compact transport](../../../codex-lb/app/core/clients/proxy.py#L4874) добавляет terminal `compaction_trigger`, устанавливает `stream=true/store=false`; [SSE-коллектор](../../../codex-lb/app/core/clients/proxy.py#L1579) требует completed, собирает output items и отклоняет failed/incomplete/error/EOF. Публичный `/v1/responses/compact` возвращает JSON и не выполняет дополнительную Codex-affinity нормализацию до одного item, применяемую к backend-маршруту.
+
+Ограничение каталога: `_build_models_response_body` включает model sources, а `_compact_responses` идёт по subscription-only пути. Наличие модели в `/v1/models` само по себе не подтверждает её compact-возможность; отдельного compact-флага в ModelMetadata нет. Работа конкретной модели с compact требует последующей проверки, без скрытого выбора другой модели.
 
 ## Streaming, завершение и ошибки
 
@@ -55,6 +87,10 @@ HTTP 2xx или полученный text delta сами по себе не до
 Пользователь выбрал: по умолчанию только статус и безопасные метаданные; содержимое HTTP-ответов допускается только по явной настройке. Секреты не становятся безопасными для логирования даже при включённой диагностике содержимого.
 
 Развитие этого поведения относится к самой HttpClientLibrary. Настоящий этап фиксирует контракт и не изменяет её код. Не следует считать будущую настройку уже существующим свойством `HttpRequestOptions`.
+
+Фактический gap этапа 04: [HttpErrorResponseHandler.ThrowIfFailedAsync](../../../work/HttpClientLibrary/Clients/HttpErrorResponseHandler.cs) безусловно пишет Warning с URL, reason и snippet. [ReadErrorSnippetAsync](../../../work/HttpClientLibrary/Clients/HttpResponseMetadataReader.cs) читает до 2000 символов для text/JSON/problem+json либо отсутствующего Content-Type, заменяет переводы строк, но не редактирует секреты. Успешные ответы эти классы не логируют; переключателя содержимого в HttpRequestOptions нет.
+
+Дополнительное подтверждённое ограничение: [HttpRequestFailedException](../../../work/HttpClientLibrary/Exceptions/HttpRequestFailedException.cs) содержит URL/status/reason/snippet, но не response headers. Snippet может оборваться внутри JSON, поэтому type/code/param нельзя гарантированно извлечь из каждого HTTP-отказа; server correlation и Retry-After из заголовков также недоступны. Точный контракт развития библиотеки здесь не выбран и требует отдельного согласования перед зависимой реализацией; отсутствие данных нельзя выдавать за доказательство безопасного retry.
 
 ## Источники
 

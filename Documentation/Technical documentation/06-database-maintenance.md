@@ -12,6 +12,8 @@ AgentBridge использует тот же функциональный пор
 
 Статическая проверка исходников выполнена 2026-10-03.
 
+Повторная сверка этапа 00: [DataBaseCheckUpService.CheckOrUpdateDB](../../../work/AquaByte-Ledger/AquaByteLedger.Infrastructure/Services/DataBase/DataBaseCheckUpService.cs#L14) синхронно вызывает `CanConnect`, `GetPendingMigrations`, при непустом списке `CreateSqlServerBackup`, затем `Migrate`. Исключения не перехватываются; `CanConnect=false` останавливает операцию, ветки первой установки нет. Cancellation/deadline в этих сигнатурах отсутствуют — требования ниже описывают будущий контракт, а не готовые возможности образца.
+
 | Класс | Текущее поведение | Применение в AgentBridge |
 | --- | --- | --- |
 | `DataBaseCheckUpService<TContext, TContextKey>` | Использует `IAppDbContext<TContextKey>`, проверяет подключение и pending migrations; backup выполняется до `Database.Migrate()` | Сохранить последовательность и fail-fast через контракт EFCoreLibrary |
@@ -27,6 +29,8 @@ AgentBridge использует тот же функциональный пор
 Текущий `IAppDbContext<TContextKey>` уже предоставляет `DatabaseFacade`. Это позволяет использовать EF migrations через библиотечный adapter. Базовые delete-репозитории и `SaveChangesAsync` уже достаточны для удаления строк диалогов.
 
 Готового provider-independent backup API в проверенных исходниках нет. Требуемое расширение принадлежит EFCoreLibrary и реализуется на последующем этапе, после согласования контрактов. В документации не объявляется уже существующим новый интерфейс библиотеки.
+
+На этапе 00 просмотрены все production `.cs` EFCoreLibrary (Abstractions, EfCore, Extensions): отдельного check/backup/migrate-сервиса нет, как и готовых backup-провайдеров SQLite/PostgreSQL. `DatabaseFacade` — техническая точка доступа, не реализация согласованного обслуживания. [Проект AquaByte-Ledger Infrastructure](../../../work/AquaByte-Ledger/AquaByteLedger.Infrastructure/AquaByteLedger.Infrastructure.csproj) использует `net10.0`, EF Core/Relational/SqlServer `10.0.11`, SqlClient `7.0.2` и EFCoreLibrary DLL из libs; это не подтверждает бинарную совместимость с исходным EFCoreLibrary `0.0.4` на EF `10.0.3`. Проверка состава DLL остаётся последующим этапам.
 
 Сценарий очистки использует базовое чтение по сроку истечения и `Delete`/`DeleteRange` через сценарный UoW. Custom query не становится предпочтительным только потому, что операция называется обслуживанием.
 

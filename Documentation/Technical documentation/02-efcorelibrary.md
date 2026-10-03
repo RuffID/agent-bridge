@@ -10,7 +10,7 @@
 
 ## Проверенные типы библиотеки
 
-Проверено статически 2026-10-03. `EFCoreLibrary.csproj` использует `net10.0` и EF Core `10.0.3`.
+Повторно проверено статически на этапе 00, 2026-10-03. `EFCoreLibrary.csproj`: версия `0.0.4`, `net10.0`, EF Core и DI Abstractions `10.0.3`. Это версии исходного проекта, не подтверждение состава ранее собранных DLL.
 
 | Операция | Infrastructure-контракт | Базовый класс |
 | --- | --- | --- |
@@ -23,11 +23,22 @@
 
 Базовые read-контракты поддерживают predicate, tracking-настройку и композицию запроса. CRUD-классы изменяют общий change tracker; сохранение выполняется отдельно.
 
+### Точные операции и ограничения
+
+- [CreateItemRepository](../../../work/EFCoreLibrary/EfCore/Repository/Base/CreateItemRepository.cs#L10), [UpdateItemRepository](../../../work/EFCoreLibrary/EfCore/Repository/Base/UpdateItemRepository.cs#L10) и [DeleteItemRepository](../../../work/EFCoreLibrary/EfCore/Repository/Base/DeleteItemRepository.cs#L10): синхронные `Create/CreateRange`, `Update/UpdateRange`, `Delete/DeleteRange`; внутри `DbSet.Add/Update/Remove`, без `SaveChanges` и собственной транзакции.
+- [GetItemByIdRepository.GetItemByIdAsync](../../../work/EFCoreLibrary/EfCore/Repository/Base/GetItemByIdRepository.cs#L13): `Task<TEntity?>`, по умолчанию `asNoTracking=false`, необязательная композиция `include` и `CancellationToken`. Требует `IEntity<TId>` с публичным `Id { get; set; }`; `TId` также реализует `IEquatable<TId>` и `IComparable<TId>`. Для закрытого доменного ID допустим уже существующий predicate-контракт внутри Infrastructure, без ослабления домена.
+- [GetItemByPredicateRepository](../../../work/EFCoreLibrary/EfCore/Repository/Base/GetItemByPredicateRepository.cs#L12): `GetItemByPredicateAsync` возвращает первый элемент либо `null`; `GetItemsByPredicateAsync` — `Task<List<TEntity>>`, принимает predicate, skip, take, tracking, include и cancellation. Собственной сортировки нет; `take <= 0` не ограничивает выборку. Порядок истории нельзя выводить из порядка строк БД; доступный `include` имеет тип `Func<IQueryable<TEntity>, IQueryable<TEntity>>` и применяется до skip/take.
+- [QueryRepository.Query](../../../work/EFCoreLibrary/EfCore/Repository/Base/QueryRepository.cs#L11) возвращает `IQueryable<TEntity>` с tracking по умолчанию. Это резерв для запросов, которым недостаточно базового чтения, а не обязательный путь для обычного CRUD.
+
 ## Контекст и регистрация
 
 `EfDbContextAdapter<TContext, TContextKey>` связывает конкретный DbContext с ключом контекста. `IUnitOfWorkContext<TContextKey>` предоставляет `SaveChangesAsync`, `DatabaseFacade` и технические операции change tracker.
 
 Регистрация строится на `AddEfCoreContext<TContext, TContextKey>()` и `AddEfCoreBaseRepositories<TContextKey>()`. Все репозитории одного сценарного scope используют один экземпляр контекста.
+
+В [ServiceCollectionExtensions](../../../work/EFCoreLibrary/Extensions/ServiceCollectionExtensions.cs#L13) первая операция регистрирует только scoped `IAppDbContext<TContextKey>` → `EfDbContextAdapter<TContext,TContextKey>`; сам `TContext` и provider должно зарегистрировать приложение. Вторая использует `TryAddScoped` для открытых generic `IContext*Repository`, `IUnitOfWorkContext<>` и `IRepositoryContext<>`. Общий контекст обеспечивается корректной scoped-регистрацией одного ключа, а не созданием нового DbContext внутри каждого репозитория.
+
+[IAppDbContext.SaveChanges](../../../work/EFCoreLibrary/Abstractions/Database/IAppDbContext.cs#L11) возвращает `Task<int>`; [UnitOfWorkContext.SaveChangesAsync](../../../work/EFCoreLibrary/EfCore/UnitOfWorkContext.cs#L12) делегирует ему. `Database`, `Entry`, `Attach`, `ClearChangeTracker` доступны через узкий UoW-контекст. Готового сценарного UoW AgentBridge, автоматического commit/rollback или защиты от параллельного использования DbContext библиотека этим не предоставляет. Встречающиеся в старых примерах имена `IGetItemByIdRepository<...,TContext>` не заменяют текущие `IContext*` и `TContextKey`.
 
 Application получает узкие предметные порты AgentBridge. `IQueryable`, EF `Expression`, `Include`, tracking и типы контекста остаются в Infrastructure. Сигнатуры внешних базовых классов не копируются в Application механически.
 
