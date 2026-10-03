@@ -16,7 +16,7 @@ AgentBridge использует tokenizer, соответствующий из�
 
 ## Проектируемые контракты
 
-Ниже рабочие названия будущих типов; исходный код ещё не создан.
+`IContextTokenCounter` уже определён на этапе 07: CountAsync получает полный ModelRequest, а ContextTokenCount разделяет KnownTokens, nullable EstimatedInputTokens и HasOpaqueContent. Реализации tokenizer нет. [Фактические порты](09-application-ports.md). Остальные названия ниже относятся к будущим типам.
 
 | Тип | Обязанность |
 | --- | --- |

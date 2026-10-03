@@ -21,6 +21,7 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 - `Configuration/` — типизированные настройки ядра и групповая регистрация options; локальные границы в `Configuration/AGENTS.md`.
 - `Diagnostics/` — безопасные структурированные события через ILogger приложения; локальные границы и контракт отмены в `Diagnostics/AGENTS.md`.
 - `Domain/` — независимое состояние диалога, фиксированный срок и проверка актуальности; границы в `Domain/AGENTS.md`.
+- `Application/` — независимые порты модели, контекста, инструментов, tokenizer и коротких сценариев хранения; границы в `Application/AGENTS.md`.
 - `adapters/AgentBridge.CodexLb/` — отдельный адаптер транспорта; правила в локальном `AGENTS.md`.
 - `adapters/AgentBridge.Persistence.EfCore/` — общее EF-хранилище; правила в локальном `AGENTS.md`.
 - Оба адаптера ссылаются на ядро и используют общие Microsoft.Extensions options/DI. HTTP-, EF-библиотеки и провайдеры подключаются на этапах реализации соответствующих областей.
