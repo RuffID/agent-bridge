@@ -18,7 +18,7 @@ AgentBridge — название разрабатываемой библиоте
 
 ## Реализованная основа диагностики
 
-Этап 03 предоставляет `AddAgentBridgeDiagnostics` и `AgentBridgeDiagnostics` через стандартный `ILogger<AgentBridgeDiagnostics>`. Это наблюдение, не AgentRunner и не отдельный logging framework: provider, Serilog logger, sinks, фильтры, enrichers и освобождение ресурсов выбирает приложение. В production нет зависимости от Serilog и обращения к `Log.Logger`. Связь с настоящим Serilog provider проверена изолированно с sink в памяти; HTTP и хранилище ещё не подключены.
+Этап 03 предоставляет `AddAgentBridgeDiagnostics` и `AgentBridgeDiagnostics` через стандартный `ILogger<AgentBridgeDiagnostics>`. Это наблюдение, не AgentRunner и не отдельный logging framework: provider, Serilog logger, sinks, фильтры, enrichers и освобождение ресурсов выбирает приложение. В production нет зависимости от Serilog и обращения к `Log.Logger`. Связь с настоящим Serilog provider проверена изолированно с sink в памяти; автоматическая диагностика будущих HTTP/storage-сценариев ещё не подключена.
 
 Имена операции берутся из закрытого enum; корреляция — непустой GUID. Каждое наблюдение получает отдельный OperationId и монотонно измеренную DurationMs. `Complete`/`Fail` дают единственное итоговое событие с Operation, OperationId, CorrelationId, Status, ErrorCode и DurationMs. Наличие в enum имён будущих операций не означает их реализации. Отсутствие явного завершения не выдаётся за успех.
 
@@ -50,11 +50,25 @@ Scope ограничен реальным механизмом: SQLite — nativ
 
 Приложение владеет бизнес-данными, авторизацией и обработчиками инструментов. AgentBridge собирает контекст и координирует обращение к модели. codex-lb сохраняет свою роль upstream-шлюза: выбор аккаунта, маршрутизация и передача ответа.
 
-## Поток одного обращения
+## Прикладные контракты этапа 07
 
 Этап 07 определяет независимые прикладные порты и принят; запрещённые проверки пропущены. [Описание API](<../../../Documentation/Technical documentation/09-application-ports.md>) отделяет канонические items от полного envelope, результатов шагов и continuation. Контейнеры используют независимый JsonElement.Clone без реализации JSON/SSE mapping. ModelAccess фиксирует уже выбранный ключ на вызов; выбор ключа остаётся этапу 13. Например, output reasoning содержит encrypted_content, а envelope того же шага — id/usage/unknown metadata; оба снимка сохраняются отдельно, envelope не отправляется как input item.
 
-Storage ports выражают короткие атомарные операции, а не готовую persistence. Incarnation/revision получаются от будущего хранилища, не из private lifetime Domain-объекта. После ожидания модели старое условие записи нельзя заменять свежим ради обхода конфликта. Пример отказа: ID и revision совпали после пересоздания, но incarnation другой — старый ответ не записывается. Реализации EF/UoW, восстановление и реальная concurrency остаются этапам 08–10; contract fakes доказывают только заменяемость и форму условий. Точная граница Responses items также остаётся последующим этапам. Проверены 93 теста ядра, включая 27 новых; запрещённые интеграции пропущены.
+Storage ports выражают короткие атомарные операции, а не готовую persistence. Incarnation/revision получаются от хранилища, не из private lifetime Domain-объекта. После ожидания модели старое условие записи нельзя заменять свежим ради обхода конфликта. Пример отказа: ID и revision совпали после пересоздания, но incarnation другой — старый ответ не записывается. Этап 08 добавляет EF-модели/DI; CRUD/UoW, восстановление и реальная concurrency остаются этапам 09–10. Contract fakes доказывают только заменяемость и форму условий. Точная граница Responses items также остаётся последующим этапам. Проверены 93 теста ядра, включая 27 новых; запрещённые интеграции пропущены.
+
+## Формат хранения этапа 08
+
+Статус: **реализован и принят; запрещённые проверки пропущены**. Изменение [persistence-models](../../changes/persistence-models/proposal.md) остаётся неархивированным. Общий AgentBridgeDbContext использует локальный EFCoreLibrary, Microsoft EF/Relational/SQLite 10.0.11 и Npgsql provider 10.0.3. Domain не менялся: DTO отделены от агрегата, rehydration ещё не реализована.
+
+Таблицы разделяют диалог, обращения, полные канонические items, результаты model steps и принятые compact. Turn ID локален диалогу, step ID — обращению; composite FK сохраняет родительское владение. Порядок задан Sequence/Version, не временем/порядком выдачи provider. Активный compact — максимальная принятая Version, старые состояния и история сохраняются. ThroughTurnSequence не фильтрует будущие outputs/tool-results.
+
+Например, function_call_output с call_id хранится полным item; envelope того же model step с id/usage/unknown metadata сохраняется отдельно, как и opaque continuation. ModelResponseRecord сохраняет весь lifecycle/output, включая Failed/Incomplete/Canceled; compact имеет Completed constraint. FormatVersion=1, повреждённые или несовместимые данные отклоняются явно. ModelAccess/API keys не входят в persistence DTO, payload не логируется.
+
+UTC ticks в INTEGER/bigint сохраняют точность и сортировку expiry на обоих providers. JSON text избегает provider-нормализации. OwnerId остаётся без нормализации и искусственного MaxLength; отдельного owner-индекса нет, поскольку текущие порты читают по ID. Индексы поддерживают порядок и ограниченную очистку ExpiresAtUtc/Id. Fixed-field и concurrency metadata не доказывают существование/owner/expiry/accessID/incarnation/revision guards; их атомарная реализация — этапы 09–10, вне ожидания сети.
+
+Явный AddAgentBridgePersistence после AddDatabaseConfiguration регистрирует один scoped adapter/context-key и base repositories. Default SQLite и автоматическое обслуживание отсутствуют; sensitive data logging выключен. Проверены 34 persistence-теста (25 новых), две сборки без warnings/errors. Metadata/serialization/DI не доказывают relational enforcement или restart на БД. БД/SQL/migrations/backup/hosting/процессы пропущены по указанию пользователя; OpenSpec CLI отсутствует в PATH. [Фактический API](<../../../Documentation/Technical documentation/02-efcorelibrary.md#реализация-этапа-08>), [команды и ограничения](<../../../Documentation/Plans/AgentBridge Initial Implementation/08-persistence-models.md>).
+
+## Поток одного обращения
 
 1. Приложение передаёт сообщение и идентификаторы пользователя и диалога.
 2. AgentBridge загружает доступную историю и состояние контекста из настроенной БД.

@@ -54,7 +54,45 @@ Application получает узкие предметные порты AgentBri
 
 SQLite и PostgreSQL используют собственные EF-провайдеры. Общие сценарии и базовые репозитории остаются одинаковыми; схема и миграции должны учитывать выбранный provider.
 
-Очистка истёкших диалогов выполняется теми же базовыми read/delete-операциями. На этапе 05 в EFCoreLibrary отдельно реализованы `IDatabaseMaintenance<TKey>`, общий Relational coordinator и optional SQLite/PostgreSQL/SQL Server/MySQL модули. Основной CRUD-проект остаётся `0.0.4` с EF `10.0.3`; maintenance использует Relational `10.0.11`, поэтому приложение согласует EF10 graph и выбирает provider. В AgentBridge новые provider options и ссылки не добавлены: подключение адаптера и startup относится к последующим этапам. API, SingleInitializer, scope backup и ограничения проверки: [обслуживание БД](06-database-maintenance.md).
+Очистка истёкших диалогов выполняется теми же базовыми read/delete-операциями. На этапе 05 в EFCoreLibrary отдельно реализованы `IDatabaseMaintenance<TKey>`, общий Relational coordinator и optional SQLite/PostgreSQL/SQL Server/MySQL модули. Основной CRUD-проект остаётся `0.0.4` с EF `10.0.3`; maintenance использует Relational `10.0.11`. Этап 08 согласует graph EF-адаптера на Microsoft EF `10.0.11` и Npgsql `10.0.3`, не подключая maintenance. Startup относится к этапу 12. API, SingleInitializer, scope backup и ограничения проверки: [обслуживание БД](06-database-maintenance.md).
+
+## Реализация этапа 08
+
+Статус: **реализован и принят; запрещённые проверки пропущены**. Локальный ProjectReference ведёт на `../../../work/EFCoreLibrary/EFCoreLibrary.csproj` из EF-адаптера. Ядро/Application не получают EF-ссылки. Restore подтверждает Microsoft.EntityFrameworkCore, Abstractions, Relational, Sqlite/Core и Analyzers `10.0.11`; Npgsql.EntityFrameworkCore.PostgreSQL `10.0.3` допускает EF `[10.0.4, 11.0.0)`. Тестовый DI обновлён на `10.0.11` из-за NU1605; это не изменение options/API ядра. Любая сборка с библиотекой требует `-p:GeneratePackageOnBuild=false`.
+
+| Модель в AgentBridge.Persistence.EfCore.Models | Ключ и содержимое |
+| --- | --- |
+| `DialogRecord` | Id; OwnerId, IncarnationId/Revision, fixed CreatedAtUtc/ExpiresAtUtc, LastChangedAtUtc, ContentBytes |
+| `DialogTurnRecord` | DialogId/Id; Sequence начала, Status, StartedAtUtc/FinishedAtUtc |
+| `CanonicalItemRecord` | DialogId/TurnId/Sequence; полный ContentJson, включая function_call_output/call_id, reasoning и неизвестные поля |
+| `ModelStepRecord` | DialogId/TurnId/Id; Sequence выполнения и отдельный полный Response |
+| `DialogContextRecord` | DialogId/Version; ThroughTurnSequence, CreatedAtUtc и отдельный полный Compaction |
+| `ModelResponseRecord` | Required complex-значение внутри шага/compact: FormatVersion, Status, OutputJson, EnvelopeJson, ContinuationJson, ErrorType/Message |
+
+Persistence DTO изменяемы, но не являются Domain. Доменные setters/конструкторы не менялись; восстановление агрегата остаётся следующим этапам. `FromModelResponse`/`ToModelResponse` выполняют только преобразование формата в памяти, без CRUD. Все lifecycle сохраняют известный output; envelope и continuation не превращаются в items. Несовместимый FormatVersion или повреждённая форма отчёта отклоняются явно. Per-call ModelAccess/API keys отсутствуют в моделях/DI хранения; чувствительные JSON и ошибки не логируются этим кодом.
+
+Composite FK item/step → DialogId/TurnId не позволяет связать данные с turn другого диалога. Turn ID не глобален; step ID локален обращению, поэтому будущий base predicate обязан включать родителей. Unique индексы DialogId/Sequence и DialogId/TurnId/Sequence поддерживают порядок; ключ items и ключ context поддерживают чтение окна/истории. Индекс ExpiresAtUtc/Id нужен ограниченной детерминированной выборке очистки. Индекса OwnerId нет: текущий reader читает по PK и проверяет владельца; не вводится дополнительный размерный предел неограниченного OwnerId. BINARY (SQLite) / C (PostgreSQL) сохраняют точное сравнение без trim/case folding.
+
+Максимальная принятая Version по DialogId определяет активный compact; прежние версии и исходная история сохраняются. Check metadata допускает только Completed compact и неотрицательный ThroughTurnSequence. Непрерывность terminal prefix, неубывание покрытия и atomic guards требуют будущего сценария 09–10; текущий FK/check этого не доказывает и не отбрасывает items по metadata. Каскады диалог → turns/items/steps и диалог → contexts описывают весь набор удаления.
+
+UTC DateTimeOffset хранится точными ticks через `UtcTicksConverter`, в INTEGER/bigint. Это обходит неподдержанную сортировку SQLite DateTimeOffset и округление PostgreSQL timestamp до микросекунд; сравнения expiry не теряют 100-нс границу. Ненулевое смещение запрещено. JSON сохраняется text, без jsonb-нормализации. AfterSaveBehavior.Throw защищает fixed owner/incarnation/created/expiry в EF; concurrency metadata включает incarnation/revision/owner/expiry. Ни создание новой incarnation, ни атомарность existence/owner/expiry/accessID/token не исполняются этим этапом.
+
+Фактическая регистрация (значения подключения задаёт приложение):
+
+```csharp
+using AgentBridge.Persistence.EfCore.Configuration;
+
+services.AddDatabaseConfiguration(options =>
+{
+    options.Provider = DatabaseProvider.PostgreSql; // либо DatabaseProvider.SQLite
+    options.ConnectionString = applicationConnectionString;
+});
+services.AddAgentBridgePersistence();
+```
+
+`AddAgentBridgePersistence` регистрирует scoped `AgentBridgeDbContext`, точный `AddEfCoreContext<AgentBridgeDbContext, AgentBridgeContextKey>` и `AddEfCoreBaseRepositories<AgentBridgeContextKey>`. Ошибки обязательных options проверяются до выбора provider; fallback в SQLite отсутствует. SensitiveDataLogging выключен. Контекст не открывает БД при регистрации/разрешении metadata; порты Application, UoW, migrations/startup не регистрируются.
+
+Проверены metadata обоих providers, составные ключи/FK/каскады/checks, UTC converter, сериализация полного payload и scoped DI: **34 passed / 0 failed / 0 skipped**, 25 новых тестов; production и test builds — 0 warnings/errors. Это не проверка relational enforcement, restart на БД или атомарности. БД, SQL, migrations, backup/restore, hosting и внешние процессы — **«Пропущено по указанию пользователя»**. OpenSpec CLI отсутствует в PATH, CLI validation не выполнялась. [Точные команды и файлы](<../Plans/AgentBridge Initial Implementation/08-persistence-models.md>).
 
 ## Источники
 
