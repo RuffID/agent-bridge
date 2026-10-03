@@ -19,6 +19,7 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 - `agent-bridge.slnx` — решение .NET 10.
 - `agent-bridge.csproj` — ядро и прикладной слой в корне решения: SDK-style библиотека `net10.0`, сборка `AgentBridge.dll`, пространство имён `AgentBridge`.
 - `Configuration/` — типизированные настройки ядра и групповая регистрация options; локальные границы в `Configuration/AGENTS.md`.
+- `Diagnostics/` — безопасные структурированные события через ILogger приложения; локальные границы и контракт отмены в `Diagnostics/AGENTS.md`.
 - `adapters/AgentBridge.CodexLb/` — отдельный адаптер транспорта; правила в локальном `AGENTS.md`.
 - `adapters/AgentBridge.Persistence.EfCore/` — общее EF-хранилище; правила в локальном `AGENTS.md`.
 - Оба адаптера ссылаются на ядро и используют общие Microsoft.Extensions options/DI. HTTP-, EF-библиотеки и провайдеры подключаются на этапах реализации соответствующих областей.

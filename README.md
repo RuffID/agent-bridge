@@ -4,7 +4,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
 
-Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров и три проекта изолированных тестов. Реализованы типизированные настройки, их групповая DI-регистрация, binding/validation и вычисление срока из настроенного периода. Сценарий агента, транспорт и хранилище ещё не реализованы. Следующий порядок описывает согласованную будущую интеграцию.
+Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров и три проекта изолированных тестов. Этапы 00–03 завершены и приняты; этапы 04–25 не начаты. Реализованы типизированные настройки, их групповая DI-регистрация, binding/validation, вычисление срока из настроенного периода и безопасная диагностика операций через ILogger приложения. Сценарий агента, транспорт и хранилище ещё не реализованы. Следующий порядок описывает согласованную будущую интеграцию.
 
 | Проект | Сборка / назначение | Текущие production-ссылки |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 | [AgentBridge.CodexLb.Tests](tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj) | Изолированные проверки транспорта | Адаптер codex-lb |
 | [AgentBridge.Persistence.EfCore.Tests](tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj) | Изолированные проверки хранения | EF-хранилище |
 
-Тестовая инфраструктура — xUnit; прошли 47 изолированных проверок настроек. Ядро использует Microsoft.Extensions.Options.ConfigurationExtensions `10.0.3`; адаптеры получают общие options/DI транзитивно. HttpClientLibrary, EFCoreLibrary и провайдеры будут подключены на соответствующих этапах, после согласования необходимых контрактов. Результаты адресной сборки всех шести проектов и тестов: [этап 02](<Documentation/Plans/AgentBridge Initial Implementation/02-configuration-and-defaults.md>).
+Тестовая инфраструктура — xUnit. На этапе 02 прошли 47 изолированных проверок настроек; на этапе 03 — 36 тестов ядра, включая 18 новых проверок диагностики. Ядро использует Microsoft.Extensions.Options.ConfigurationExtensions и Microsoft.Extensions.Logging `10.0.3`; адаптеры получают общие зависимости транзитивно. Serilog `4.3.0` и Serilog.Extensions.Logging `10.0.0` подключены только в тестах ядра для проверки pipeline приложения. HttpClientLibrary, EFCoreLibrary и провайдеры будут подключены на соответствующих этапах, после согласования необходимых контрактов. Команды и результаты: [этап 02](<Documentation/Plans/AgentBridge Initial Implementation/02-configuration-and-defaults.md>), [этап 03](<Documentation/Plans/AgentBridge Initial Implementation/03-serilog-integration.md>).
 
 ## Подключение
 
@@ -51,6 +51,8 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 Если индивидуальный ключ пользователя отсутствует, используется общий. Ошибка заданного ключа не переключает запрос скрыто на другой ключ. Чтение настроек не раскрывает ключи и строки подключения.
 
 Уже доступны `AddAgentBridgeConfiguration`, `AddCodexLbConfiguration` и `AddDatabaseConfiguration` с binding из раздела приложения либо программными callbacks. Фактические свойства, пространства имён, правила валидации и примеры: [конфигурация и жизненный цикл](<Documentation/Technical documentation/05-configuration-and-lifecycle.md>). Расширения не запускают host, HTTP или БД. Безопасный settings service и C# API обращения к агенту будут добавлены на соответствующих этапах.
+
+Для диагностики доступен `AddAgentBridgeDiagnostics` из `AgentBridge.Diagnostics`. Приложение передаёт свой Serilog logger стандартному `AddLogging(logging => logging.AddSerilog(applicationLogger, dispose: false))`, затем регистрирует диагностику. Приложение владеет logger, sinks и их освобождением; AgentBridge не заменяет `Log.Logger`. `BeginOperation` измеряет длительность и принимает только enum операции, GUID корреляции и раздельные caller/deadline-токены. Владелец явно завершает наблюдение через `Complete` или `Fail`; автоматической интеграции ещё не реализованных сценариев нет. Пример реальной проверки options, поля событий и контракт отмены: [Serilog и диагностика](<Documentation/Technical documentation/07-tokenizer-and-settings.md#serilog>).
 
 ## Документация
 

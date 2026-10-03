@@ -7,6 +7,8 @@
 - `AgentBridge.Persistence.EfCore.Tests` проверяет адаптацию хранения и ссылается на `AgentBridge.Persistence.EfCore`.
 - Тестовые зависимости: xUnit, Microsoft.NET.Test.Sdk и runner Visual Studio. Production-проекты не ссылаются на тесты, а корневой compile glob исключает весь каталог `tests`.
 - Проверки конфигурации используют Microsoft.Extensions.Configuration с in-memory источником и обычный ServiceProvider. Публичная граница — групповые DI-расширения, options и явный `IStartupValidator`, без хоста. Секреты в fixtures только синтетические.
+- Проверки диагностики ядра используют публичные `AddAgentBridgeDiagnostics`/`BeginOperation`, собирающий ILoggerProvider и Serilog provider приложения с sink в памяти. Serilog `4.3.0` и Serilog.Extensions.Logging `10.0.0` — только тестовые зависимости; production использует Microsoft.Extensions.Logging `10.0.3` и не выбирает Serilog-конфигурацию.
+- Проверять структуру state и отформатированный текст, отсутствие переданного Exception, сохранение провайдеров/фильтров/фабрики и владения logger, caller/deadline по раздельным исходным токенам. Не переносить секретные fixtures в scopes или enrichers приложения.
 
 ## Правила проверки
 

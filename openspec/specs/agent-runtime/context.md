@@ -16,6 +16,20 @@ AgentBridge — название разрабатываемой библиоте
 
 Приложение может читать безопасные настройки, менять модель/effort и показывать `ExpiresAtUtc`. Индивидуальный ключ пользователя имеет приоритет, общий применяется при его отсутствии. Логирование проходит через Serilog приложения.
 
+## Реализованная основа диагностики
+
+Этап 03 предоставляет `AddAgentBridgeDiagnostics` и `AgentBridgeDiagnostics` через стандартный `ILogger<AgentBridgeDiagnostics>`. Это наблюдение, не AgentRunner и не отдельный logging framework: provider, Serilog logger, sinks, фильтры, enrichers и освобождение ресурсов выбирает приложение. В production нет зависимости от Serilog и обращения к `Log.Logger`. Связь с настоящим Serilog provider проверена изолированно с sink в памяти; HTTP и хранилище ещё не подключены.
+
+Имена операции берутся из закрытого enum; корреляция — непустой GUID. Каждое наблюдение получает отдельный OperationId и монотонно измеренную DurationMs. `Complete`/`Fail` дают единственное итоговое событие с Operation, OperationId, CorrelationId, Status, ErrorCode и DurationMs. Наличие в enum имён будущих операций не означает их реализации. Отсутствие явного завершения не выдаётся за успех.
+
+`Fail` не передаёт исключение logger, не читает Message/ToString/Data/InnerException и не принимает URL, configuration objects или текст диалога. Отказ от произвольного payload предотвращает утечки через форматирование исключений; диагностический код ошибки выбирается из фиксированного набора. Приложение отвечает за свои ambient scopes/enrichers и журналы других компонентов. Известный response snippet HttpClientLibrary остаётся задачей этапа 04; исходники библиотеки не изменены.
+
+Для OperationCanceledException передаются два раздельных исходных токена: caller и локальный deadline, без linked token. Caller имеет приоритет, если сработали оба: Canceled/Information; только deadline — DeadlineExceeded/Warning; отсутствие подтверждённого источника — Failed/Error с UnattributedCancellation. Обычная ошибка, включая TimeoutException, не меняет причину только по имени типа или состоянию токенов. Наблюдение не отменяет работу и не заменяет выброшенное исключение. Владелец сценария сам повторно выбрасывает исходную ошибку.
+
+Пример доступной операции: приложение начинает `ConfigurationValidation`, явно вызывает существующий `IStartupValidator.Validate()`, затем `Complete`; в catch вызывает `Fail(error)` и `throw`. Пример кода и контракт: [техническая документация](../../../Documentation/Technical%20documentation/07-tokenizer-and-settings.md#serilog), результаты 36 тестов ядра (18 новых): [этап 03](../../../Documentation/Plans/AgentBridge%20Initial%20Implementation/03-serilog-integration.md). Нормативный [spec.md](spec.md) не меняется: реализуется ранее согласованная диагностика, без новых бизнес-сценариев.
+
+## Прочие согласованные границы
+
 Порядок check/backup/migrate взят как функциональный образец из AquaByte-Ledger. Необходимый общий backup-контракт развивается в EFCoreLibrary; SQL Server реализация не переносится в качестве универсальной. Очистка истёкших диалогов использует базовые репозитории, расписанием вызовов владеет приложение.
 
 Приложение владеет бизнес-данными, авторизацией и обработчиками инструментов. AgentBridge собирает контекст и координирует обращение к модели. codex-lb сохраняет свою роль upstream-шлюза: выбор аккаунта, маршрутизация и передача ответа.
