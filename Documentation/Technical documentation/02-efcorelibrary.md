@@ -90,9 +90,40 @@ services.AddDatabaseConfiguration(options =>
 services.AddAgentBridgePersistence();
 ```
 
-`AddAgentBridgePersistence` регистрирует scoped `AgentBridgeDbContext`, точный `AddEfCoreContext<AgentBridgeDbContext, AgentBridgeContextKey>` и `AddEfCoreBaseRepositories<AgentBridgeContextKey>`. Ошибки обязательных options проверяются до выбора provider; fallback в SQLite отсутствует. SensitiveDataLogging выключен. Контекст не открывает БД при регистрации/разрешении metadata; порты Application, UoW, migrations/startup не регистрируются.
+`AddAgentBridgePersistence` регистрирует scoped `AgentBridgeDbContext`, точный `AddEfCoreContext<AgentBridgeDbContext, AgentBridgeContextKey>` и `AddEfCoreBaseRepositories<AgentBridgeContextKey>`. Ошибки обязательных options проверяются до выбора provider; fallback в SQLite отсутствует. SensitiveDataLogging выключен. Контекст не открывает БД при регистрации/разрешении metadata. На этапе 08 Application ports/UoW/migrations/startup не регистрировались; этап 09 добавляет только read ports и adapters, описанные ниже.
 
 Проверены metadata обоих providers, составные ключи/FK/каскады/checks, UTC converter, сериализация полного payload и scoped DI: **34 passed / 0 failed / 0 skipped**, 25 новых тестов; production и test builds — 0 warnings/errors. Это не проверка relational enforcement, restart на БД или атомарности. БД, SQL, migrations, backup/restore, hosting и внешние процессы — **«Пропущено по указанию пользователя»**. OpenSpec CLI отсутствует в PATH, CLI validation не выполнялась. [Точные команды и файлы](<../Plans/AgentBridge Initial Implementation/08-persistence-models.md>).
+
+## Адаптеры этапа 09
+
+Статус: **Реализован и принят; запрещённые проверки пропущены**. Актуальные base API повторно сверены с исходниками EFCoreLibrary; соседняя библиотека не менялась. Domain не ослаблен; новые Application repository ports не добавлены.
+
+| Тип в EF-адаптере | Фактическая операция |
+| --- | --- |
+| `Repositories.DialogRecordQueries` | Base ById для глобального dialog ID; base predicate + include OrderBy expiry/ID + take для кандидатов |
+| `Repositories.TurnRecordQueries` | Predicate DialogId/turnId; вся история по Sequence начала |
+| `Repositories.ItemRecordQueries` | Predicate DialogId/TurnId для одного обращения либо весь DialogId; порядок items по Sequence внутри turn |
+| `Repositories.ModelStepRecordQueries` | Predicate DialogId/TurnId/stepId; полные отчёты по Sequence выполнения |
+| `Repositories.ContextRecordQueries` | Активный max Version через descending include; все прежние версии по возрастанию |
+| `Repositories.RecordStaging<TEntity>` | StageCreate/Update/Delete и Range делегируют base CRUD, возвращают void, без SaveChanges/transaction |
+| `Reading.DialogReader : IDialogReader` | Owner ordinal, полный DTO истории и active compact, повторная primitive root-проверка |
+| `Reading.ExpiredDialogReader : IExpiredDialogReader` | Положительно ограниченная выборка token кандидатов, включая точную границу expiry == now |
+
+`AddAgentBridgePersistence` теперь регистрирует эти scoped adapters и только два Application read ports. ById без parent predicate не используется для локальных turn/step IDs. Сортировка выполняется через проверенный base include до take, поэтому `IContextQueryRepository` не требуется. Read adapters передают no-tracking/cancellation; root/turn Find допускают tracking для будущего Infrastructure write-сценария. Приложение не получает EF/query-типы через Application.
+
+Перед чтением детей `DialogReader` проверяет owner и фиксирует primitive incarnation/revision/owner/metadata, после детей повторно читает root. Удаление/смена владельца/жизни/версии возвращает NotFound/Forbidden/Conflict без snapshot и без retry. Mutable record не подменяет исходную версию. История не отбрасывается по ThroughTurnSequence; JSON/report mapping сохраняет все lifecycle/output/envelope/continuation/error. Orphan items/steps и незавершённый принятый compact отклоняются явно. Максимальная Version определяет active независимо от CreatedAtUtc; прежние версии не изменяются.
+
+Пример доступного чтения после существующей регистрации:
+
+```csharp
+IDialogReader reader = scope.ServiceProvider.GetRequiredService<IDialogReader>();
+ServiceResult<DialogSnapshot> result = await reader.ReadAsync(
+    new DialogAccess(DialogId.From(dialogGuid), DialogOwnerId.From(applicationUserId), nowUtc), cancellationToken);
+```
+
+Истёкший диалог до physical delete читается владельцем; это не разрешение продолжения. Повторная root-проверка не является транзакционным snapshot. `RecordStaging<TEntity>` предназначен только инфраструктуре сценария после Domain/guards, не возвращает готовый успех write port. Saving/transactions/atomic guards/Domain rehydration и реализации `IDialogCreator`/writers/deletions остаются этапу 10, не зарегистрированы. Cleanup orchestration остаётся этапу 22.
+
+Проверки: **71 passed / 0 failed / 0 skipped**, 37 новых; production/test builds **0 warnings/errors**. Base fakes доказывают делегирование, фильтры/порядок, full snapshot mapping и управляемые delete/recreate/revision interleavings, но не provider translation, relational enforcement, atomicity или restart. **Пропущено по указанию пользователя:** все БД/SQL/реальные интеграции/hosting/migrations/backup/процессы. CLI validation не выполнена: OpenSpec отсутствует в PATH; change не архивирован. [Точные команды, изменённые файлы и ограничения](<../Plans/AgentBridge Initial Implementation/09-base-repository-adapters.md>).
 
 ## Источники
 

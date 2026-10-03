@@ -68,6 +68,14 @@ UTC ticks в INTEGER/bigint сохраняют точность и сортир�
 
 Явный AddAgentBridgePersistence после AddDatabaseConfiguration регистрирует один scoped adapter/context-key и base repositories. Default SQLite и автоматическое обслуживание отсутствуют; sensitive data logging выключен. Проверены 34 persistence-теста (25 новых), две сборки без warnings/errors. Metadata/serialization/DI не доказывают relational enforcement или restart на БД. БД/SQL/migrations/backup/hosting/процессы пропущены по указанию пользователя; OpenSpec CLI отсутствует в PATH. [Фактический API](<../../../Documentation/Technical documentation/02-efcorelibrary.md#реализация-этапа-08>), [команды и ограничения](<../../../Documentation/Plans/AgentBridge Initial Implementation/08-persistence-models.md>).
 
+## Адаптеры базовых репозиториев этапа 09
+
+Реализован и принят; запрещённые проверки пропущены. Base predicate/include API текущей EFCoreLibrary выражает parent filters и сортировку до take; custom query и прямой EF CRUD не нужны. `RecordStaging<TEntity>` делегирует одиночные/пакетные create/update/delete без сохранения и без Application success. Узкие query adapters и scoped read ports подключаются через `AddAgentBridgePersistence`; новые Application repository ports не вводились, saving/atomic writes/rehydration остаются этапу 10.
+
+`DialogReader` сохраняет всю историю и отдельные полные отчёты, активен максимальный Version compact. Например, ThroughTurnSequence=1 не удаляет tool result первого turn. Primitive owner/incarnation/revision фиксируются до детей и проверяются повторным base read после них; delete/recreate того же ID не позволяет отдать чужую историю старому владельцу. При смене root возвращается отказ без snapshot/retry. Orphan children и повреждённые формы отклоняются явно. Это не транзакционный снимок. `ExpiredDialogReader` возвращает ограниченные кандидаты expiry <= now в порядке expiry/ID; удаление не реализовано.
+
+71 изолированный persistence-тест (37 новых), builds 0 warnings/errors; base fakes не доказывают provider translation/atomicity/restart. БД/SQL/migrations/hosting/внешние процессы пропущены по указанию пользователя; OpenSpec CLI отсутствует в PATH, validation не выполнена, change не архивирован. [API](<../../../Documentation/Technical documentation/02-efcorelibrary.md#адаптеры-этапа-09>), [команды и файлы](<../../../Documentation/Plans/AgentBridge Initial Implementation/09-base-repository-adapters.md>).
+
 ## Поток одного обращения
 
 1. Приложение передаёт сообщение и идентификаторы пользователя и диалога.

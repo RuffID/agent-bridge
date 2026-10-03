@@ -1,5 +1,8 @@
+using AgentBridge.Application.Ports;
 using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.Models;
+using AgentBridge.Persistence.EfCore.Reading;
+using AgentBridge.Persistence.EfCore.Repositories;
 using EFCoreLibrary.Abstractions.Database;
 using EFCoreLibrary.Abstractions.Database.Repository.Base;
 using EFCoreLibrary.EfCore;
@@ -47,8 +50,27 @@ public class PersistenceRegistrationTests
         Assert.IsType<GetItemByPredicateRepository<DialogTurnRecord, AgentBridgeContextKey>>(scope.ServiceProvider.GetRequiredService<IContextGetItemByPredicateRepository<DialogTurnRecord, AgentBridgeContextKey>>());
         Assert.IsType<QueryRepository<DialogRecord, AgentBridgeContextKey>>(scope.ServiceProvider.GetRequiredService<IContextQueryRepository<DialogRecord, AgentBridgeContextKey>>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IRepositoryContext<AgentBridgeContextKey>>());
+        IDialogReader reader = scope.ServiceProvider.GetRequiredService<IDialogReader>();
+        Assert.IsType<DialogReader>(reader);
+        Assert.Same(reader, scope.ServiceProvider.GetRequiredService<IDialogReader>());
+        Assert.IsType<ExpiredDialogReader>(scope.ServiceProvider.GetRequiredService<IExpiredDialogReader>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<TurnRecordQueries>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ItemRecordQueries>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ModelStepRecordQueries>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ContextRecordQueries>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<RecordStaging<DialogRecord>>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<RecordStaging<DialogTurnRecord>>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<RecordStaging<CanonicalItemRecord>>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<RecordStaging<ModelStepRecord>>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<RecordStaging<DialogContextRecord>>());
+        Assert.Null(scope.ServiceProvider.GetService<IDialogCreator>());
+        Assert.Null(scope.ServiceProvider.GetService<IDialogTurnWriter>());
+        Assert.Null(scope.ServiceProvider.GetService<IDialogContextWriter>());
+        Assert.Null(scope.ServiceProvider.GetService<IDialogDeletion>());
+        Assert.Null(scope.ServiceProvider.GetService<IExpiredDialogDeletion>());
         using IServiceScope otherScope = provider.CreateScope();
         Assert.NotSame(context, otherScope.ServiceProvider.GetRequiredService<AgentBridgeDbContext>());
+        Assert.NotSame(reader, otherScope.ServiceProvider.GetRequiredService<IDialogReader>());
     }
 
     /// <summary>Отсутствующий провайдер не превращается в SQLite даже при разрешении контекста без startup.</summary>

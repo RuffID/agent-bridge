@@ -18,7 +18,7 @@
 | `IExpiredDialogReader` | Ограниченная выборка кандидатов по сроку |
 | `IExpiredDialogDeletion` | Удаление кандидата после повторной проверки incarnation/version/expiry |
 
-Реализации шлюза, провайдеров, handler registry, tokenizer, хранения, UoW и AgentRunner не добавлены. Эти интерфейсы не являются работающим агентом или готовым DI wiring.
+Реализации шлюза, провайдеров, handler registry, tokenizer, write ports, UoW и AgentRunner не добавлены. Этап 09 реализует в EF-адаптере только `IDialogReader`/`IExpiredDialogReader`, подключаемые через `AddAgentBridgePersistence`; это ещё не работающий агент.
 
 ## Результаты и отмена
 
@@ -42,7 +42,9 @@
 
 Чтение до физического удаления позволяет владельцу получить дату и IsExpired по явному времени, но не разрешает продолжение. Явное удаление допускается и после expiry. Создание/изменение/удаление выполняются будущим адаптером через общий сценарный scope/UoW; сеть и инструменты завершаются вне транзакции. Порты не предоставляют глобальный UoW, EF query или делегат сетевой операции.
 
-Пример: оркестратор получает token после Begin, ждёт модель вне хранилища и вызывает Append/Finish с тем же incarnation/revision. Если диалог удалён, пересоздан или изменён, порт отказывает; замена старого token свежим ради записи устаревшего результата недопустима. Этап 08 добавляет DTO/колонки, полный payload и EF metadata, но реальные операции, атомарность и rehydration остаются этапам 09–10. Private lifetime доменного объекта не переносится в token и не выдаётся за persistence. [Формат принятого этапа 08](02-efcorelibrary.md#реализация-этапа-08).
+Пример будущего write-сценария: оркестратор получает token после Begin, ждёт модель вне хранилища и вызывает Append/Finish с тем же incarnation/revision. Если диалог удалён, пересоздан или изменён, порт отказывает; замена старого token свежим ради записи устаревшего результата недопустима. Этап 08 добавляет DTO/колонки, полный payload и EF metadata; этап 09 — чтение и staging. Сохранение, атомарные write ports и rehydration остаются этапу 10. Private lifetime доменного объекта не переносится в token и не выдаётся за persistence. [Формат принятого этапа 08](02-efcorelibrary.md#реализация-этапа-08).
+
+`DialogReader` проверяет owner ordinal до загрузки истории и повторно проверяет root после неё, сравнивая зафиксированные primitive incarnation/revision/owner. NotFound/Forbidden/Conflict не содержат snapshot; скрытого retry нет. Все turns/items/steps читаются в сохранённом порядке, active compact выбирается по Version; prefix ничего не отбрасывает. Orphan children/повреждённый формат/незавершённый принятый compact отклоняются явно. Это защита read path, не транзакционный снимок. `ExpiredDialogReader` возвращает положительно ограниченные кандидаты по точному expiry/ID, включая равенство now. **71 persistence-тест, 37 новых**, без БД; [команды и ограничения этапа 09](<../Plans/AgentBridge Initial Implementation/09-base-repository-adapters.md>).
 
 ## Проверка
 

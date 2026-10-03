@@ -24,7 +24,7 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 - `Application/` — независимые порты модели, контекста, инструментов, tokenizer и коротких сценариев хранения; границы в `Application/AGENTS.md`.
 - `adapters/AgentBridge.CodexLb/` — отдельный адаптер транспорта; правила в локальном `AGENTS.md`.
 - `adapters/AgentBridge.Persistence.EfCore/` — общее EF-хранилище; правила в локальном `AGENTS.md`.
-- Оба адаптера ссылаются на ядро и используют общие Microsoft.Extensions options/DI. EF-адаптер подключает локальный EFCoreLibrary и SQLite/PostgreSQL; HTTP-библиотека подключается на этапе транспорта. Модели/DI этапа 08 реализованы и приняты; запрещённые проверки пропущены; CRUD/UoW/migrations/startup ещё не реализованы.
+- Оба адаптера ссылаются на ядро и используют общие Microsoft.Extensions options/DI. EF-адаптер подключает локальный EFCoreLibrary и SQLite/PostgreSQL; HTTP-библиотека подключается на этапе транспорта. Этап 08 принят; этап 09 реализован и принят: base read/staging adapters и защищённое чтение; запрещённые проверки пропущены. Saving/UoW/write ports/migrations/startup ещё не реализованы.
 - `tests/` — три отдельных проекта изолированных проверок ядра и адаптеров; карта и ограничения в `tests/AGENTS.md`.
 - Корневой compile glob исключает `adapters`, `tests`, `test`, а также все вложенные `bin`, `obj`, `artifacts`. Новые самостоятельные проекты не должны попадать в компиляцию ядра.
 
