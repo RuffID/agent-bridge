@@ -10,6 +10,16 @@ Begin/commit/cleanup uncertainty блокирует scope; неизвестны�
 
 Проверки: 107 core и 108 persistence tests, плюс адресное усиление actual UpdateItemRepository/tracker проверки (1/1); без БД, SQL, network и hosting. Fakes не доказывают relational atomicity. OpenSpec CLI недоступен; change не архивирован. [API, пример и ограничения](<../../../Documentation/Technical documentation/10-scenario-unit-of-work.md>), [полный отчёт](<../../../Documentation/Plans/AgentBridge Initial Implementation/10-scenario-unit-of-work.md>).
 
+## Явное обслуживание этапа 12
+
+Этап 12: **Реализован и принят; запрещённые проверки пропущены**. AddAgentBridgeDatabaseMaintenance подключает scoped `IDatabaseMaintenance<AgentBridgeContextKey>` общего EFCoreLibrary coordinator, выбирает только SQLite/PostgreSQL по DatabaseOptions и сохраняет общий root gate. Вторая orchestration, host и автоматический вызов не добавлены. Domain/Application, generated миграции и соседние библиотеки не изменены.
+
+Пример: приложение останавливает writes/DDL/другие экземпляры, создаёт отдельный scope и явно вызывает UpdateExistingAsync для существующей БД. Без pending результат Unchanged не содержит backup. Первая установка выбирается отдельно через InitializeNewAsync и не является fallback после ошибки пароля. Итоговая стадия/Code доступны через ILogger приложения; результаты/ошибки/отмена остаются библиотечными. Неизвестный исход poisons общий gate, новый scope не снимает запрет.
+
+DatabaseBackupOptions требуют абсолютный каталог и явный положительный BackupRetentionPeriod без default. PostgreSQL также требует абсолютный pg_dump path, major 10+ и конечный cleanup timeout. Конкретное число дней выбирает приложение до рабочего использования; retention не исполняется библиотекой и не совпадает с expiry диалогов. Provider owns format/scope/private workspace/no-overwrite; receipt не доказывает восстановимость.
+
+164 persistence tests прошли (50 новых), 0 failed/skipped; финальные builds 0 warnings/errors. Fakes доказывают coordinator order/failures/cancellation/collision/gate, registration/metadata не открывают connection. БД/SQL/backup/restore/native/process/hosting пропущены по указанию пользователя; OpenSpec CLI validation не выполнена и change не архивирован. [Реальный API](<../../../Documentation/Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>), [отчёт этапа](<../../../Documentation/Plans/AgentBridge Initial Implementation/12-database-startup-and-backup.md>).
+
 ## Назначение
 
 AgentBridge позволяет подключить ИИ-агента к приложению на C# и .NET 10 и повторно использовать общую логику диалогов, контекста и инструментов в ASP.NET Core, WPF, Telegram-ботах и других SDK-style приложениях. Имя проекта и репозитория — `agent-bridge`.

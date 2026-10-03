@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | `agent-bridge.csproj` | `AgentBridge.dll`, ядро/Application | Нет |
 | `adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj` | `AgentBridge.CodexLb.dll` | Ядро |
-| `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary |
+| `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и maintenance SQLite/PostgreSQL |
 | `tests/AgentBridge.Tests/AgentBridge.Tests.csproj` | Проверки ядра | Ядро |
 | `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |
 | `tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj` | Проверки хранения | EF-хранилище |
@@ -43,7 +43,7 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 
 ## Обязанности типов
 
-Интерфейсы IContextProvider, IToolHandler, IModelGateway и IContextTokenCounter уже определены на этапе 07. Остальные названия таблицы обозначают будущие реализации.
+Интерфейсы IContextProvider, IToolHandler, IModelGateway и IContextTokenCounter уже определены на этапе 07; библиотечный `IDatabaseMaintenance<AgentBridgeContextKey>` подключён этапом 12. Остальные названия таблицы обозначают будущие реализации.
 
 | Рабочее имя | Роль |
 | --- | --- |
@@ -56,7 +56,7 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 | `IContextTokenCounter` | Tokenizer для известной кодировки модели и учёт полного входного бюджета |
 | `ContextCompactionService` | Создание следующего состояния контекста |
 | `DialogRetentionService` | Координация применения политики хранения |
-| `DatabaseMaintenanceService` | Startup-проверка/обновление схемы через развиваемый контракт EFCoreLibrary |
+| `IDatabaseMaintenance<AgentBridgeContextKey>` (реализован в EFCoreLibrary, подключён этапом 12) | Явные InspectAsync/UpdateExistingAsync/InitializeNewAsync; регистрация без запуска операций |
 | `AgentSettingsService` | Безопасное чтение настроек и выбор модели/effort |
 | `IApiKeyProvider` | Индивидуальный ключ пользователя или общий при его отсутствии |
 

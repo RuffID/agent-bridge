@@ -1,6 +1,6 @@
 # Provider-specific схема AgentBridge
 
-Этап 11: **Реализован и принят; запрещённые проверки пропущены**. После разрешения пользователя «Разрешаю обе команды генерации» однократно созданы InitialAgentBridgeSchema, designer и snapshot для SQLite/PostgreSQL. Startup/backup относятся к этапу 12 и не подключены.
+Этап 11: **Реализован и принят; запрещённые проверки пропущены**. После разрешения пользователя «Разрешаю обе команды генерации» однократно созданы InitialAgentBridgeSchema, designer и snapshot для SQLite/PostgreSQL. Явный startup/backup подключён этапом 12; generated артефакты при этом не изменены и не генерировались повторно. [Maintenance API](06-database-maintenance.md#подключение-agentbridge-этапа-12).
 
 ## Реализованные проекты и API
 
@@ -11,7 +11,7 @@
 
 Оба проекта — `net10.0` libraries с runtimeconfig для штатного dotnet-ef, без Program/host. Factories реализуют `IDesignTimeDbContextFactory<AgentBridgeDbContext>` и возвращают общий контекст. SQLite использует `Data Source=agent-bridge-design-time-never-open.db`; PostgreSQL — синтетические Host=invalid.example/credentials. Соединения не открываются; конфигурация и секреты приложения не читаются. Переданные args, включая попытку сменить подключение/provider, отклоняются без раскрытия содержимого. SensitiveDataLogging выключен.
 
-`AgentBridge.Persistence.EfCore.Configuration.AgentBridgeMigrationsAssemblies.SQLITE/POSTGRESQL` задаёт устойчивые identities. `AddAgentBridgePersistence` выбирает соответствующий `MigrationsAssembly` вместе с runtime provider. Общий адаптер не ссылается обратно на provider projects. Для migrations service приложение должно поставить выбранную DLL; автоматическая поставка/maintenance API этапа 12 ещё не реализованы. Пример текущего подключения исходников: приложение со SQLite ссылается на общий EF-адаптер и SQLite migrations csproj; вызовы `AddDatabaseConfiguration`/`AddAgentBridgePersistence` остаются прежними и ничего не запускают.
+`AgentBridge.Persistence.EfCore.Configuration.AgentBridgeMigrationsAssemblies.SQLITE/POSTGRESQL` задаёт устойчивые identities. `AddAgentBridgePersistence` выбирает соответствующий `MigrationsAssembly` вместе с runtime provider. Общий адаптер не ссылается обратно на provider projects. Для migrations service приложение должно поставить выбранную DLL; автоматическая поставка ещё не реализована. Пример текущего подключения исходников: приложение со SQLite ссылается на общий EF-адаптер и SQLite migrations csproj; вызовы `AddDatabaseConfiguration`/`AddAgentBridgePersistence` остаются прежними и ничего не запускают. `AddAgentBridgeDatabaseMaintenance` отдельно регистрирует вызываемый приложением API этапа 12.
 
 CLI workflow: уже установленный dotnet-ef **10.0.11**, Microsoft.EntityFrameworkCore.Design **10.0.11** с PrivateAssets=all в каждом target/startup проекте. EF/Relational/SQLite runtime **10.0.11**, Npgsql.EntityFrameworkCore.PostgreSQL **10.0.3**. Tools/Package Manager Console не используются; NuGet pack/publish не выполняются. Design-time зависимости не становятся транзитивными runtime dependencies приложения.
 

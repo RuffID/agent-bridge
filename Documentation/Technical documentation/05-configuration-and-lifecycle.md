@@ -13,8 +13,11 @@
 | `AgentBridge.Configuration.ContextCompactionOptions` | `TokenThreshold = 32 000`, `InputTokenReserve = 4096`, `MaxPasses = 3` |
 | `AgentBridge.CodexLb.Configuration.CodexLbOptions` | Обязательные `BaseAddress`, `Model`; `ReasoningEffort = "medium"`, необязательный секрет `SharedApiKey`, `GenerationTimeout` и `CompactTimeout` по 180 секунд |
 | `AgentBridge.Persistence.EfCore.Configuration.DatabaseOptions` | Обязательные `Provider` и секрет `ConnectionString`; провайдер не задан по умолчанию |
+| `AgentBridge.Persistence.EfCore.Configuration.DatabaseBackupOptions` | Обязательные абсолютный каталог и явный положительный `BackupRetentionPeriod` без default; PostgreSQL дополнительно требует dump path, major 10+ и конечный cleanup timeout |
 
 `DatabaseProvider` содержит `SQLite` и `PostgreSql`; nullable-свойство отличает отсутствие выбора от неизвестного числового значения. Это конфигурационный контракт, не регистрация готового EF-провайдера.
+
+Этап 12 отдельно подключает `AddAgentBridgeDatabaseMaintenance` после `AddDatabaseConfiguration`/`AddAgentBridgePersistence`, с явным SingleInitializer. Backup options проверяются локально без I/O; фактические maintenance методы вызываются приложением в отдельном scope после остановки writes/DDL/других экземпляров. Retention backup исполняет приложение. [Сигнатуры, binding и ошибки](06-database-maintenance.md#подключение-agentbridge-этапа-12).
 
 Фактические расширения composition root:
 

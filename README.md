@@ -4,7 +4,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
 
-Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров, два provider migrations проекта и три проекта изолированных тестов. Этапы 00–10 приняты; этап 11 реализован и принят; этапы 12–25 не начаты. Запрещённые проверки пропущены. Доступны настройки, безопасная диагностика, защищённый Domain, прикладные порты, persistence DTO/EF-маппинг, base read/staging adapters и защищённое чтение с явным SQLite/PostgreSQL. Write ports/UoW и валидирующий Domain Restore реализованы. Сценарий агента, транспорт и startup ещё отсутствуют. Следующий порядок описывает согласованную будущую интеграцию.
+Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров, два provider migrations проекта и три проекта изолированных тестов. Этапы 00–11 приняты; этап 12: **Реализован и принят; запрещённые проверки пропущены**; этапы 13–25 не начаты. Доступны настройки, безопасная диагностика, защищённый Domain, прикладные порты, persistence DTO/EF-маппинг, base read/staging adapters, write ports/UoW, валидирующий Domain Restore и явно вызываемый maintenance API SQLite/PostgreSQL. Сценарий агента и транспорт ещё отсутствуют; следующий порядок описывает интеграцию с учётом этих ограничений.
 
 | Проект | Сборка / назначение | Текущие production-ссылки |
 | --- | --- | --- |
@@ -21,14 +21,14 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 ## Подключение
 
-Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в пять DLL из таблицы; HTTP ещё не реализован; EF-хранилище имеет read/write ports и выбирает provider migrations assembly, generated миграции созданы, startup ещё отсутствует. При обслуживании схемы приложение должно поставлять DLL выбранного provider проекта. [Фабрики, схема и ограничения этапа 11](<Documentation/Technical documentation/11-provider-migrations.md>).
+Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в пять DLL из таблицы; HTTP ещё не реализован; EF-хранилище имеет read/write ports, выбирает provider migrations assembly и предоставляет явный maintenance API. Приложение поставляет выбранную migrations DLL и зависимости EFCoreLibrary maintenance, SQLite native runtime либо PostgreSQL pg_dump. [Фабрики и схема](<Documentation/Technical documentation/11-provider-migrations.md>), [подключение обслуживания](<Documentation/Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>).
 
 1. Добавить в .NET 10-приложение ссылки на DLL ядра, адаптера codex-lb и выбранной инфраструктуры хранения вместе с зависимостями времени выполнения. AgentBridge не распространяется NuGet-пакетом.
 2. Подключить совместимые DLL EFCoreLibrary и HttpClientLibrary. Выбрать SQLite или PostgreSQL и соответствующий EF Core provider.
 3. В конфигурации приложения задать адрес codex-lb, модель, общий ключ, провайдер БД и подключение. При необходимости предоставить индивидуальные ключи пользователей.
 4. Настроить лимиты, срок хранения и reasoning effort. Срок хранения задаётся конфигурацией, а не константой в логике удаления.
 5. Подключить Serilog и зарегистрировать зависимости AgentBridge, источники контекста и инструменты в composition root приложения.
-6. Явно вызвать проверку/инициализацию БД. Для обновления существующей схемы используется порядок check → backup → migrate через EFCoreLibrary. Расписание очистки истёкших диалогов задаёт приложение.
+6. После `AddDatabaseConfiguration`/`AddAgentBridgePersistence` отдельно вызвать `AddAgentBridgeDatabaseMaintenance` с backup options и явным `SingleInitializer`. Задать абсолютный backup directory и собственный положительный `BackupRetentionPeriod` без default; PostgreSQL также требует pg_dump path, major и cleanup timeout. Приложение останавливает другие экземпляры/writes/DDL, выделяет scope и явно вызывает `IDatabaseMaintenance<AgentBridgeContextKey>.InspectAsync`, `UpdateExistingAsync` либо `InitializeNewAsync` с timeout/отменой. Регистрация не запускает операции. Retention backup и расписание очистки диалогов исполняет приложение.
 
 | Пробная настройка | Значение, переопределяемое конфигурацией |
 | --- | --- |
