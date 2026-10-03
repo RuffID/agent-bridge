@@ -9,13 +9,13 @@
 | Путь от корня | Сборка / назначение | ProjectReference |
 | --- | --- | --- |
 | `agent-bridge.csproj` | `AgentBridge.dll`, ядро/Application | Нет |
-| `adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj` | `AgentBridge.CodexLb.dll` | Ядро |
+| `adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj` | `AgentBridge.CodexLb.dll` | Ядро, локальный HttpClientLibrary |
 | `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и maintenance SQLite/PostgreSQL |
 | `tests/AgentBridge.Tests/AgentBridge.Tests.csproj` | Проверки ядра | Ядро |
 | `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |
 | `tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj` | Проверки хранения | EF-хранилище |
 
-Во всех проектах включены nullable и генерация XML-документации. Корневой glob исключает `adapters`, `tests`, `test` и вложенные `bin/obj/artifacts`; результаты сборки соседних проектов не компилируются в ядро. Production-проекты используют обычный `Microsoft.NET.Sdk`, без явных framework references. Ядро содержит `Microsoft.Extensions.Options.ConfigurationExtensions 10.0.3` и `Microsoft.Extensions.Logging 10.0.3`. EF-адаптер на этапе 08 подключает EFCoreLibrary, Microsoft EF/Relational/SQLite 10.0.11 и Npgsql provider 10.0.3; тестовый DI согласован на 10.0.11. ASP.NET Core, WPF, Telegram, Serilog и HttpClientLibrary в production не подключены. Serilog pipeline настраивается приложением.
+Во всех проектах включены nullable и генерация XML-документации. Корневой glob исключает `adapters`, `tests`, `test` и вложенные `bin/obj/artifacts`; результаты сборки соседних проектов не компилируются в ядро. Production-проекты используют обычный `Microsoft.NET.Sdk`, без явных framework references. Ядро содержит `Microsoft.Extensions.Options.ConfigurationExtensions 10.0.3` и `Microsoft.Extensions.Logging 10.0.3`. EF-адаптер подключает EFCoreLibrary, Microsoft EF/Relational/SQLite 10.0.11 и Npgsql provider 10.0.3; тестовый DI согласован на 10.0.11. HttpClientLibrary 0.0.0.5 подключена только к codex-lb адаптеру. ASP.NET Core, WPF, Telegram и Serilog в production не подключены; Serilog pipeline настраивается приложением.
 
 Тестовые проекты используют `Microsoft.NET.Test.Sdk 18.0.1`, `xunit 2.9.3` и `xunit.runner.visualstudio 3.1.5`, а также Microsoft.Extensions.Configuration `10.0.3` для in-memory настроек; Microsoft.Extensions.DependencyInjection — `10.0.3` в тестах ядра/транспорта и `10.0.11` в Persistence.Tests для согласования EF10 graph. Их стандартные SDK-артефакты предназначены только для test runner; приложение и собственный host не создаются. На этапе 02 прошли 47 изолированных проверок конфигурации через публичную DI/options-границу: 18 ядра, 20 codex-lb, 9 БД. Конкретные команды и результаты находятся в [этапе 02](<../Plans/AgentBridge Initial Implementation/02-configuration-and-defaults.md>); исходная проверка каркаса — в [этапе 01](<../Plans/AgentBridge Initial Implementation/01-solution-foundation.md>).
 
@@ -43,6 +43,8 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 
 ## Обязанности типов
 
+Этап 13 добавляет IIndividualModelKeySource приложения, IModelAccessResolver/IModelCatalog/IModelSettingsReader и чистый ModelSelectionValidator. CodexLbModelCatalog использует actual HttpApiClient с per-request Bearer; EF в этом пути нет. Снимок ModelSettingsSnapshot содержит модель, effort и threshold/reserve, без сохранения выбора или запуска агента. [Фактический API этапа 13](13-model-catalog-and-keys.md). Responses/SSE/compact и управление состоянием диалога остаются будущими.
+
 Интерфейсы IContextProvider, IToolHandler, IModelGateway и IContextTokenCounter уже определены на этапе 07; библиотечный `IDatabaseMaintenance<AgentBridgeContextKey>` подключён этапом 12. Остальные названия таблицы обозначают будущие реализации.
 
 | Рабочее имя | Роль |
@@ -58,7 +60,7 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 | `DialogRetentionService` | Координация применения политики хранения |
 | `IDatabaseMaintenance<AgentBridgeContextKey>` (реализован в EFCoreLibrary, подключён этапом 12) | Явные InspectAsync/UpdateExistingAsync/InitializeNewAsync; регистрация без запуска операций |
 | `AgentSettingsService` | Безопасное чтение настроек и выбор модели/effort |
-| `IApiKeyProvider` | Индивидуальный ключ пользователя или общий при его отсутствии |
+| `IModelAccessResolver` (реализован этапом 13) | Индивидуальный ключ от приложения или SharedApiKey только при null; без fallback после ошибки |
 
 Изменяющие сценарии используют собственные минимальные Unit of Work, соответствующие транзакционной границе. Один глобальный UoW со всеми репозиториями не используется. Сценарий только чтения получает узкий порт чтения.
 

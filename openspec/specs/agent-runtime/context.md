@@ -1,5 +1,15 @@
 # Контекст проекта AgentBridge
 
+## Каталог моделей и ключи этапа 13
+
+Статус: **Реализован и принят; запрещённые проверки пропущены**. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты. [Change](../../changes/model-catalog-and-keys/proposal.md), [фактический API](<../../../Documentation/Technical documentation/13-model-catalog-and-keys.md>), [команды и ограничения](<../../../Documentation/Plans/AgentBridge Initial Implementation/13-model-catalog-and-keys.md>). CLI validation не выполнена; change не архивирован.
+
+IIndividualModelKeySource принадлежит приложению. CodexLbModelAccessResolver использует SharedApiKey только при null; заданный ошибочный ключ, exception источника или отказ сервера не разрешают fallback. ModelAccess передаётся на вызов и не входит в persistence/безопасные snapshots. Приложение владеет HttpClient и своими logging scopes/handlers; AddCodexLbModelCatalog создаёт actual HttpApiClient текущей HttpClientLibrary без регистрации host или сетевых побочных действий.
+
+Текущий local codex-lb возвращает OpenAI-compatible каталог без client_version, с metadata.input_context_window. `_resolved_context_window` трактует его как доступный input budget; output повторно не вычитается. Например, threshold=32000+reserve=4096 проходит при 36096 и отклоняется при 36095. Нет metadata/input budget — явный Unsupported без подстановки ContextWindow. Новый каталог проверяет новые усилия/бюджет; старые snapshots независимы. Флаги не доказывают Responses/compact, серверная auth policy принадлежит codex-lb.
+
+Reader только читает/проверяет model/effort/threshold/reserve, не сохраняет выбор, не токенизирует и не исполняет turn. Полное управление settings/status остаётся этапу 21. Ошибки HTTP маппятся только по статусу, JSON/shape отклоняется фиксированным Rejected; raw details/preview/headers/exception message не публикуются. Error capture 64 КиБ и completeness остаются в HttpClientLibrary, preview не трактуется как envelope. Уже полученный typed failure сохраняет тот же ServiceError перед проверкой поздней отмены; успешный ответ после cancellation не разрешает snapshot. Подставные handlers/локальные streams проверяют pipeline без сети и не доказывают upstream или серверную авторизацию.
+
 ## Сценарное сохранение этапа 10
 
 Этап 10 реализован и принят; запрещённые проверки пропущены. Существующие Application write ports реализованы четырьмя узкими UoW в EF-адаптере. Общий scope использует текущую EFCoreLibrary session, Serializable transaction, root concurrency values и cleanup; read ports отдельны. Локальный gate отклоняет concurrent/nested operations одного DI scope. Внешние модель/инструмент не исполняются в transaction.
@@ -72,7 +82,7 @@ Scope ограничен реальным механизмом: SQLite — nativ
 
 ## Прикладные контракты этапа 07
 
-Этап 07 определяет независимые прикладные порты и принят; запрещённые проверки пропущены. [Описание API](<../../../Documentation/Technical documentation/09-application-ports.md>) отделяет канонические items от полного envelope, результатов шагов и continuation. Контейнеры используют независимый JsonElement.Clone без реализации JSON/SSE mapping. ModelAccess фиксирует уже выбранный ключ на вызов; выбор ключа остаётся этапу 13. Например, output reasoning содержит encrypted_content, а envelope того же шага — id/usage/unknown metadata; оба снимка сохраняются отдельно, envelope не отправляется как input item.
+Этап 07 определяет независимые прикладные порты и принят; запрещённые проверки пропущены. [Описание API](<../../../Documentation/Technical documentation/09-application-ports.md>) отделяет канонические items от полного envelope, результатов шагов и continuation. Контейнеры используют независимый JsonElement.Clone без реализации JSON/SSE mapping. ModelAccess фиксирует уже выбранный ключ на вызов; выбор ключа реализован этапом 13. Например, output reasoning содержит encrypted_content, а envelope того же шага — id/usage/unknown metadata; оба снимка сохраняются отдельно, envelope не отправляется как input item.
 
 Storage ports выражают короткие атомарные операции, а не готовую persistence. Incarnation/revision получаются от хранилища, не из private lifetime Domain-объекта. После ожидания модели старое условие записи нельзя заменять свежим ради обхода конфликта. Пример отказа: ID и revision совпали после пересоздания, но incarnation другой — старый ответ не записывается. Этап 08 добавляет EF-модели/DI; CRUD/UoW и восстановление реализованы этапами 09–10; реальная concurrency на БД не проверялась. Contract fakes доказывают только заменяемость и форму условий. Точная граница Responses items также остаётся последующим этапам. Проверены 93 теста ядра, включая 27 новых; запрещённые интеграции пропущены.
 
@@ -111,7 +121,7 @@ UTC ticks в INTEGER/bigint сохраняют точность и сортир�
 
 На этапе 02 реализован конфигурационный API: options ядра и адаптеров, групповые DI-расширения и локальная валидация. Пример: `DialogRetentionOptions.CalculateExpiresAtUtc(createdAtUtc)` при `RetentionPeriod = TimeSpan.FromDays(14)` возвращает дату создания плюс 14 дней. Этап 06 уже фиксирует вычисленные даты в доменном `Dialog`; сохранение в БД ещё не реализовано. Binding использует источник приложения, а сценарии будут получать конкретные options, без `IConfiguration`.
 
-Отсутствующие адрес, модель, выбранный провайдер и строка подключения дают явные ошибки. Локальная проверка лимитов не заменяет проверку каталога и бюджета модели; effort остаётся строкой wire-контракта, дефолт `medium` не гарантирует поддержку. Ключи и подключение находятся во входных options приложения, которые нельзя использовать как безопасный UI-снимок или логировать. Settings service и выбор ключа остаются последующим этапам. Подробности фактического API: [конфигурация](../../../Documentation/Technical%20documentation/05-configuration-and-lifecycle.md).
+Отсутствующие адрес, модель, выбранный провайдер и строка подключения дают явные ошибки. Локальная проверка лимитов не заменяет проверку каталога и бюджета модели; effort остаётся строкой wire-контракта, дефолт `medium` не гарантирует поддержку. Ключи и подключение находятся во входных options приложения, которые нельзя использовать как безопасный UI-снимок или логировать. Этап 13 реализует выбор ключа и безопасное чтение модельных настроек; полное управление settings/status остаётся этапу 21. Подробности фактического API: [конфигурация](../../../Documentation/Technical%20documentation/05-configuration-and-lifecycle.md).
 
 История в БД нужна для продолжения диалога между запусками и управления сроком хранения. Рабочее окно — часть состояния, передаваемая модели на очередном шаге. Разделение этих обязанностей позволяет уменьшать рабочий контекст без немедленного удаления полной истории.
 

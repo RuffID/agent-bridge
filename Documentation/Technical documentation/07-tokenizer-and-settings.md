@@ -16,6 +16,8 @@ AgentBridge использует tokenizer, соответствующий из�
 
 ## Проектируемые контракты
 
+Этап 13 реализует независимые IIndividualModelKeySource/IModelAccessResolver/IModelCatalog/IModelSettingsReader, ModelCapabilities/ModelCatalogSnapshot/ModelSettingsSnapshot и ModelSelectionValidator. Это чтение/проверка модельных настроек, без их сохранения или статуса диалога. [Точные API, бюджет и безопасные ошибки](13-model-catalog-and-keys.md). Tokenizer и управление настройками этапа 21 ещё отсутствуют.
+
 `IContextTokenCounter` уже определён на этапе 07: CountAsync получает полный ModelRequest, а ContextTokenCount разделяет KnownTokens, nullable EstimatedInputTokens и HasOpaqueContent. Реализации tokenizer нет. [Фактические порты](09-application-ports.md). Остальные названия ниже относятся к будущим типам.
 
 | Тип | Обязанность |
@@ -23,12 +25,12 @@ AgentBridge использует tokenizer, соответствующий из�
 | `AgentSettingsSnapshot` | Безопасное представление модели, effort и лимитов |
 | `AgentSettingsService` | Чтение и изменение выбора модели/effort с проверкой каталога |
 | `DialogStatus` | `CreatedAtUtc`, `ExpiresAtUtc`, объём, размер контекста, состояние и предупреждения |
-| `IApiKeyProvider` | Выбор индивидуального ключа или общего ключа при его отсутствии |
+| `IModelAccessResolver` (реализован этапом 13) | Индивидуальный ключ приложения или общий только при null, без повторов после ошибки |
 | `IContextTokenCounter` | Подсчёт по tokenizer и раздельное представление известного/непрозрачного бюджета |
 
 Приоритет effort: override запроса, затем настройка выбранного агента, затем настроенное значение по умолчанию. Итог проверяется по доступной модели и политике ключа. Для одного выполняющегося обращения используется фиксированный снимок настроек.
 
-Авторизация на чтение настроек и смену модели определяется приложением. Контракт чтения не возвращает секреты. `IApiKeyProvider` не является сохранением ключа внутри диалога: приложение владеет источником секретов.
+Авторизация на чтение настроек и смену модели определяется приложением. Контракт чтения не возвращает секреты. `IIndividualModelKeySource` принадлежит приложению; `IModelAccessResolver` не сохраняет ключ внутри диалога.
 
 ## Serilog
 

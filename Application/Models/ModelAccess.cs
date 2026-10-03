@@ -1,7 +1,7 @@
 namespace AgentBridge.Application.Models;
 
 /// <summary>Неизменяемый выбранный ключ конкретного обращения, отдельно от безопасных настроек.</summary>
-/// <remarks>Выбор индивидуального/общего ключа относится к этапу 13. Содержимое не предназначено для логирования.</remarks>
+/// <remarks>IModelAccessResolver выбирает индивидуальный/общий ключ на вызов. Содержимое не предназначено для логирования или persistence.</remarks>
 public class ModelAccess
 {
     private readonly string _apiKey;

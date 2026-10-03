@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–11 приняты. Доступны настройки/DI, безопасная диагностика, защищённый Domain, прикладные порты, persistence DTO/EF-маппинг, base read/staging adapters, защищённое чтение, write UoW, Domain Restore и provider migrations. Этап 12: **Реализован и принят; запрещённые проверки пропущены**. Явное обслуживание SQLite/PostgreSQL через EFCoreLibrary, обязательные backup options без default retention; 164 persistence tests (50 новых). Этапы 13–25 не начаты; сценарий агента и транспорт ещё отсутствуют; restart/атомарность/восстановимость на БД не подтверждены. [Maintenance API](<Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>).
+AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–13 реализованы и приняты; запрещённые проверки пропущены. Доступны настройки/DI, безопасная диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance и каталог моделей через HttpClientLibrary: источник индивидуального ключа, per-call доступ и проверка model/effort/input budget. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты; агент, Responses/SSE/compact ещё отсутствуют. Реальные HTTP/upstream и restart/атомарность/восстановимость на БД не подтверждены. [Maintenance API](<Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>), [каталог моделей](<Technical documentation/13-model-catalog-and-keys.md>).
 
 ## Бизнес-логика
 
@@ -28,6 +28,7 @@ AgentBridge — библиотека ИИ-агентов для .NET 10, под�
 9. [Прикладные контракты](<Technical documentation/09-application-ports.md>)
 10. [Сценарные Unit of Work](<Technical documentation/10-scenario-unit-of-work.md>)
 11. [Provider-specific миграции](<Technical documentation/11-provider-migrations.md>)
+12. [Каталог моделей и выбор ключа](<Technical documentation/13-model-catalog-and-keys.md>)
 
 ## Требования
 

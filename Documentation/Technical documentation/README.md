@@ -1,6 +1,6 @@
 # Техническая документация AgentBridge
 
-Документы описывают фактические API конфигурации, диагностики, Domain, прикладных портов и EF-хранилища. Этапы 00–11 приняты; этап 12: **Реализован и принят; запрещённые проверки пропущены**; этапы 13–25 не начаты. Base adapters, read ports, сценарные write UoW, provider factories и явно вызываемое обслуживание БД реализованы; сценарии агента и HTTP-адаптер ещё отсутствуют. Проверки и ограничения находятся в соответствующих планах.
+Документы описывают фактические API конфигурации, диагностики, Domain, прикладных портов, EF-хранилища и каталога моделей. Этапы 00–13 реализованы и приняты; запрещённые проверки пропущены. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты. Реализованы read/write UoW, migrations/maintenance и каталог через HttpClientLibrary; сценарий агента и Responses/SSE/compact ещё отсутствуют. Проверки и ограничения находятся в соответствующих планах.
 
 | Раздел | Содержание |
 | --- | --- |
@@ -15,5 +15,6 @@
 | [Прикладные контракты](09-application-ports.md) | Независимые порты, результаты lifecycle, канонические снимки и короткие сценарии хранения |
 | [Сценарные Unit of Work](10-scenario-unit-of-work.md) | Write ports, общий scope EFCoreLibrary, Domain Restore, guards и ограничения атомарности |
 | [Provider migrations](11-provider-migrations.md) | Отдельные сборки/factories, runtime identity, tooling, подготовленная модель и блокер генерации |
+| [Каталог моделей и ключи](13-model-catalog-and-keys.md) | Application source, per-call доступ, dynamic capabilities, проверка model/effort/input budget и безопасные снимки |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

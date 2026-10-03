@@ -6,6 +6,37 @@
 
 ## Требования
 
+### Requirement: Динамический каталог выбранного ключа
+
+AgentBridge MUST читать канонический `/v1/models` через HttpClientLibrary с per-call ModelAccess и без client_version. Каталог MUST NOT заменяться статическим списком, прошлым снимком другого ключа или скрытым retry. Снимки MUST сохранять необходимые объявленные budgets, усилия и флаги независимо от исходного JSON. Отсутствующий metadata MUST оставаться неизвестным.
+
+#### Scenario: Изменение возможностей
+
+- **WHEN** повторное чтение каталога получает другой input budget или набор effort
+- **THEN** проверка нового выбора использует новый ответ
+- **AND** прежний снимок остаётся неизменным.
+
+### Requirement: Явная проверка модельных настроек
+
+AgentBridge MUST проверять точный ID модели, supported_in_api и точный effort по выбранному каталогу. Сумма положительного TokenThreshold и неотрицательного InputTokenReserve MUST NOT превышать положительный metadata.input_context_window. Неизвестный budget MUST давать явный Unsupported; недопустимый выбор MUST NOT скрыто заменяться. Проверка MUST NOT объявляться токенизацией реального запроса или подтверждением compact/Responses поддержки.
+
+#### Scenario: Граница бюджета
+
+- **WHEN** threshold плюс reserve равны input_context_window
+- **THEN** проверка бюджета успешна
+- **AND** превышение на один токен отклоняется.
+
+### Requirement: Источник индивидуального ключа без скрытой замены
+
+Приложение MUST предоставлять источник индивидуального ключа по идентичности владельца. Только null MUST обозначать отсутствие. Заданный пустой или некорректный ключ, ошибка источника и HTTP-отказ MUST NOT разрешать общий ключ. Выбранный ModelAccess MUST оставаться per-call; безопасные снимки и ошибки MUST NOT включать ключи, адрес, подключения, raw error details или exception message.
+
+#### Scenario: Неверный индивидуальный ключ
+
+- **GIVEN** индивидуальный ключ задан и общий также настроен
+- **WHEN** каталог отвечает отказом аутентификации
+- **THEN** возвращается Unauthorized без данных
+- **AND** повтор с общим ключом отсутствует.
+
 ### Requirement: Раздельные миграции выбранного провайдера
 
 AgentBridge MUST предоставлять независимые SQLite/PostgreSQL migrations assemblies и snapshots для одного общего AgentBridgeDbContext. Runtime и design-time MUST выбирать одну и ту же устойчивую identity по provider. Эти проекты MUST владеть только таблицами AgentBridge и MUST NOT добавлять host или зависимости в Domain/Application. Design-time factory MUST создавать контекст без открытия соединения, SQL, применения схемы или чтения секретов приложения.

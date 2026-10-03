@@ -1,5 +1,7 @@
 # Прикладные контракты
 
+Этап 13 расширяет Application независимыми портами доступа/каталога и безопасными model settings snapshots. [Фактический API и ограничения](13-model-catalog-and-keys.md). ModelAccess теперь выбирается resolver адаптера через индивидуальный источник приложения; generation/compact реализация IModelGateway ещё отсутствует.
+
 Реализации существующих read/write ports, короткая transaction и правила внешнего ожидания: [этап 10](10-scenario-unit-of-work.md). Application не получил EF-зависимостей или публичного transaction callback.
 
 ## Фактический API этапа 07
