@@ -1,5 +1,17 @@
 # Контекст проекта AgentBridge
 
+## Сжатие этапа18
+
+Координатор принял этап18 2026-10-04: core172/0/0 + transport165/0/0, manifest34 и совпадение main/delta проверены. Локальный коммит разрешён только для утверждённого manifest. **ОСТАНОВКА ПОСЛЕ БЛОКА14–18**: после коммита19–25 не начинать, следующий блок — только новый координатор. [Передача](<../../../Documentation/Plans/AgentBridge Initial Implementation/18-context-compaction.md#приёмка-и-передача-новому-координатору>). CLI validation остаётся невыполненной, change не архивирован.
+
+Этапы00–17 приняты и закоммичены; этап18 принят координатором, локальный коммит утверждённого manifest разрешён. Статусы ниже относятся к историческим отчётам этапов. Этапы19–25 не начинались. [Новый change](../../changes/context-compaction/proposal.md), [принятые решения](../../changes/context-compaction/context.md), [фактический API](<../../../Documentation/Technical documentation/18-context-compaction.md>).
+
+Пользователь выбрал persistable-only compact: active window + следующий contiguous terminal prefix, включая0. Providers, InProgress tail и новый unsaved input остаются отдельно, но входят в полный threshold/budget. Builder вызывается один раз, transient snapshot фиксирован на сценарий. Например, terminal turn1 и InProgress turn2 дают through1; после save полный request содержит providers+новое окно+turn2+new input без дубликатов. Broken known pairs/empty candidate не активируются.
+
+Opaque Completed с null estimate по решению пользователя сохраняется с UnknownBudget, после чего цикл останавливается. Ни UnknownBudget, ни TargetReached/NoReduction/PassLimit/NotRequired не разрешают generation: нужен отдельный full-request guard17. Known non-reduction не принимается. Counter не использует прошлый usage; нового server estimator нет. Fresh UTC перед save, original/read либо successful-save token, без refresh/retry. Ошибка второго прохода оставляет первый успешно сохранённый. История и fixed expiry неизменны; исключение после частичного успеха требует перечитать состояние обычным reader.
+
+Compact transport проверяет response.compact* и output с optional status. Output/envelope canonical, continuation null: compact id не объявлен generation anchor. Вызов actual HttpClientLibrary ограничен CompactTimeout. Проверки изолированы, live upstream/DB на18 не проверялись; CLI validation недоступна и change не архивирован.
+
 ## Offline tokenizer этапа17
 
 Этап16 принят/закоммичен085779a15c4126ac567a6d1307f497dcae8dc9c5. Этап17 реализован, адресно проверен и принят координатором; локальный коммит31 утверждённого файла разрешён. Этапы18–25 не начаты, checkpoint18 не достигнут. [Change](../../changes/model-tokenizer/proposal.md), [решение](../../changes/model-tokenizer/context.md), [точный API, pinned источники/дата/hashes и ограничения](<../../../Documentation/Technical documentation/07-tokenizer-and-settings.md#проверенный-exact-mapping-и-источники>). CLI отсутствует, validation не выполнена, changes не архивированы.

@@ -118,7 +118,7 @@ public class ContextBuilder
     }
 
     /// <summary>Проверяет только известные внешние пары функций, не раскрывая opaque-содержимое.</summary>
-    private static ServiceError? ValidateFunctionPairs(IEnumerable<CanonicalModelItem> items, CancellationToken cancellationToken)
+    internal static ServiceError? ValidateFunctionPairs(IEnumerable<CanonicalModelItem> items, CancellationToken cancellationToken)
     {
         Dictionary<string, int> pending = new(StringComparer.Ordinal);
         foreach (CanonicalModelItem item in items)

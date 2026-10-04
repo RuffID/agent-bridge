@@ -1,5 +1,7 @@
 # Конфигурация ядра
 
+- AddAgentBridgeCompaction регистрирует scoped ContextCompactor и default TimeProvider.System через TryAdd. ContextBuilder с explicit ordered providers, counter/gateway/writer/options предоставляет приложение. Регистрация не выполняет compact и не расширяет permissions источников. Новых options нет: ContextCompactionOptions.MaxPasses и CodexLbOptions.CompactTimeout уже существовали.
+
 - Здесь находятся options агента, полной истории и рабочего контекста, а также их групповая регистрация. Приложение выбирает источник конфигурации; `IConfiguration` используется только при binding в расширении composition root.
 - Период хранения применяется к времени создания будущего диалога через `CalculateExpiresAtUtc`; область не создаёт доменные сущности и не переносит уже сохранённые сроки.
 - Валидация защищает локальные диапазоны при получении options и через стандартный `IStartupValidator`. Проверка модельного бюджета, доступности модели и effort принадлежит каталогу адаптера, не статическому списку ядра.

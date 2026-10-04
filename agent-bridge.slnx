@@ -58,6 +58,7 @@
     <File Path="Documentation/Technical documentation/10-scenario-unit-of-work.md" />
     <File Path="Documentation/Technical documentation/11-provider-migrations.md" />
     <File Path="Documentation/Technical documentation/13-model-catalog-and-keys.md" />
+    <File Path="Documentation/Technical documentation/18-context-compaction.md" />
     <File Path="Documentation/Technical documentation/README.md" />
   </Folder>
   <Project Path="agent-bridge.csproj" />

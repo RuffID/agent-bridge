@@ -4,7 +4,7 @@
 
 - Проект `AgentBridge.CodexLb.csproj` реализует транспортные порты ядра; зависит от корневого `agent-bridge.csproj`. Обратная ссылка из ядра и зависимость от EF-хранилища запрещены.
 - Здесь находятся wire DTO, преобразование JSON/SSE Responses, compact и транспортные ошибки. Доменные решения, права пользователя и выполнение инструментов остаются вне адаптера.
-- Исходящий HTTP выполняется только через локальный ProjectReference HttpClientLibrary. Models содержит чтение `/v1/models`, проекцию capabilities, выбор доступа и чтение настроек. Responses реализует JSON/SSE GenerateAsync этапов 14–15; границы в `Responses/AGENTS.md`. Compact ещё не реализован.
+- Исходящий HTTP выполняется только через локальный ProjectReference HttpClientLibrary. Models содержит чтение `/v1/models`, проекцию capabilities, выбор доступа и чтение настроек. Responses реализует JSON/SSE GenerateAsync этапов 14–15; границы в `Responses/AGENTS.md`. CompactAsync реализован на этапе18 с отдельными CompactRequestWriter/CompactJsonReader и CompactTimeout.
 - HTTP 2xx, text delta и EOF не заменяют подтверждённое terminal-состояние. Сохранять caller cancellation и владение потоком; не вводить скрытые retry или смену ключа/модели.
 - Регистрация и параметры подключения принадлежат composition root приложения. Адаптер не создаёт host и не владеет жизненным циклом приложения.
 - `Configuration/` содержит `CodexLbOptions` и `AddCodexLbConfiguration`: только binding и локальные проверки, без HTTP, выбора ключа или обращения к каталогу. Модель обязательна; effort не проверяется статическим списком. Общий ключ может отсутствовать при индивидуальных ключах. Options с секретом не передавать в UI или лог; ошибки локальной валидации не содержат значения настроек.

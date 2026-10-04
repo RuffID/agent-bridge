@@ -1,6 +1,6 @@
 # Техническая документация AgentBridge
 
-Документы описывают фактические API конфигурации, диагностики, Domain/Application, EF-хранилища, каталога, JSON/SSE, композиции и offline tokenizer/guard. Этапы00–16 приняты и закоммичены; этап17 реализован, адресно проверен и принят координатором; локальный коммит31 файлов разрешён. Compact/tools/AgentRunner отсутствуют; этапы18–25 не начаты, checkpoint18 не достигнут. Проверки и ограничения находятся в соответствующих планах.
+Документы описывают фактические API конфигурации, диагностики, Domain/Application, EF-хранилища, каталога, JSON/SSE, композиции и offline tokenizer/guard. Этапы00–17 приняты и закоммичены; этап18 принят координатором; локальный коммит утверждённого manifest разрешён. Compact transport и ContextCompactor доступны; tools/AgentRunner отсутствуют, этапы19–25 не начаты. Проверки и ограничения находятся в соответствующих планах.
 
 | Раздел | Содержание |
 | --- | --- |
@@ -19,5 +19,6 @@
 | [JSON Responses](14-responses-json-adapter.md) | Public DI/gateway, canonical controls/items/envelope, bound continuation, safe errors, deadline/caller/disposal |
 | [SSE Responses](15-responses-sse-adapter.md) | Fragmented/multiline framing, partial/terminal canonical state, callback ownership, cancellation/disposal и изолированные проверки |
 | [Композиция контекста](16-context-composition.md) | Public ContextBuilder, ordered providers/window/tail/new input, роли/known function pairs, snapshot guards, отмена и ограничения |
+| [Сжатие контекста](18-context-compaction.md) | Compact JSON, terminal prefix/transient граница, atomic save, bounded passes, UnknownBudget и отдельный guard генерации |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

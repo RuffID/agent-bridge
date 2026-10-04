@@ -1,6 +1,6 @@
 # Композиция контекста
 
-Этап16 принят и закоммичен085779a15c4126ac567a6d1307f497dcae8dc9c5. Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [context](../../openspec/specs/agent-runtime/context.md). [Offline tokenizer и budget guard17](07-tokenizer-and-settings.md#public-guard-и-подключение) реализованы и приняты координатором; локальный коммит17 разрешён; compact/tools/orchestration остаются последующим этапам.
+Этап16 принят и закоммичен085779a15c4126ac567a6d1307f497dcae8dc9c5. Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [context](../../openspec/specs/agent-runtime/context.md). [Offline tokenizer и budget guard17](07-tokenizer-and-settings.md#public-guard-и-подключение) приняты и закоммичены af72252c5d5638137738957c200492923a425da8. [ContextCompactor18](18-context-compaction.md) фиксирует один результат builder и отдельно сжимает terminal history; tools/orchestration остаются последующим этапам. Проверки ниже — исторический отчёт16.
 
 ## Публичный API
 

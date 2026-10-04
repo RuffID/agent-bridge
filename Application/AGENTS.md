@@ -1,8 +1,14 @@
 # Application
 
+## Сжатие этапа18
+
+- ContextCompactor использует ContextBuilder один раз, фиксирует providers и отделяет terminal history от transient tail/new input. Compact-only проекция controls не меняет полный generation request. MaxPasses фиксируется на вызов; threshold/reserve берутся из проверенного ModelSettingsSnapshot.
+- HTTP/counter вне write UoW; fresh TimeProvider UTC непосредственно перед SaveAsync, original/read или successful-save token, без refresh/retry. Только successful save активирует candidate. Ошибка следующего прохода сохраняет последнее принятое окно; unexpected/OCE распространяется, уже сохранённые проходы не откатываются.
+- Completed opaque с null full estimate сохраняется, UnknownBudget останавливает цикл. Known non-reduction не сохраняет candidate. Empty output при непустой history и known broken pairs отклоняются. Ни один статус отчёта не разрешает generation: full ContextBudgetGuard вызывается отдельно. Нет удаления истории/server estimator/AgentRunner.
+
 ## Назначение и границы
 
-- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения; ContextBuilder готовит ModelRequest по уже прочитанному snapshot. Реализации адаптеров/UoW находятся в Infrastructure, offline tokenizer — в Tokenization; оркестрация отсутствует.
+- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения; ContextBuilder готовит ModelRequest по уже прочитанному snapshot. Реализации адаптеров/UoW находятся в Infrastructure, offline tokenizer — в Tokenization; ContextCompactor выполняет только ограниченное сжатие этапа18, AgentRunner отсутствует.
 - Допустимы Domain, BCL и независимые прикладные модели. EF/DbContext/IQueryable/Expression, HTTP-библиотеки, wire DTO и Web/MVC остаются за границей.
 - `ServiceResult` описывает ожидаемый отказ без данных. `ModelResponse` — отчёт о lifecycle с сохранённым выходом; успех получения отчёта не означает Completed. Неожиданные исключения не маскировать.
 - Канонические элементы и аргументы сохраняются независимыми снимками JsonElement, включая неизвестные поля и opaque data. Это контейнер данных, не реализация Responses mapping или JSON/SSE транспорта.

@@ -1,8 +1,14 @@
 # JSON/SSE Responses
 
-## Граница этапов 14–15
+## Compact этапа18
 
-- CodexLbModelGateway реализует GenerateAsync через actual HttpApiClient: onUpdate=null выбирает JSON, callback выбирает SSE stream=true. CompactAsync возвращает Unsupported до HTTP. Composition/tokenizer/orchestration не добавлять.
+- CompactRequestWriter отдельно сохраняет model/effort/instructions/input/store=false и reasoning/service_tier/prompt_cache_key. Tools/continuation/unknown controls дают Unsupported до HTTP; malformed/duplicate controls — Validation. Generation writer не используется как скрытая нормализация compact.
+- CompactJsonReader требует response.compact* discriminator (trim только при проверке, envelope исходный), output array объектов; absent/null status допустим. Explicit error/failed — Failed, иной lifecycle/missing output — Incomplete, неверная форма — Rejected. Output/envelope сохраняются полностью, compact id не становится generation anchor; continuation всегда null.
+- CompactAsync использует actual HttpClientLibrary, CompactTimeout и прежние safe-error/caller/deadline/disposal правила. Не объявлять получение отчёта активацией окна: это отдельный ContextCompactor + IDialogContextWriter в ядре/хранилище.
+
+## Граница этапов 14–15 и 18
+
+- CodexLbModelGateway реализует GenerateAsync через actual HttpApiClient: onUpdate=null выбирает JSON, callback выбирает SSE stream=true. CompactAsync использует отдельные writer/reader, POST /v1/responses/compact и CompactTimeout. Composition/tokenizer принадлежат ядру, AgentRunner отсутствует.
 - Writer передаёт canonical input и function definitions полностью, exact model/effort, stream=false/store=false. Поддержанные контроли: tool_choice, parallel_tool_calls, include, service_tier, truncation, prompt_cache_key, text, дополнительные reasoning поля без override effort. Незнакомый top-level control — Unsupported, неверная форма/дубликат — Validation. Default include reasoning.encrypted_content добавляется только при отсутствии explicit include.
 - Output остаётся ordered canonical snapshots; envelope/continuation отдельны от input. Completed требует явный status, output array и отсутствие error. Unknown lifecycle/missing output — Incomplete, explicit error/failed — Failed с полным envelope. Server cancelled без подтверждённой caller cancellation не объявлять Canceled.
 - Continuation хранит adapter version и SHA-256 binding dialog/owner/agent/endpoint/key без ключа; turnId не входит, чтобы продолжать следующий turn. Это защита от случайного смешивания trusted application data, не криптографическая авторизация и не доказательство upstream owner. codex-lb отвечает за account routing. Неизвестные metadata сохраняются, но outgoing только previous_response_id и x-codex-turn-state. Новый envelope без безопасного id удаляет прежний anchor; id сохраняется без изменений в envelope. Не использовать fallback на старый anchor.

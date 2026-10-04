@@ -137,17 +137,58 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
     }
 
     /// <inheritdoc/>
-    public Task<ServiceResult<ModelResponse>> CompactAsync(ApplicationCallContext call, ModelRequest request,
+    public async Task<ServiceResult<ModelResponse>> CompactAsync(ApplicationCallContext call, ModelRequest request,
         ModelAccess access, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(access);
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(Unsupported());
+        string key = access.RevealApiKey();
+        if (key.Any(char.IsWhiteSpace) || key.Any(char.IsControl))
+        {
+            return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Validation, "Заданный ключ доступа имеет недопустимый формат."));
+        }
+        ServiceResult<ResponseRequestBody> body = CompactRequestWriter.Write(request);
+        if (!body.Success) { return ServiceResult<ModelResponse>.Fail(body.Error!); }
+        CodexLbOptions configuration = options.Value;
+        string endpoint = (configuration.BaseAddress ?? throw new InvalidOperationException("Адрес codex-lb не настроен."))
+            .TrimEnd('/') + "/v1/responses/compact";
+        LibraryHttpRequestOptions transport = new()
+        {
+            Method = HttpMethod.Post, Url = endpoint,
+            Headers = new Dictionary<string, string> { ["Authorization"] = "Bearer " + key },
+            Body = body.Data!.Content, CorrelationId = call.TurnId
+        };
+        using CancellationTokenSource deadline = new(configuration.CompactTimeout);
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        try
+        {
+            HttpResponseResult<JsonElement> response = await http.SendWithResponseAsync<JsonElement>(transport, linked.Token);
+            ModelResponse report = CompactJsonReader.Read(response.Body);
+            if (report.Status == ModelResponseStatus.Failed) { return ServiceResult<ModelResponse>.Ok(report); }
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return ServiceResult<ModelResponse>.Ok(ModelResponse.Canceled(report.Output, report.Envelope));
+            }
+            deadline.Token.ThrowIfCancellationRequested();
+            return ServiceResult<ModelResponse>.Ok(report);
+        }
+        catch (HttpRequestFailedException failure)
+        {
+            return ServiceResult<ModelResponse>.Fail(ResponseErrorReader.Read(failure));
+        }
+        catch (JsonException)
+        {
+            return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Rejected, "Получен некорректный JSON-ответ compact."));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        {
+            return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Timeout, "Истёк срок ожидания compact."));
+        }
     }
-
-    /// <summary>Отказывает в ещё не реализованном transport без вызова callback/HTTP либо скрытой подмены генерацией.</summary>
-    private static ServiceResult<ModelResponse> Unsupported() => ServiceResult<ModelResponse>.Fail(
-        new(ServiceErrorType.Unsupported, "Запрошенная операция не поддерживается JSON-адаптером."));
 }

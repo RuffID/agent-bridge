@@ -358,14 +358,225 @@ public class ResponsesJsonTests
         Assert.Equal(0, fixture.Handler.Calls);
     }
 
-    /// <summary>Компакт ещё не реализован, без HTTP side effects.</summary>
+    /// <summary>Compact сохраняет opaque окно и envelope без generation anchor и использует отдельный endpoint.</summary>
     [Fact]
-    public async Task CompactIsExplicitlyUnsupported()
+    public async Task CompactCanonicalRoundTrip()
     {
         using Fixture fixture = new();
-        IModelGateway gateway = fixture.Gateway;
-        ServiceResult<ModelResponse> compact = await gateway.CompactAsync(fixture.Call, Request(), new(KEY));
-        Assert.Equal(ServiceErrorType.Unsupported, compact.Error!.Type);
+        string json = "{\"object\":\"response.compaction\",\"id\":\"cmp_1\",\"output\":" + OUTPUT + ",\"future\":{\"x\":1}}";
+        fixture.SetJson(json);
+        using JsonDocument input = JsonDocument.Parse(OUTPUT);
+        using JsonDocument controls = JsonDocument.Parse("""{"reasoning":{"summary":"auto","future":true},"service_tier":"priority","prompt_cache_key":"cache"}""");
+        ModelRequest request = new("exact-model", "exact-effort", "instructions",
+            input.RootElement.EnumerateArray().Select(item => new CanonicalModelItem(item)), [], parameters: new(controls.RootElement));
+        ServiceResult<ModelResponse> compact = await fixture.Compact(request);
+        Assert.Equal(ModelResponseStatus.Completed, compact.Data!.Status);
+        Assert.Null(compact.Data.Continuation);
+        AssertJson(json, compact.Data.Envelope!.Content.GetRawText());
+        AssertJson(OUTPUT, JsonSerializer.Serialize(compact.Data.Output.Select(item => item.Content)));
+        JsonElement sent = Assert.Single(fixture.Handler.Bodies);
+        AssertJson(OUTPUT, sent.GetProperty("input").GetRawText());
+        Assert.Equal("exact-model", sent.GetProperty("model").GetString());
+        Assert.Equal("exact-effort", sent.GetProperty("reasoning").GetProperty("effort").GetString());
+        Assert.True(sent.GetProperty("reasoning").GetProperty("future").GetBoolean());
+        Assert.Equal("instructions", sent.GetProperty("instructions").GetString());
+        Assert.Equal("priority", sent.GetProperty("service_tier").GetString());
+        Assert.Equal("cache", sent.GetProperty("prompt_cache_key").GetString());
+        Assert.False(sent.GetProperty("store").GetBoolean());
+        Assert.False(sent.TryGetProperty("tools", out _));
+        Assert.False(sent.TryGetProperty("stream", out _));
+        Assert.False(sent.TryGetProperty("previous_response_id", out _));
+        Assert.Equal("https://gateway.invalid/prefix/v1/responses/compact", Assert.Single(fixture.Handler.Urls));
+        Assert.Equal("POST", Assert.Single(fixture.Handler.Methods));
+        Assert.Equal("Bearer " + KEY, Assert.Single(fixture.Handler.Authorizations));
+        Assert.True(fixture.Handler.Content!.Disposed);
+        AssertSafe(fixture.Log.Text);
+        fixture.SetJson("""{"status":"completed","output":[]}""");
+        await fixture.Generate(new("model", null, "", compact.Data.Output, [], compact.Data.Continuation));
+        Assert.False(fixture.Handler.Bodies[1].TryGetProperty("previous_response_id", out _));
+    }
+
+    /// <summary>Отдельный discriminator/status compact не сводится к обычному JSON lifecycle.</summary>
+    [Theory]
+    [InlineData("{\"object\":\"response.compaction\",\"output\":[]}", ModelResponseStatus.Completed)]
+    [InlineData("{\"object\":\" response.compact.future \",\"status\":null,\"output\":[]}", ModelResponseStatus.Completed)]
+    [InlineData("{\"object\":\"response.compact\",\"status\":\"completed\",\"output\":[]}", ModelResponseStatus.Completed)]
+    [InlineData("{\"object\":\"response.compact\",\"status\":\"incomplete\",\"output\":[]}", ModelResponseStatus.Incomplete)]
+    [InlineData("{\"object\":\"response.compact\",\"status\":\"canceled\",\"output\":[]}", ModelResponseStatus.Incomplete)]
+    [InlineData("{\"object\":\"response.compact\",\"status\":\"future\",\"output\":[]}", ModelResponseStatus.Incomplete)]
+    [InlineData("{\"object\":\"response.compact\"}", ModelResponseStatus.Incomplete)]
+    [InlineData("{\"status\":\"failed\",\"output\":[]}", ModelResponseStatus.Failed)]
+    [InlineData("{\"error\":{\"message\":\"synthetic-private-secret\"},\"output\":[]}", ModelResponseStatus.Failed)]
+    public async Task CompactLifecycle(string json, ModelResponseStatus expected)
+    {
+        using Fixture fixture = new();
+        fixture.SetJson(json);
+        ModelResponse report = (await fixture.Compact(Request())).Data!;
+        Assert.Equal(expected, report.Status);
+        Assert.Null(report.Continuation);
+        AssertJson(json, report.Envelope!.Content.GetRawText());
+        AssertSafe(report.Error?.Message ?? "");
+        Assert.True(fixture.Handler.Content!.Disposed);
+    }
+
+    /// <summary>Повреждённые формы отклоняются без публикации исходного JSON.</summary>
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{")]
+    [InlineData("{\"object\":\"response\",\"status\":\"completed\",\"output\":[]}")]
+    [InlineData("{\"output\":[]}")]
+    [InlineData("{\"object\":4,\"output\":[]}")]
+    [InlineData("{\"object\":\"response.compact\",\"output\":{}}")]
+    [InlineData("{\"object\":\"response.compact\",\"output\":[null]}")]
+    [InlineData("{\"object\":\"response.compact\",\"status\":3,\"output\":[]}")]
+    public async Task CompactInvalidShape(string json)
+    {
+        using Fixture fixture = new();
+        fixture.SetJson(json);
+        Assert.Equal(ServiceErrorType.Rejected, (await fixture.Compact(Request())).Error!.Type);
+        Assert.True(fixture.Handler.Content!.Disposed);
+        AssertSafe(fixture.Log.Text);
+    }
+
+    /// <summary>Continuation, tools и неподдержанные параметры не отбрасываются молча.</summary>
+    [Theory]
+    [InlineData("continuation", ServiceErrorType.Unsupported)]
+    [InlineData("tools", ServiceErrorType.Unsupported)]
+    [InlineData("{\"text\":{}}", ServiceErrorType.Unsupported)]
+    [InlineData("{\"stream\":true}", ServiceErrorType.Unsupported)]
+    [InlineData("{\"reasoning\":{\"effort\":\"override\"}}", ServiceErrorType.Validation)]
+    [InlineData("{\"service_tier\":3}", ServiceErrorType.Validation)]
+    [InlineData("{\"prompt_cache_key\":\"x\",\"prompt_cache_key\":\"y\"}", ServiceErrorType.Validation)]
+    public async Task CompactUnsupportedInput(string input, ServiceErrorType expected)
+    {
+        using Fixture fixture = new();
+        using JsonDocument empty = JsonDocument.Parse("{}");
+        ModelRequest request = input switch
+        {
+            "continuation" => Request(new(empty.RootElement)),
+            "tools" => new("model", null, "", [], [new("tool", "", empty.RootElement, false)]),
+            _ => new("model", null, "", [], [], parameters: new(JsonSerializer.Deserialize<JsonElement>(input)))
+        };
+        Assert.Equal(expected, (await fixture.Compact(request)).Error!.Type);
+        Assert.Equal(0, fixture.Handler.Calls);
+    }
+
+    /// <summary>Compact использует собственный deadline, caller и поздний lifecycle без retry.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompactDeadlineAndCaller(bool callerCancellation)
+    {
+        using Fixture fixture = new(compactTimeout: callerCancellation ? TimeSpan.FromSeconds(5) : TimeSpan.FromMilliseconds(50));
+        using CancellationTokenSource caller = new();
+        fixture.Handler.Respond = async (_, ct) =>
+        {
+            if (callerCancellation) { caller.Cancel(); }
+            await Task.Delay(Timeout.Infinite, ct);
+            throw new InvalidOperationException();
+        };
+        if (callerCancellation)
+        {
+            OperationCanceledException error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Compact(Request(), caller.Token));
+            Assert.Equal(caller.Token, error.CancellationToken);
+        }
+        else { Assert.Equal(ServiceErrorType.Timeout, (await fixture.Compact(Request())).Error!.Type); }
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Поздняя отмена сохраняет opaque output; explicit failure приоритетнее.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompactLateCancellation(bool failed)
+    {
+        using Fixture fixture = new();
+        using CancellationTokenSource caller = new();
+        string json = "{\"object\":\"response.compaction\",\"output\":" + OUTPUT + (failed ? ",\"status\":\"failed\"}" : "}");
+        CancelOnDisposeStream stream = new(Encoding.UTF8.GetBytes(json), caller);
+        fixture.Handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+        ModelResponse report = (await fixture.Compact(Request(), caller.Token)).Data!;
+        Assert.Equal(failed ? ModelResponseStatus.Failed : ModelResponseStatus.Canceled, report.Status);
+        Assert.Equal(3, report.Output.Count);
+        Assert.Null(report.Continuation);
+        Assert.True(stream.Disposed);
+    }
+
+    /// <summary>HTTP compact ошибки используют safe allowlist, исходный raw message не возвращается.</summary>
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, ServiceErrorType.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden, ServiceErrorType.Forbidden)]
+    [InlineData(HttpStatusCode.BadRequest, ServiceErrorType.Validation)]
+    public async Task CompactHttpFailure(HttpStatusCode status, ServiceErrorType expected)
+    {
+        using Fixture fixture = new();
+        fixture.Handler.Status = status;
+        fixture.SetJson("{\"error\":{\"message\":\"" + PRIVATE + "\",\"code\":\"invalid_api_key\"}}");
+        ServiceResult<ModelResponse> result = await fixture.Compact(Request());
+        Assert.Equal(expected, result.Error!.Type);
+        AssertSafe(result.Error.Message + fixture.Log.Text);
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Неожиданный I/O compact распространяется и освобождает stream без retry/raw logging.</summary>
+    [Fact]
+    public async Task CompactUnexpectedIoPropagates()
+    {
+        using Fixture fixture = new();
+        IOException failure = new(PRIVATE);
+        FailingStream stream = new(failure);
+        fixture.Handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => fixture.Compact(Request())));
+        Assert.True(stream.Disposed);
+        Assert.Equal(1, fixture.Handler.Calls);
+        AssertSafe(fixture.Log.Text);
+        Assert.All(fixture.Log.Exceptions, Assert.Null);
+    }
+
+    /// <summary>Отмена во время чтения success/error compact body освобождает HTTP ресурсы.</summary>
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.BadRequest)]
+    public async Task CompactBodyCancellationDisposes(HttpStatusCode status)
+    {
+        using Fixture fixture = new();
+        using CancellationTokenSource caller = new();
+        BlockingStream stream = new();
+        fixture.Handler.Respond = (_, _) =>
+        {
+            StreamContent content = new(stream);
+            content.Headers.ContentType = new("application/json");
+            return Task.FromResult(new HttpResponseMessage(status) { Content = content });
+        };
+        Task<ServiceResult<ModelResponse>> pending = fixture.Compact(Request(), caller.Token);
+        try
+        {
+            await stream.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            caller.Cancel();
+            OperationCanceledException failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+            Assert.Equal(caller.Token, failure.CancellationToken);
+            Assert.True(stream.Disposed);
+        }
+        finally
+        {
+            caller.Cancel();
+            try { await pending; }
+            catch (OperationCanceledException) when (caller.IsCancellationRequested) { }
+        }
+    }
+
+    /// <summary>Ранняя отмена и некорректный ключ не выполняют compact HTTP.</summary>
+    [Fact]
+    public async Task CompactPreCanceledAndInvalidKeyNeverSend()
+    {
+        using Fixture fixture = new();
+        using CancellationTokenSource caller = new();
+        caller.Cancel();
+        OperationCanceledException failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Compact(Request(), caller.Token));
+        Assert.Equal(caller.Token, failure.CancellationToken);
+        ServiceResult<ModelResponse> result = await fixture.Gateway.CompactAsync(fixture.Call, Request(), new("bad key"));
+        Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
         Assert.Equal(0, fixture.Handler.Calls);
     }
 
@@ -590,7 +801,7 @@ public class ResponsesJsonTests
         internal IModelGateway Gateway => Scope.ServiceProvider.GetRequiredService<IModelGateway>();
 
         /// <summary>Регистрирует public adapter pipeline с безопасным collecting logger.</summary>
-        internal Fixture(string endpoint = "https://gateway.invalid/prefix/", TimeSpan? timeout = null)
+        internal Fixture(string endpoint = "https://gateway.invalid/prefix/", TimeSpan? timeout = null, TimeSpan? compactTimeout = null)
         {
             Http = new(Handler) { Timeout = Timeout.InfiniteTimeSpan };
             ServiceCollection services = new();
@@ -601,6 +812,7 @@ public class ResponsesJsonTests
                 options.Model = "model";
                 options.SharedApiKey = "synthetic-shared-key";
                 options.GenerationTimeout = timeout ?? TimeSpan.FromSeconds(5);
+                options.CompactTimeout = compactTimeout ?? TimeSpan.FromSeconds(5);
             });
             services.AddScoped<IIndividualModelKeySource, KeySource>();
             services.AddCodexLbResponses(_ => Http, new() { ErrorContentMode = HttpErrorContentLogMode.JsonStructure });
@@ -610,6 +822,9 @@ public class ResponsesJsonTests
 
         /// <summary>Задаёт синтетический HTTP JSON.</summary>
         internal void SetJson(string body) => Handler.Bytes = Encoding.UTF8.GetBytes(body);
+        /// <summary>Вызывает публичный compact с синтетическим доступом.</summary>
+        internal Task<ServiceResult<ModelResponse>> Compact(ModelRequest request, CancellationToken ct = default) =>
+            Gateway.CompactAsync(Call, request, new(KEY), ct);
         /// <summary>Выбирает доступ публичным resolver и вызывает публичный gateway.</summary>
         internal async Task<ServiceResult<ModelResponse>> Generate(ModelRequest request, ModelAccess? access = null,
             ApplicationCallContext? call = null, CancellationToken ct = default)
