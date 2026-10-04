@@ -2,6 +2,12 @@
 
 Статус: **Реализован и принят; запрещённые проверки пропущены**. Зависимости: **08**.
 
+## Дополнительная интеграционная проверка 2026-10-04
+
+Настоящие EFCoreLibrary base repositories и AgentBridge adapters проверены на обоих реальных providers: read/create/update/delete через public сценарии, одинаковые локальные turn/step IDs разных родителей, полный защищённый read path, упорядоченная история, expiry ticks/limit после сортировки и cascade deletion только выбранного root. Новый root DI container читает сохранённые данные без fakes или прямого заменяющего EF CRUD. **164 isolated + 39 integration passed**, 0 failed/skipped; builds 0 warnings/errors.
+
+Управляемые root-change-during-read interleavings остаются также изолированными regression cases; реальное чтение не объявляется транзакционным snapshot. [Фактические команды и границы](README.md#дополнительный-интеграционный-запуск-2026-10-04). Первоначальные пропуски ниже сохранены, production/соседние библиотеки не изменены.
+
 ## Цель
 
 Реализовать прикладные контракты данных через базовые операции общей библиотеки.

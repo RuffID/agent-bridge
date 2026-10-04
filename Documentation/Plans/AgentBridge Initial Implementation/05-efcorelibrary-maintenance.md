@@ -2,6 +2,12 @@
 
 Статус: **Реализовано и принято; запрещённые проверки пропущены**. Общий relational контракт и четыре optional модуля SQLite/PostgreSQL/SQL Server/MySQL. Зависимости: **00**. EFCoreLibrary commit: `a1747388ab0eb2be6da3031535fd88e7533b8df1` — `feat(maintenance): add relational database maintenance modules`.
 
+## Дополнительная интеграционная проверка 2026-10-04
+
+Ранее запрещённая граница SQLite/PostgreSQL дополнительно проверена настоящими provider/coordinator/native/process механизмами EFCoreLibrary через AgentBridge registration. 39 integration cases суммарно, из них 15 maintenance/migrations cases: missing/initialize/already-exists/no-pending; backup существующей БД до migration; полный backup; native SQLite restore и pg_restore 18.6 в отдельных БД с совпадением live схемы/данных и hash/length артефакта. Реальные backup configuration/executable/DDL/auth/major failures останавливают операцию; migration failure poisons общий root gate и сохраняет восстановимый backup; corrupted PostgreSQL dump отклоняется.
+
+Повторные library regressions: **89 passed / 0 failed / 0 skipped**, семь проектов без warnings/errors, GeneratePackageOnBuild=false. **Реальные SQL Server/MySQL/Unix/TLS/unknown process-stop условия не подтверждены**; receipts не объявляются универсальной гарантией восстановления. [Команды, ограничения и cleanup](README.md#дополнительный-интеграционный-запуск-2026-10-04). Соседняя EFCoreLibrary не изменена; аналитические и первоначальные отчёты ниже сохранены.
+
 ## Цель
 
 Добавить в общую библиотеку возможности бэкапа и обслуживания БД с учётом провайдера.

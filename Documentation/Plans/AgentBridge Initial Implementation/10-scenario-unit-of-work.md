@@ -2,6 +2,14 @@
 
 Статус: **Реализован и принят; запрещённые проверки пропущены**. Зависимости: **09**.
 
+## Дополнительная интеграционная проверка 2026-10-04
+
+SQLite/PostgreSQL actual Serializable UoW через EFCoreLibrary подтверждены: owner/existence/expiry/incarnation/revision, root PK collision, stale original-value CAS с rollback детей, fixed-field запрет, удаление/пересоздание и два competing writers одного token. SQLite BEGIN IMMEDIATE сериализует writers; PostgreSQL serialization SQLSTATE 40001 может приходить во вложенной EF exception-обёртке. Driver failures не подменяются ожидаемым Conflict, автоматического retry нет.
+
+Тестовый session декоратор вызывает **настоящий SaveChanges**, подтверждает минимум три сохранённые записи, затем выбрасывает ошибку до commit. Public BeginAsync откатывает root/turn/item, fingerprint БД не меняется, tracker очищен. Это реальные SQL/transactions; ошибка внедрена тестом, production и библиотека не заменены. Неизвестный commit/cleanup при реальном сетевом сбое остаётся вне этого запуска, изолированные regressions сохранены.
+
+**121 core / 164 isolated persistence / 39 integration passed**, 0 failed/skipped; [точные команды](README.md#дополнительный-интеграционный-запуск-2026-10-04). Первоначальные fake-only результаты ниже сохранены; внешняя модель, инструменты и оркестрация не запускались.
+
 ## Цель
 
 Обеспечить атомарность связанных изменений без глобального контейнера репозиториев.

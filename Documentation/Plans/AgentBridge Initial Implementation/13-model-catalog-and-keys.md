@@ -2,6 +2,12 @@
 
 Статус: **Реализован и принят; запрещённые проверки пропущены**. Зависимости: **02, 04, 07** приняты. Цепочка приостановлена по указанию пользователя после этапа 13; этапы 14–25 не начаты.
 
+## Дополнительная проверка 2026-10-04
+
+Текущие route/schema/model metadata codex-lb перечитаны статически. Повторный публичный pipeline AgentBridge catalog/settings/keys через фактический HttpClientLibrary и локальный HttpMessageHandler: **61 passed / 0 failed / 0 skipped**; core **121**, HttpClientLibrary **44 net8 + 44 net10**, все 0 failed/skipped. Builds 0 warnings/errors. Проверены model/effort/input budget, individual/null/shared-key guards без fallback, HTTP failures, ограниченный error capture, cancellation/disposal и безопасные snapshots/logs.
+
+**Живые codex-lb/OpenAI/аккаунты/токены не проверены и не использованы**; Responses/SSE/compact transport отсутствуют. [Команды и результаты](README.md#дополнительный-интеграционный-запуск-2026-10-04). Первоначальный отчёт сохранён. Пауза после этапа 13 остаётся; этапы 14–25 не начаты. OpenSpec CLI отсутствует, change не архивирован.
+
 ## Цель
 
 Выбирать нужный ключ доступа и проверять параметры модели по возможностям codex-lb.

@@ -1,6 +1,6 @@
 # Первоначальная реализация AgentBridge
 
-Статус: **Этапы 00–13 реализованы и приняты; запрещённые проверки пропущены; цепочка приостановлена по указанию пользователя после этапа 13; этапы 14–25 не начаты**. Платформа: **.NET 10**. Подключение: **ссылки на DLL**. Имя репозитория: **agent-bridge**.
+Статус: **Этапы 00–13 реализованы и приняты; интеграционный запуск 2026-10-04 частично закрыл исторические пропуски (39 реальных SQLite/PostgreSQL проверок); цепочка приостановлена по указанию пользователя после этапа 13; этапы 14–25 не начаты**. Платформа: **.NET 10**. Подключение: **ссылки на DLL**. Имя репозитория: **agent-bridge**.
 
 План описывает реализацию согласованной библиотеки агента небольшими этапами. Создание плана не разрешает писать код. Спорные контракты библиотек обсуждаются с пользователем до выбора обходного решения или изменения соседней библиотеки.
 
@@ -52,3 +52,136 @@
 - Проверять каждый этап на соответствующей границе продукта, включая ошибки и отмену. Не добавлять проверки, которые только повторяют детали реализации.
 - Соблюдать разрешения на выполнение. Статический анализ и изолированные проверки проводить там, где это разрешено; БД, бэкап провайдера, процессы, приложения и реальные сетевые проверки требуют явного разрешения.
 - Не отмечать этап завершённым только потому, что код написан. Записывать, что проверено и что осталось непроверенным.
+
+## Дополнительный интеграционный запуск 2026-10-04
+
+Дата: **2026-10-04, Asia/Novosibirsk**. Пользователь отдельно разрешил тестовые БД, Docker/PostgreSQL, SQL, migrations/rollback, реальные backup/restore, необходимые тестовые процессы, изменения тестов/плана и локальный коммит. Это проверка уже реализованных этапов 00–13, а не возобновление реализации или начало этапа 23. Исторические отчёты и первоначальные пропуски ниже в файлах этапов сохранены; их строки «этап N не начат» относятся к дате первоначального отчёта. Таблица навигации выше сохраняет сведения первоначальной приёмки; текущие дополнительные доказательства находятся в этом разделе и датированных дополнениях этапов.
+
+### Инвентаризация пропусков и применимость
+
+До запуска прочитаны отчёты 00–13, применимые AGENTS.md, нормативный spec, фактические registration/models/read/write/migrations/maintenance/catalog исходники и контракты соседних библиотек. codex-lb, TelegramCodexRelayBot и обслуживание AquaByte-Ledger использованы только как источники для статической сверки; их приложения не запускались.
+
+| Исторически пропущенная граница | Применимость к 00–13 | Дополнительный фактический результат |
+| --- | --- | --- |
+| DLL/DI/options/Serilog и чистый Domain/Application | 00–03, 06–07 | Повторная сборка текущих цепочек и 121 тест ядра; 0 warnings/errors |
+| HTTP и библиотечная диагностика | 04, 13: только каталог реализован | 61 тест адаптера через настоящий HttpClientLibrary и локальный HttpMessageHandler; библиотека: 44 net8 + 44 net10. Живой сервер не проверялся |
+| Реальный SQLite engine / PostgreSQL provider / query translation / CRUD / restart | 08–10 | Полный payload всех четырёх lifecycle, новая root-DI регистрация, порядок, bytes, fixed expiry, FK/unique/check/NOT NULL, cascade и локальные IDs проверены на обоих провайдерах |
+| Owner/expiry/incarnation/revision guards и CAS | 06–10 | Публичные порты отклоняют чужого владельца, точный expiry, stale token, удалённый/пересозданный ID; настоящий root UPDATE с устаревшим original revision откатывает детей |
+| Relational transactions / rollback / conflicts | 10 | Отказ после настоящего SQL SaveChanges до commit оставляет схему/данные неизменными и очищает tracker. Два отдельных Serializable контекста не сохраняют двух победителей; driver busy/serialization не подменяются ожидаемым Conflict |
+| Generated migrations Up/Down и ledger isolation | 11 | Реальные Up → Down до 0 → Up; host __EFMigrationsHistory сохраняется, AgentBridge ledger содержит только migration выбранной assembly; HasPendingModelChanges=false |
+| Initialize/update/inspect/native backup/pg_dump/restore | 05, 12 | Missing/initialize/already-exists/no-pending, backup до DDL, полный backup, отдельная restore-БД, сопоставление схемы и всех данных, реальные отказы backup/DDL/auth/major/executable, общий poisoned gate |
+| Responses/SSE, composition/tokenizer/tools/AgentRunner/cleanup scheduling/DLL delivery | Реализации 14–25 отсутствуют | Не запускались; основная реализация остаётся на паузе |
+| SQL Server/MySQL, живой codex-lb/OpenAI/Telegram/hosting | Не входят в разрешённую инфраструктуру этого запуска | Не проверялись; SQLite/PostgreSQL и HTTP handler не являются их подтверждением |
+
+### Окружение и зависимости
+
+- Windows `10.0.26200`, `win-x64`; .NET SDK `10.0.401`, MSBuild `18.9.11`, .NET runtime `10.0.12`; net8 runner использует установленный .NET 8. Restore — официальный `https://api.nuget.org/v3/index.json`.
+- Существующие root csproj/slnx сохранены. Проверены конкретные csproj, ancestor Directory.Build/Directory.Packages/NuGet/lock и package imports: custom executable hooks нет; HttpClientLibrary Directory.Build.props задаёт только тестовые output/intermediate paths. Адресные Build, без Rebuild/pack/publish. **Во всех restore/build/test передано `-p:GeneratePackageOnBuild=false`.**
+- Фактические ProjectReference: `../work/EFCoreLibrary` (CRUD `0.0.4`, общий maintenance и SQLite/PostgreSQL модули); `../work/HttpClientLibrary` (FileVersion `0.0.0.5`, net8/net10). EF/Relational/SQLite adapter `10.0.11`, Npgsql provider `10.0.3`. Никаких замен этих библиотек тестовой реализацией доступа к БД или HTTP.
+- Docker Desktop `4.93.0`, Engine `29.8.1`, `desktop-linux`; официальный `postgres:18`, сервер **18.6 (Debian 18.6-1.pgdg13+2)**. Полученный digest: `sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722`.
+- Утилиты найдены через Windows uninstall registry в **`D:\Programs\PostgreSQL\18\bin`**, хотя PATH/Program Files их не содержали. `pg_dump.exe --version`, `pg_restore.exe --version`, `psql.exe --version` вернули **18.6**. Они совместимы с major 18; установка программ и изменение библиотек не понадобились.
+- Контейнер **`abverify-d0dd4eb11c6e4129b46f714a89adefd1`**, label `agentbridge-verification=abverify_d0dd4eb11c6e4129b46f714a89adefd1`. Публикация **`127.0.0.1:63752 → 5432`**. Данные — новый tmpfs `/var/lib/postgresql`, 1 GiB. Docker volumes, bind mounts и собственные сети не создавались; чужие ресурсы не изменялись.
+- Уникальные PostgreSQL БД/пользователь `abverify_<GUID>` и случайный пароль только этой задачи. SQLite — отдельные обычные файлы на каждый case, pooling=false, FK=true. Конфигурация/credentials и дампы размещались только в игнорируемом `artifacts/integration-abverify_d0dd4eb11c6e4129b46f714a89adefd1`, затем удалены.
+
+### Фактические команды
+
+Рабочий каталог: `D:\Media\User\source\repos\agent-bridge`. Инфраструктурные команды (переменные указывали только на созданные задачей значения; секреты не публикуются):
+
+```powershell
+docker version --format '{{json .}}'
+docker info --format '{{.OSType}} {{.ServerVersion}}'
+dotnet --info
+Get-Command docker,dotnet,openspec,pg_dump,pg_restore,psql -ErrorAction SilentlyContinue
+& 'D:\Programs\PostgreSQL\18\bin\pg_dump.exe' --version
+& 'D:\Programs\PostgreSQL\18\bin\pg_restore.exe' --version
+& 'D:\Programs\PostgreSQL\18\bin\psql.exe' --version
+docker pull postgres:18
+docker run --detach --name $container --label "agentbridge-verification=$runId" --env-file $envFile --publish '127.0.0.1::5432' --tmpfs '/var/lib/postgresql:rw,size=1073741824' postgres:18
+docker exec abverify-d0dd4eb11c6e4129b46f714a89adefd1 pg_isready -U postgres -d postgres
+```
+
+Первый pg_isready сразу после создания ещё не видел сервер; повторный вернул `accepting connections`. Стартовый probe не выдаётся за проверку БД-функциональности.
+
+Для каждого `<project>` из таблицы ниже **последовательно** выполнены эти точные restore/build команды; solution не собирался:
+
+```powershell
+dotnet restore <project> -p:GeneratePackageOnBuild=false --source https://api.nuget.org/v3/index.json --verbosity minimal
+dotnet build <project> -c Debug --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -m:1 --verbosity minimal
+```
+
+| `<project>` | Restore / итоговый compile-check |
+| --- | --- |
+| `tests\AgentBridge.Tests\AgentBridge.Tests.csproj` | Успех / 0 warnings, 0 errors |
+| `tests\AgentBridge.CodexLb.Tests\AgentBridge.CodexLb.Tests.csproj` | Успех / 0 warnings, 0 errors |
+| `tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.EfCore.Tests.csproj` | Успех / 0 warnings, 0 errors; обе migrations DLL и реальные EFCoreLibrary references собраны |
+| `D:\Media\User\source\repos\work\EFCoreLibrary\tests\EFCoreLibrary.Maintenance.Tests\EFCoreLibrary.Maintenance.Tests.csproj` | Успех / 0 warnings, 0 errors; семь проектов |
+| `D:\Media\User\source\repos\work\HttpClientLibrary\HttpClientLibrary.Tests\HttpClientLibrary.Tests.csproj` | Успех / 0 warnings, 0 errors; оба TFM |
+
+Точные runner-команды:
+
+```powershell
+dotnet test tests\AgentBridge.Tests\AgentBridge.Tests.csproj -c Debug --no-build --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -m:1 --logger 'trx;LogFileName=core.trx' --results-directory artifacts\test-results\integration-20261004 --verbosity minimal
+dotnet test tests\AgentBridge.CodexLb.Tests\AgentBridge.CodexLb.Tests.csproj -c Debug --no-build --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -m:1 --logger 'trx;LogFileName=codexlb.trx' --results-directory artifacts\test-results\integration-20261004 --verbosity minimal
+dotnet test tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.EfCore.Tests.csproj -c Debug --no-build --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -m:1 --filter 'Dependency!=Database' --logger 'trx;LogFileName=persistence-unit.trx' --results-directory artifacts\test-results\integration-20261004 --verbosity minimal
+dotnet test 'D:\Media\User\source\repos\work\EFCoreLibrary\tests\EFCoreLibrary.Maintenance.Tests\EFCoreLibrary.Maintenance.Tests.csproj' -c Debug --no-build --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -m:1 --logger 'trx;LogFileName=efcorelibrary-unit.trx' --results-directory artifacts\test-results\integration-20261004 --verbosity minimal
+dotnet test 'D:\Media\User\source\repos\work\HttpClientLibrary\HttpClientLibrary.Tests\HttpClientLibrary.Tests.csproj' -c Debug --no-build --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -p:TestTfmsInParallel=false -m:1 --logger 'trx;LogFilePrefix=httpclientlibrary-unit' --results-directory artifacts\test-results\integration-20261004 --verbosity minimal
+```
+
+В отдельном shell для интеграций прочитан созданный задачей `run.json` (после очистки отсутствует) и установлены только эти test env vars:
+
+```powershell
+$run = Get-Content -Raw -Encoding UTF8 'artifacts\integration-abverify_d0dd4eb11c6e4129b46f714a89adefd1\run.json' | ConvertFrom-Json
+$env:AGENTBRIDGE_INTEGRATION = '1'
+$env:AGENTBRIDGE_INTEGRATION_ROOT = $run.Root
+$env:AGENTBRIDGE_POSTGRES_CONNECTION = $run.Connection
+$env:AGENTBRIDGE_PG_DUMP = 'D:\Programs\PostgreSQL\18\bin\pg_dump.exe'
+$env:AGENTBRIDGE_PG_RESTORE = 'D:\Programs\PostgreSQL\18\bin\pg_restore.exe'
+$env:AGENTBRIDGE_PG_MAJOR = '18'
+dotnet test tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.EfCore.Tests.csproj -c Debug --no-build --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -m:1 --filter 'Dependency=Database' --logger 'trx;LogFileName=integration-final.trx' --results-directory artifacts\test-results\integration-20261004 --verbosity minimal
+```
+
+Установка env vars не заменяет разрешение на интеграции. Helpers fail-fast проверяют отдельный loopback endpoint/пользователя/порт/каталог; при включении набора отсутствующая конфигурация не даёт скрытый skip.
+
+### Результаты и обнаруженные ограничения
+
+| Финальный набор | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: |
+| AgentBridge core | 121 | 0 | 0 |
+| AgentBridge CodexLb (local handler) | 61 | 0 | 0 |
+| AgentBridge persistence isolated | 164 | 0 | 0 |
+| Новые integration: SQLite 18 + PostgreSQL 21 | 39 | 0 | 0 |
+| EFCoreLibrary maintenance isolated | 89 | 0 | 0 |
+| HttpClientLibrary net8 | 44 | 0 | 0 |
+| HttpClientLibrary net10 | 44 | 0 | 0 |
+| **Итого финальных наборов** | **562** | **0** | **0** |
+
+Не суммируются повторные запуски одних и тех же cases. В первом integration run `integration-first.trx`: **32 passed / 4 failed / 0 skipped**, 36 cases. Ошибки находились в тестовой организации/ожиданиях: общий двух-reader барьер несовместим с SQLite BEGIN IMMEDIATE; PostgreSQL transient/serialization error имеет дополнительную EF exception-обёртку; maintenance после CRUD в том же scope нарушает контракт выделенного maintenance scope и получает ConnectionFailed после сокрытия пароля Npgsql connection; отсутствующий executable даёт Configuration до запуска процесса. Production-код и библиотеки не исправлялись. Исправлены только тесты: SQLite конкурирует на двух worker tasks без read-barrier, PostgreSQL barrier сохраняется; проверяется реальный вложенный SQLSTATE; обслуживание восстановленной БД выполняется в отдельном scope; expected error согласован с фактическим API.
+
+Адресный повтор после исправления (те же test options, TRX `integration-repaired.trx`, filter `FullyQualifiedName~SimultaneousWritersCannotBothCommit|FullyQualifiedName~FullBackupRestoresSchemaAndDataIntoSeparateDatabase|FullyQualifiedName~PostgreSqlMissingExecutableStopsUpdate`) — **5 passed / 0 failed / 0 skipped**. После добавления реальных root-PK/fixed-fields и corrupted restore проверок выполнен полный финальный набор — **39/39**. Ошибок production в пределах проверенных поддержанных сценариев не обнаружено; это не доказательство отсутствия дефектов за их границами.
+
+Schema/data fingerprints сравнивают live каталоги колонок/индексов/check/FK и все строки всех пользовательских/служебных таблиц отдельно восстановленной БД, а не только факт открытия или receipt. Полный backup дополнительно читается через IDialogReader; SHA-256 и длина опубликованного артефакта проверяются физически. SQLite backup/restore использует настоящий native API EFCoreLibrary; PostgreSQL dump — её provider/PGPASSFILE/process pipeline, restore — штатный pg_restore через её process runner. Для Down применяется штатный IMigrator из DatabaseFacade библиотечного IUnitOfWorkContext: coordinator downgrade API не предоставляет. Технический SQL наблюдения/подготовки отказов использует IDatabaseCommands; он не заменяет прикладные CRUD/UoW.
+
+### Непроведённые проверки
+
+- **SQL Server/MySQL:** реальные серверы/backup/restore не запускались; в разрешении инфраструктуры указан только PostgreSQL и временные SQLite-файлы. 89 fake-boundary tests EFCoreLibrary не являются runtime-проверкой этих провайдеров.
+- **Живые HTTP/codex-lb/OpenAI/Telegram и hosting:** явно не разрешены. 61 адаптерный + 88 библиотечных HTTP cases используют local handler/streams, без сервера, аккаунтов и токенов.
+- **Этапы 14–25:** реализации отсутствуют или не начаты; общий agent turn, Responses/SSE/compact transport, tokenizer, batch cleanup, delivery и приложения не проверялись и не начали реализовываться.
+- **OpenSpec CLI:** `Get-Command openspec -ErrorAction SilentlyContinue` не нашёл CLI. Валидация не выполнена и не отмечается успешной; установка не предпринималась, существующие changes не архивировались.
+- **Дополнительные deployment/fault условия:** PostgreSQL VerifyFull/CA, Unix ACL, multi-instance SingleInitializer, реальная потеря соединения во время commit, disk-full/OS permission failures и неподтверждённое убийство dump-процесса не проверены этим локальным запуском. Их controlled failure cases остаются изолированными; Windows loopback/tmpfs не воспроизводит эти условия. Backup retention/purge и расписание принадлежат приложению и не реализованы библиотекой. Восстановимость подтверждена только для созданных здесь тестовых БД/данных.
+
+### Очистка и локальная фиксация
+
+Все fixtures завершили cleanup: перед удалением контейнера `SELECT count(*) FROM pg_database WHERE datname LIKE 'abverify_%'` вернул **0**; подкаталогов fixtures/SQLite-файлов/дампов не осталось. После проверки label/digest выполнены:
+
+```powershell
+docker rm --force abverify-d0dd4eb11c6e4129b46f714a89adefd1
+docker image rm postgres:18
+Remove-Item -LiteralPath 'D:\Media\User\source\repos\agent-bridge\artifacts\integration-abverify_d0dd4eb11c6e4129b46f714a89adefd1\container.env','D:\Media\User\source\repos\agent-bridge\artifacts\integration-abverify_d0dd4eb11c6e4129b46f714a89adefd1\run.json'
+Remove-Item -LiteralPath 'D:\Media\User\source\repos\agent-bridge\artifacts\integration-abverify_d0dd4eb11c6e4129b46f714a89adefd1'
+```
+
+Контейнер и скачанный этой задачей образ удалены, временный каталог отсутствует (`Test-Path=False`); фильтры Docker по task label и `postgres:18` пусты. Рекурсивная shell-очистка была отклонена автоматической проверкой; вместо неё успешно удалены два явно перечисленных собственных файла и уже пустой каталог. Чужие контейнеры/сети/volumes не изменялись. TRX и compile outputs оставлены в игнорируемом artifacts, в Git не добавляются.
+
+Изменения этой задачи ограничены тестами, ближайшими тестовыми инструкциями и существующими файлами этого плана 00–13/README. Сразу после тестов соседние библиотеки имели чистый git status. При заключительной проверке в EFCoreLibrary появились сторонние незакоммиченные изменения: 42 maintenance-файла перемещены с побайтово неизменным содержимым относительно HEAD `a1747388ab0eb2be6da3031535fd88e7533b8df1`, `Abstractions/Entity/ICopyable.cs` удалён; эти изменения не выполнялись этой задачей и в её коммит не включаются. HttpClientLibrary остаётся чистой. Финальный адресный persistence compile-check после последних правок тестовых комментариев успешен: 0 warnings/errors, команда та же, что в таблице выше. Результаты TRX относятся к исходникам на момент выполненных тестов; новый общий аудит сторонних изменений не проводился.
+
+Production AgentBridge, generated migrations, root csproj/slnx, branch `master`, Git identity и статус паузы сохранены. Обычный/staged diff проверяются перед локальным коммитом; его фактический hash возвращается в итоговом сообщении, собственный будущий hash не записывается заранее в план. Remotes, отправка кода/артефактов, push/PR и архивирование changes не выполняются.

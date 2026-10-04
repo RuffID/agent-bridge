@@ -2,6 +2,10 @@
 
 Статус: **Реализован и принят; запрещённые проверки пропущены**. Зависимости: **06**. Этап 08 не начат.
 
+## Дополнительная проверка 2026-10-04
+
+Повторены **121 core / 61 CodexLb / 164 isolated persistence** tests, 0 failed/skipped. Реальные public storage ports этапа 10 дополнительно проверены на SQLite/PostgreSQL: полный output/envelope/continuation/errors всех lifecycle, новое DI-root чтение, guards и отсутствие восстановления старой жизни ID. Атомарность backing UoW проверена actual CAS и отказом после SQL save до commit. Model catalog проходит actual HttpClientLibrary с local handler. Независимость Application от инфраструктуры сохранена; будущие gateway/tokenizer/tool реализации не запускались. [39 integration cases и команды](README.md#дополнительный-интеграционный-запуск-2026-10-04); первоначальная история ниже не исправлялась.
+
 ## Цель
 
 Определить узкие контракты сценариев агента без утечки инфраструктурных типов.

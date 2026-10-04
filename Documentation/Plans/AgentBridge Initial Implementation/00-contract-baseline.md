@@ -2,6 +2,12 @@
 
 Статус: **Завершён: статическая проверка принята** (2026-10-03). Зависимости: **Нет**.
 
+## Дополнительная сверка 2026-10-04
+
+Исторический срез 2026-10-03 ниже сохранён. Текущие исходники и применимые AGENTS.md EFCoreLibrary, HttpClientLibrary, codex-lb, TelegramCodexRelayBot и DataBase-сервисов AquaByte-Ledger перечитаны. Фактическая цепочка ProjectReference собрана: HttpClientLibrary FileVersion 0.0.0.5, EFCoreLibrary CRUD 0.0.4 и её реальные maintenance-модули. Каталог сверён с текущими `/v1/models`, ModelMetadata/model registry; реализация использует input_context_window, per-call Bearer и schema defaults.
+
+Дополнительно выполнены 61 HTTP adapter case (local handler), 39 SQLite/PostgreSQL integration cases, 89 maintenance unit cases и 44 HTTP-library cases на каждом net8/net10. Доказательства, окружение, точные команды и ограничения: [запуск 2026-10-04](README.md#дополнительный-интеграционный-запуск-2026-10-04). Соседние приложения/живые HTTP не запускались; CLR-потребители Telegram/AquaByte не пересобирались. Этапы 14–25 не начаты.
+
 ## Цель
 
 Установить точные локальные контракты будущей реализации до переноса кода из других проектов.

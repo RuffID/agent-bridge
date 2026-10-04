@@ -2,6 +2,12 @@
 
 Статус: **Реализован и принят; запрещённые проверки пропущены**. Подготовка ранее проверена и принята; пользователь разрешил обе команды генерации. Generated артефакты обоих providers созданы и проверены статически и через metadata, без применения к БД. Зависимости: **08, 10**.
 
+## Дополнительная реальная проверка 2026-10-04
+
+Для обеих существующих generated migrations выполнены реальные **Up → Down до 0 → Up** на отдельных временных SQLite/PostgreSQL БД, через настоящие EFCoreLibrary maintenance и штатный IMigrator из её IUnitOfWorkContext.Database для downgrade. Таблицы создаются/удаляются по зависимостям; runtime HasPendingModelChanges=false. Host `__EFMigrationsHistory` с отдельной записью остаётся неизменным; `__AgentBridgeMigrationsHistory` очищается при Down и после Up содержит только `20261003155233_InitialAgentBridgeSchema` (SQLite) либо `20261003155235_InitialAgentBridgeSchema` (PostgreSQL).
+
+Перед повторным Up существующей БД получен реальный backup; отдельная restore-БД проверена. Constraints/cascade/CRUD исполнены реальным provider. **164 isolated + 39 integration passed**, 0 failed/skipped; итоговые builds без warnings/errors. Generated files, factories и root solution не изменены, генерация не повторялась. [Команды и ограничения](README.md#дополнительный-интеграционный-запуск-2026-10-04). OpenSpec CLI отсутствует; change не архивирован. Первоначальные пропуски применения/rollback ниже сохранены как история.
+
 ## Цель
 
 Создать проверенные артефакты схемы для выбранных провайдеров SQLite/PostgreSQL.

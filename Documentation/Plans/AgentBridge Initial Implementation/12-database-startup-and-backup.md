@@ -2,6 +2,14 @@
 
 Статус: **Реализован и принят; запрещённые проверки пропущены**. Зависимости: **05, 11**. Локальная фиксация разрешена после приёмки; факт коммита, subject и полный hash подтверждаются отдельным отчётом. Этап 13 не начат.
 
+## Дополнительная интеграционная проверка 2026-10-04
+
+Настоящий AddAgentBridgeDatabaseMaintenance/EFCoreLibrary coordinator выполнен без приложения: inspect Missing, explicit initialize, already-exists отказ, no-pending Unchanged без backup, update с pending/backup до миграции, verification. Windows pg_dump/pg_restore **18.6** и Docker PostgreSQL **18.6** реально отработали; SQLite native API создал и восстановил реальную копию. Restore всегда в отдельной БД: совпали live схема/check/FK/index и все данные, полный payload дополнительно прочитан публичным портом; length/hash артефакта проверены.
+
+Проверены реальные backup-directory/executable/DDL/auth/major failures, сохранение прежней БД при остановке до DDL, poisoned gate после migration failure в новом scope того же root, сохранность backup и отказ corrupted PostgreSQL restore. Обслуживание требует **выделенного scope**: Npgsql после CRUD может скрыть пароль ConnectionString; ошибочное reuse теста исправлено отдельным maintenance scope, библиотеку не обходили и не меняли. SQL Server/MySQL/Unix/TLS/unknown process-stop/deployment условия не подтверждены.
+
+**15 maintenance/migration integration cases** входят в общий **39 passed**, дополнительно **164 persistence isolated и 89 library isolated passed**, failed/skipped 0. [Точные команды, первоначальные ошибки тестов и cleanup](README.md#дополнительный-интеграционный-запуск-2026-10-04). OpenSpec CLI отсутствует; changes не архивированы. История прежних пропусков ниже сохранена; host/startup приложения не запускался.
+
 ## Цель
 
 Предоставить вызываемое приложением обслуживание по схеме AquaByte-Ledger через EFCoreLibrary.

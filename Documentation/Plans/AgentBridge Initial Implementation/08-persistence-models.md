@@ -2,6 +2,12 @@
 
 Статус: **Реализован и принят; запрещённые проверки пропущены**. Зависимости: **05, 06, 07**. Дата проверки: **2026-10-03**. Коммит этапа разрешён после приёмки; точный hash локального коммита — в истории Git.
 
+## Дополнительная интеграционная проверка 2026-10-04
+
+Реальные migrations и EFCoreLibrary CRUD выполнены на временных SQLite-файлах и PostgreSQL 18.6 Docker. Полный payload всех четырёх lifecycle, новая root-DI загрузка, composite IDs, FK/unique/check/NOT NULL, каскады, BINARY/C владение и UTC tick boundaries подтверждены фактическими DB запросами; soft ContentBytes не подменяется overhead БД. В constraint case каждого provider выполнены **20 отказных записей**, с проверкой неизменности всех сохранённых строк после rollback. Fixed поля отдельно отклоняют обновление после загрузки; runtime HasPendingModelChanges=false.
+
+Итог: **164 isolated + 39 integration passed**, 0 failed/skipped; compile-check без warnings/errors. [Окружение, команды, исключённые сценарии и очистка](README.md#дополнительный-интеграционный-запуск-2026-10-04). SQL Server/MySQL не подтверждены; generated artifacts и production mapping не изменены. Первоначальный отчёт без БД ниже сохранён как история; OpenSpec CLI отсутствует, changes не архивированы.
+
 ## Цель
 
 Настроить маппинг данных диалога через EF-контекст с выбираемым провайдером на основе EFCoreLibrary.
