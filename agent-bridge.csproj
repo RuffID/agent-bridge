@@ -11,6 +11,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**;**\bin\**;**\obj\**;**\artifacts\**;adapters\**;tests\**;test\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="Documentation\**" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.3" />
   </ItemGroup>

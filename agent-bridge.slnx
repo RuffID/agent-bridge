@@ -1,4 +1,65 @@
 <Solution>
+  <Folder Name="/Documentation/">
+    <File Path="Documentation/AGENTS.md" />
+    <File Path="Documentation/README.md" />
+  </Folder>
+  <Folder Name="/Documentation/Business logic/">
+    <File Path="Documentation/Business logic/01-purpose-and-scope.md" />
+    <File Path="Documentation/Business logic/02-dialogs-and-tools.md" />
+    <File Path="Documentation/Business logic/03-context-and-compaction.md" />
+    <File Path="Documentation/Business logic/04-storage-and-retention.md" />
+    <File Path="Documentation/Business logic/05-application-configuration.md" />
+    <File Path="Documentation/Business logic/06-models-and-status.md" />
+    <File Path="Documentation/Business logic/README.md" />
+  </Folder>
+  <Folder Name="/Documentation/Plans/">
+    <File Path="Documentation/Plans/AGENTS.md" />
+    <File Path="Documentation/Plans/README.md" />
+  </Folder>
+  <Folder Name="/Documentation/Plans/AgentBridge Initial Implementation/">
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/00-contract-baseline.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/01-solution-foundation.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/02-configuration-and-defaults.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/03-serilog-integration.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/04-httpclientlibrary-logging.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/05-efcorelibrary-maintenance.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/06-dialog-domain-state.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/07-application-ports.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/08-persistence-models.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/09-base-repository-adapters.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/10-scenario-unit-of-work.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/11-initial-provider-migrations.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/12-database-startup-and-backup.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/13-model-catalog-and-keys.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/14-responses-json-adapter.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/15-responses-sse-adapter.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/16-context-composition.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/17-model-tokenizer.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/18-context-compaction.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/19-application-tools.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/20-agent-turn-orchestration.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/21-settings-and-dialog-status.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/22-expired-dialog-cleanup.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/23-cross-component-verification.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/24-dll-delivery.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md" />
+    <File Path="Documentation/Plans/AgentBridge Initial Implementation/README.md" />
+  </Folder>
+  <Folder Name="/Documentation/Technical documentation/">
+    <File Path="Documentation/Technical documentation/01-architecture.md" />
+    <File Path="Documentation/Technical documentation/02-efcorelibrary.md" />
+    <File Path="Documentation/Technical documentation/03-http-and-codex-lb.md" />
+    <File Path="Documentation/Technical documentation/04-telegram-relay-reuse.md" />
+    <File Path="Documentation/Technical documentation/05-configuration-and-lifecycle.md" />
+    <File Path="Documentation/Technical documentation/06-database-maintenance.md" />
+    <File Path="Documentation/Technical documentation/07-tokenizer-and-settings.md" />
+    <File Path="Documentation/Technical documentation/08-dialog-domain-state.md" />
+    <File Path="Documentation/Technical documentation/09-application-ports.md" />
+    <File Path="Documentation/Technical documentation/10-scenario-unit-of-work.md" />
+    <File Path="Documentation/Technical documentation/11-provider-migrations.md" />
+    <File Path="Documentation/Technical documentation/13-model-catalog-and-keys.md" />
+    <File Path="Documentation/Technical documentation/README.md" />
+  </Folder>
   <Project Path="agent-bridge.csproj" />
   <Folder Name="/Adapters/">
     <Project Path="adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
