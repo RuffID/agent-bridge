@@ -1,8 +1,11 @@
 using System.Data;
 using AgentBridge.Persistence.EfCore.Configuration;
-using EFCoreLibrary.Maintenance;
-using EFCoreLibrary.Maintenance.PostgreSql;
-using EFCoreLibrary.Maintenance.Sqlite;
+using EFCoreLibrary.Maintenance.Abstractions;
+using EFCoreLibrary.Maintenance.Coordination;
+using EFCoreLibrary.Maintenance.Errors;
+using EFCoreLibrary.Maintenance.Models;
+using EFCoreLibrary.Maintenance.PostgreSql.Providers;
+using EFCoreLibrary.Maintenance.Sqlite.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

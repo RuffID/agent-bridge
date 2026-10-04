@@ -1,10 +1,13 @@
 using System.Data.Common;
 using System.Text.Json;
 using AgentBridge.Persistence.EfCore.Configuration;
-using EFCoreLibrary.Abstractions.Database;
-using EFCoreLibrary.Maintenance;
-using EFCoreLibrary.Maintenance.PostgreSql;
-using EFCoreLibrary.Maintenance.Sqlite;
+using EFCoreLibrary.Maintenance.Abstractions;
+using EFCoreLibrary.Maintenance.Backup;
+using EFCoreLibrary.Maintenance.Coordination;
+using EFCoreLibrary.Maintenance.Database;
+using EFCoreLibrary.Maintenance.Models;
+using EFCoreLibrary.Maintenance.PostgreSql.Providers;
+using EFCoreLibrary.Maintenance.Sqlite.Backup;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;

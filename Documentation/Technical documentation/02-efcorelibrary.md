@@ -12,7 +12,7 @@
 
 ## Проверенные типы библиотеки
 
-Повторно проверено статически на этапе 00, 2026-10-03. `EFCoreLibrary.csproj`: версия `0.0.4`, `net10.0`, EF Core и DI Abstractions `10.0.3`. Это версии исходного проекта, не подтверждение состава ранее собранных DLL.
+Повторно сверено с текущими исходниками 2026-10-04. `EFCoreLibrary.csproj`: версия `0.0.5`, `net10.0`, EF Core и DI Abstractions `10.0.3`. Удалён `ICopyable<TEntity>`; AgentBridge его не использует. Основная регистрация, `IContext*Repository` и `IUnitOfWorkContext` сохранены. Это версии исходного проекта, не подтверждение состава ранее собранных DLL.
 
 | Операция | Infrastructure-контракт | Базовый класс |
 | --- | --- | --- |
@@ -56,7 +56,7 @@ Application получает узкие предметные порты AgentBri
 
 SQLite и PostgreSQL используют собственные EF-провайдеры. Общие сценарии и базовые репозитории остаются одинаковыми; схема и миграции должны учитывать выбранный provider.
 
-Очистка истёкших диалогов выполняется теми же базовыми read/delete-операциями. На этапе 05 в EFCoreLibrary отдельно реализованы `IDatabaseMaintenance<TKey>`, общий Relational coordinator и optional SQLite/PostgreSQL/SQL Server/MySQL модули. Основной CRUD-проект остаётся `0.0.4` с EF `10.0.3`; maintenance использует Relational `10.0.11`. Этап 08 согласует graph EF-адаптера на Microsoft EF `10.0.11` и Npgsql `10.0.3`; этап 12 подключает только maintenance SQLite/PostgreSQL и явный API без автоматического startup. API, SingleInitializer, backup options/scope и ограничения проверки: [обслуживание БД](06-database-maintenance.md#подключение-agentbridge-этапа-12).
+Очистка истёкших диалогов выполняется теми же базовыми read/delete-операциями. На этапе 05 в EFCoreLibrary отдельно реализованы `IDatabaseMaintenance<TKey>`, общий Relational coordinator и optional SQLite/PostgreSQL/SQL Server/MySQL модули. Текущий CRUD-проект имеет версию `0.0.5` с EF `10.0.3`; maintenance использует Relational `10.0.11`. Этап 08 согласует graph EF-адаптера на Microsoft EF `10.0.11` и Npgsql `10.0.3`; этап 12 подключает только maintenance SQLite/PostgreSQL и явный API без автоматического startup. API, SingleInitializer, backup options/scope и ограничения проверки: [обслуживание БД](06-database-maintenance.md#подключение-agentbridge-этапа-12).
 
 ## Реализация этапа 08
 

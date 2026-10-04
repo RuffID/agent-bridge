@@ -1,5 +1,8 @@
 using System.Data.Common;
-using EFCoreLibrary.Maintenance;
+using EFCoreLibrary.Maintenance.Abstractions;
+using EFCoreLibrary.Maintenance.Coordination;
+using EFCoreLibrary.Maintenance.Errors;
+using EFCoreLibrary.Maintenance.Models;
 
 namespace AgentBridge.Persistence.EfCore.Tests;
 

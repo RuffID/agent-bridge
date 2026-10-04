@@ -28,11 +28,32 @@ AgentBridge использует тот же функциональный пор
 
 Текущий `IAppDbContext<TContextKey>` уже предоставляет `DatabaseFacade`. Это позволяет использовать EF migrations через библиотечный adapter. Базовые delete-репозитории и `SaveChangesAsync` уже достаточны для удаления строк диалогов.
 
-Реализованный API: `IDatabaseMaintenance<TKey>.Capabilities`, `InspectAsync(timeout, ct)`, `UpdateExistingAsync(timeout, ct)`, `InitializeNewAsync(timeout, ct)`. Общий проект `EFCoreLibrary.Maintenance` зависит от Relational/Logging `10.0.11`, а конкретный EF provider выбирает приложение. `IDatabaseMaintenanceProvider<TKey>` позволяет расширение; CRUD/UoW `0.0.4` не изменены. Models содержат inspection, outcome/applied migrations и backup receipt с operation/target/provider/format/scope, UTC-интервалом и local/server artifact.
+Реализованный API: `IDatabaseMaintenance<TKey>.Capabilities`, `InspectAsync(timeout, ct)`, `UpdateExistingAsync(timeout, ct)`, `InitializeNewAsync(timeout, ct)`. Общий проект `EFCoreLibrary.Maintenance` зависит от Relational/Logging `10.0.11`, а конкретный EF provider выбирает приложение. `IDatabaseMaintenanceProvider<TKey>` позволяет расширение; в версии `0.0.5` сигнатуры CRUD/UoW и алгоритмы обслуживания сохранены. Models содержат inspection, outcome/applied migrations и backup receipt с operation/target/provider/format/scope, UTC-интервалом и local/server artifact.
 
 Исторически на этапе 00 в Abstractions/EfCore/Extensions отсутствовал check/backup/migrate-сервис. Теперь он находится отдельно в `maintenance/`; `DatabaseFacade` используется общим EF adapter для migrations зарегистрированного контекста. [Проект AquaByte-Ledger Infrastructure](../../../work/AquaByte-Ledger/AquaByteLedger.Infrastructure/AquaByteLedger.Infrastructure.csproj) использует `net10.0`, EF Core/Relational/SqlServer `10.0.11`, SqlClient `7.0.2` и EFCoreLibrary DLL из libs; это не подтверждает бинарную совместимость ранее собранных DLL. Их замена и проверка поставки остаётся последующим этапам.
 
-Регистрация выбранного модуля: `AddEfCoreSqliteMaintenance<TKey>(SqliteMaintenanceOptions, SingleInitializer)`, `AddEfCorePostgreSqlMaintenance<TKey>(DumpOptions, SingleInitializer)`, аналогично `.SqlServer`/`.MySql`. Namespace enum — `EFCoreLibrary.Maintenance.MaintenanceExecutionMode`. Options неизменяемые; provider и coordinator scoped, gate/process recovery singleton, без захвата scoped EF context. DI ничего не запускает. Реальные примеры и зависимости: [README EFCoreLibrary](../../../work/EFCoreLibrary/README.md#опциональное-обслуживание-реляционных-бд).
+Регистрация выбранного модуля: `AddEfCoreSqliteMaintenance<TKey>(SqliteMaintenanceOptions, SingleInitializer)`, `AddEfCorePostgreSqlMaintenance<TKey>(DumpOptions, SingleInitializer)`, аналогично `.SqlServer`/`.MySql`. Namespace enum — `EFCoreLibrary.Maintenance.Models.MaintenanceExecutionMode`. Options неизменяемые; provider и coordinator scoped, gate/process recovery singleton, без захвата scoped EF context. DI ничего не запускает. Реальные примеры и зависимости: [README EFCoreLibrary](../../../work/EFCoreLibrary/README.md#опциональное-обслуживание-реляционных-бд).
+
+В версии `0.0.5` namespace соответствуют папкам исходников:
+
+| Типы и операции | Namespace | Актуальные исходники |
+| --- | --- | --- |
+| Maintenance/provider/migration/command/process/recovery интерфейсы | `EFCoreLibrary.Maintenance.Abstractions` | [IDatabaseMaintenance.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Abstractions/IDatabaseMaintenance.cs) |
+| Результаты, capabilities, receipts, artifacts, process-модели и enum | `EFCoreLibrary.Maintenance.Models` | [MaintenanceExecutionMode.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Models/MaintenanceExecutionMode.cs) |
+| Безопасные ошибки | `EFCoreLibrary.Maintenance.Errors` | [MaintenanceException.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Errors/MaintenanceException.cs) |
+| DumpOptions | `EFCoreLibrary.Maintenance.Options` | [DumpOptions.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Options/DumpOptions.cs) |
+| Coordinator, budget и gate | `EFCoreLibrary.Maintenance.Coordination` | [DatabaseMaintenance.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Coordination/DatabaseMaintenance.cs) |
+| Общая регистрация | `EFCoreLibrary.Maintenance.Extensions` | [MaintenanceRegistration.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Extensions/MaintenanceRegistration.cs) |
+| SQLite регистрация | `EFCoreLibrary.Maintenance.Sqlite.Extensions` | [SqliteMaintenanceRegistration.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Extensions/SqliteMaintenanceRegistration.cs) |
+| SQLite options | `EFCoreLibrary.Maintenance.Sqlite.Options` | [SqliteMaintenanceOptions.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Options/SqliteMaintenanceOptions.cs) |
+| SQLite provider | `EFCoreLibrary.Maintenance.Sqlite.Providers` | [SqliteMaintenanceProvider.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Providers/SqliteMaintenanceProvider.cs) |
+| SQLite native backup контракты | `EFCoreLibrary.Maintenance.Sqlite.Abstractions` | [ISqliteBackupApi.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Abstractions/ISqliteBackupApi.cs) |
+| SQLite native backup API и stepper | `EFCoreLibrary.Maintenance.Sqlite.Backup` | [SqliteBackupApi.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Backup/SqliteBackupApi.cs) |
+| PostgreSQL регистрация | `EFCoreLibrary.Maintenance.PostgreSql.Extensions` | [PostgreSqlMaintenanceRegistration.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.PostgreSql/Extensions/PostgreSqlMaintenanceRegistration.cs) |
+| PostgreSQL provider | `EFCoreLibrary.Maintenance.PostgreSql.Providers` | [PostgreSqlMaintenanceProvider.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.PostgreSql/Providers/PostgreSqlMaintenanceProvider.cs) |
+| Workspace | `EFCoreLibrary.Maintenance.Backup` | [BackupWorkspace.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Backup/BackupWorkspace.cs) |
+| Commands | `EFCoreLibrary.Maintenance.Database` | [DatabaseCommands.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Database/DatabaseCommands.cs) |
+| Process runner | `EFCoreLibrary.Maintenance.Processes` | [BackupProcessRunner.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Processes/BackupProcessRunner.cs) |
 
 Сценарий очистки использует базовое чтение по сроку истечения и `Delete`/`DeleteRange` через сценарный UoW. Custom query не становится предпочтительным только потому, что операция называется обслуживанием.
 
@@ -100,7 +121,8 @@ Backup является отдельной копией данных. Удале
 ```csharp
 using AgentBridge.Persistence.EfCore;
 using AgentBridge.Persistence.EfCore.Configuration;
-using EFCoreLibrary.Maintenance;
+using EFCoreLibrary.Maintenance.Abstractions;
+using EFCoreLibrary.Maintenance.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 

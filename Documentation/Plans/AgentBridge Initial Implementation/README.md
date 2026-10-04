@@ -4,6 +4,25 @@
 
 План описывает реализацию согласованной библиотеки агента небольшими этапами. Создание плана не разрешает писать код. Спорные контракты библиотек обсуждаются с пользователем до выбора обходного решения или изменения соседней библиотеки.
 
+Текущая EFCoreLibrary — `0.0.5`: удалён `ICopyable<TEntity>`, maintenance namespace соответствуют папкам. Импорты production, test doubles и Integration приведены к текущим исходникам; [контракты](<../../Technical documentation/02-efcorelibrary.md>) и [примеры maintenance](<../../Technical documentation/06-database-maintenance.md>) обновлены. Версия `0.0.4` в отчёте предыдущего интеграционного запуска ниже историческая; результаты того запуска не подтверждают версию `0.0.5`. Следующие этапы не начинаются.
+
+## Проверка совместимости с EFCoreLibrary 0.0.5
+
+Проверка 2026-10-04: конкретные проекты `AgentBridge.Persistence.EfCore`, `AgentBridge.Persistence.Migrations.Sqlite`, `AgentBridge.Persistence.Migrations.PostgreSql` и `AgentBridge.Persistence.EfCore.Tests` собраны в Debug без предупреждений и ошибок. Test build включает исходники Integration. Соседние исходники и generated migrations не изменены; ProjectReference, CRUD-регистрация, Domain/Application, транзакционные границы и concurrency сохранены.
+
+Из корня agent-bridge выполнены:
+
+```powershell
+dotnet restore tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.EfCore.Tests.csproj -p:GeneratePackageOnBuild=false -p:NuGetAudit=false --source https://api.nuget.org/v3/index.json --verbosity minimal
+# Для каждого из четырёх конкретных .csproj выше, без сборки solution:
+dotnet build <project.csproj> -c Debug --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ -m:1 --verbosity minimal
+dotnet test tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.EfCore.Tests.csproj -c Debug --no-build --no-restore -p:GeneratePackageOnBuild=false -p:BaseOutputPath=artifacts\compile-check\ --filter 'Dependency!=Database' --logger 'trx;LogFileName=efcorelibrary-005-isolated.trx' --results-directory artifacts\test-results\efcorelibrary-005 --verbosity minimal
+```
+
+По фактическим class traits обе Integration test classes имеют `Dependency=Database`; filtered discovery не включает их. Изолированный набор: **164 passed / 0 failed / 0 skipped**. `dotnet format style --no-restore --verify-no-changes --diagnostics IDE0005 --severity info` проверил все C#-файлы EF-адаптера и persistence-тестов с обращениями к EFCoreLibrary; неиспользуемых using нет. Старые maintenance imports отсутствуют, изменённые файлы сохраняют UTF-8 без BOM и LF.
+
+Интеграционные тесты, приложения, БД/SQL, Docker, native backup, dump-процессы, pack/publish и Git-операции не выполнялись. Исторический интеграционный отчёт ниже относится к предыдущему запуску и не заменяет эту проверку версии 0.0.5.
+
 ## Источники
 
 - [Бизнес-логика](<../../Business logic/README.md>)

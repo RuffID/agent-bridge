@@ -1,5 +1,8 @@
 using AgentBridge.Persistence.EfCore.Configuration;
-using EFCoreLibrary.Maintenance;
+using EFCoreLibrary.Maintenance.Abstractions;
+using EFCoreLibrary.Maintenance.Coordination;
+using EFCoreLibrary.Maintenance.Errors;
+using EFCoreLibrary.Maintenance.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
