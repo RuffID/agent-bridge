@@ -1,10 +1,20 @@
 # Контекст проекта AgentBridge
 
+## Инструменты этапа19
+
+Пауза после18 снята отдельным поручением нового координатора только для последовательного блока19–23. Checkpoint18 — 73045a151b6b48accd0fece98f75858c5336a16c. Этап19 реализует explicit registry/executor и принят координатором; локальный коммит manifest36 разрешён; этап20 не начат, 24–25 не разрешены. [Change](../../changes/application-tools/proposal.md), [границы](../../changes/application-tools/context.md), [API](<../../../Documentation/Technical documentation/19-application-tools.md>).
+
+Приложение предоставляет full-schema validator и авторизацию, scoped handler и выбранные tool names. Registry не выдаёт права. MaxSteps считает модельные шаги с pending calls; MaxCallsPerStep ограничивает fan-out, MaxConcurrency — число scopes. Общий monotonic timeout включает ожидание между шагами, expiry фиксирован. Cooperative handler cancellation не обещает принудительной остановки: все начатые workers/scopes ожидаются, даже если приложение игнорирует cancellation.
+
+Identity = owner/dialog/incarnation/turn/agent + StepId + исходный output index. Repeated call_id допустим, включая call(x), call(x), output(x), output(x); закрытые пары не исполняются, новые pending calls различаются позициями. Handler Fail означает подтверждённый отказ; Timeout/exception после начала — Unknown без output. Ошибка и Dispose failure сохраняются вместе; результаты соседей и подтверждённый output при late cancellation не теряются. Report чувствителен и не предназначен для логов.
+
+Пользователь явно согласовал durable recovery в20. Optional IToolExecutionCheckpoint даёт awaited pre-handler границу без реализации хранения. Этап20 обязан записать начало до действия, сериализовать короткие version-aware записи одного диалога, использовать отдельные scopes/UoW и блокировать uncertain recovery. Null checkpoint/session-memory не защищают restart. Например, full GetOrderStatus output с исходным call_id сохраняется приложением через IDialogTurnWriter; actual ContextBuilder включит его в следующий вопрос того же владельца. Isolated scoped-state тесты не подтверждают real DbContext или атомарность бизнес-БД; на19 persistence/transport не менялись. CLI отсутствует; validation и archive не выполнены.
+
 ## Сжатие этапа18
 
-Координатор принял этап18 2026-10-04: core172/0/0 + transport165/0/0, manifest34 и совпадение main/delta проверены. Локальный коммит разрешён только для утверждённого manifest. **ОСТАНОВКА ПОСЛЕ БЛОКА14–18**: после коммита19–25 не начинать, следующий блок — только новый координатор. [Передача](<../../../Documentation/Plans/AgentBridge Initial Implementation/18-context-compaction.md#приёмка-и-передача-новому-координатору>). CLI validation остаётся невыполненной, change не архивирован.
+Координатор принял этап18 2026-10-04: core172/0/0 + transport165/0/0, manifest34 и совпадение main/delta проверены. Локальный коммит18 выполнен: 73045a151b6b48accd0fece98f75858c5336a16c. Историческая остановка после18 снята новым поручением, текущая граница19 приведена выше. [Передача](<../../../Documentation/Plans/AgentBridge Initial Implementation/18-context-compaction.md#приёмка-и-передача-новому-координатору>). CLI validation остаётся невыполненной, change не архивирован.
 
-Этапы00–17 приняты и закоммичены; этап18 принят координатором, локальный коммит утверждённого manifest разрешён. Статусы ниже относятся к историческим отчётам этапов. Этапы19–25 не начинались. [Новый change](../../changes/context-compaction/proposal.md), [принятые решения](../../changes/context-compaction/context.md), [фактический API](<../../../Documentation/Technical documentation/18-context-compaction.md>).
+Этапы00–18 приняты и закоммичены. Статусы ниже относятся к историческим отчётам этапов. [Change18](../../changes/context-compaction/proposal.md), [принятые решения](../../changes/context-compaction/context.md), [фактический API](<../../../Documentation/Technical documentation/18-context-compaction.md>).
 
 Пользователь выбрал persistable-only compact: active window + следующий contiguous terminal prefix, включая0. Providers, InProgress tail и новый unsaved input остаются отдельно, но входят в полный threshold/budget. Builder вызывается один раз, transient snapshot фиксирован на сценарий. Например, terminal turn1 и InProgress turn2 дают through1; после save полный request содержит providers+новое окно+turn2+new input без дубликатов. Broken known pairs/empty candidate не активируются.
 

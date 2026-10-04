@@ -1,5 +1,13 @@
 # Application
 
+## Инструменты этапа19
+
+- ToolRegistry хранит exact definitions и создаёт отдельный async DI scope handler/validator для каждого invocation. Обязательный IToolInvocationValidator приложения проверяет всю schema и текущие права до действия; регистрация и selected names не авторизуют пользователя. Handler metadata должны совпадать с регистрацией.
+- ToolExecutor принимает только Completed step и complete object arguments, сохраняет исходные canonical данные. FIFO known pairing допускает repeated call_id и несколько pending calls того же ID; identity определяется owner/dialog/incarnation/turn/agent + StepId/output position. Закрытые пары не исполняются.
+- Session фиксирует expiry/selection/limits, не допускает concurrent Execute или повтор attempted StepId. MaxSteps считает модельные шаги с pending calls. Calls/concurrency bounded; timeout общий monotonic/cooperative. Все workers/scopes ожидаются; не бросать незавершённый task ради deadline.
+- Fail handler означает подтверждённый отказ, raw message не выходит в canonical error/report. Timeout/exception после начала = Unknown без output. LastResult сохраняет соседние результаты/late success, interruption останавливает session. Primary/cleanup failures сохраняются вместе.
+- Optional IToolExecutionCheckpoint awaited после validator до handler; refusal/exception/cancel запрещает действие и retry. Callback может вызываться параллельно и обязан выделять собственный короткий scope/UoW. Durable журнал, сериализация version-aware checkpoint writes/token updates одного диалога, output persistence и recovery принадлежат20. Session-memory/null checkpoint не защищают restart; AgentRunner отсутствует. Tools/внешнее I/O не исполняются внутри write transaction.
+
 ## Сжатие этапа18
 
 - ContextCompactor использует ContextBuilder один раз, фиксирует providers и отделяет terminal history от transient tail/new input. Compact-only проекция controls не меняет полный generation request. MaxPasses фиксируется на вызов; threshold/reserve берутся из проверенного ModelSettingsSnapshot.

@@ -24,7 +24,7 @@
 | `IExpiredDialogReader` | Ограниченная выборка кандидатов по сроку |
 | `IExpiredDialogDeletion` | Удаление кандидата после повторной проверки incarnation/version/expiry |
 
-JSON/SSE IModelGateway реализован этапами14–15 через `AddCodexLbResponses`; CompactAsync явно Unsupported. Провайдеры контекста принадлежат приложению, ContextBuilder16 последовательно собирает их вклады. Handler registry, tokenizer и AgentRunner ещё не реализованы. Этап 09 добавил read ports; этап 10 реализовал write ports/UoW через `AddAgentBridgePersistence`. Это ещё не полный сценарий агента. [JSON](14-responses-json-adapter.md), [SSE](15-responses-sse-adapter.md), [composition](16-context-composition.md).
+JSON/SSE IModelGateway реализован этапами14–15 через `AddCodexLbResponses`; CompactAsync реализован18. Провайдеры контекста принадлежат приложению, ContextBuilder16 последовательно собирает их вклады. Tokenizer реализован17; [registry/executor tools19](19-application-tools.md) выполняют отдельные ограниченные шаги. AgentRunner и durable recovery остаются20. Этап09 добавил read ports; этап10 реализовал write ports/UoW через `AddAgentBridgePersistence`. Это ещё не полный сценарий агента. [JSON](14-responses-json-adapter.md), [SSE](15-responses-sse-adapter.md), [composition](16-context-composition.md).
 
 ## Результаты и отмена
 

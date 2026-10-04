@@ -1,5 +1,7 @@
 # Изолированные тесты
 
+- ToolExecutorTests проходят actual public AddAgentBridgeTool/registry/executor и ContextBuilder. Проверяются полные schemas/обязательный app validator, exact selection/owner, повторные call_id/FIFO pairing, step/output identity, bounds/cooperative deadline/expiry, expected/unknown outcomes, late cancellation, checkpoint refusal/exception/cancel, primary+Dispose failures, awaited partial parallel failure и независимые scoped state. ScopedState и checkpoint — doubles, не real DbContext/durable persistence. Никакого HTTP/БД/hosting; все gated tasks освобождаются и await в finally. Real recovery относится к20.
+
 - ContextCompactorTests проходят public DI → actual builder/compactor с управляемыми gateway/writer/time и actual offline counter для opaque UnknownBudget. Проверяют freeze providers, terminal prefix0/хвост, пустой/невалидный candidate, save-before-activation, свежий expiry, stale writer failure, bounded passes и failure второго прохода. Fake writer не доказывает реальную транзакционность БД. Existing persistence код на18 не меняется.
 
 ## Карта и зависимости

@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–17 приняты и закоммичены. Этап18 принят координатором; локальный коммит утверждённого manifest разрешён. Доступны настройки/DI/диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance, каталог, canonical JSON/SSE и композиция ModelRequest, offline tokenizer и явный budget guard. Доступны [ContextCompactor и compact transport](<Technical documentation/18-context-compaction.md>); этапы19–25 не начаты. Real HTTP/upstream не проверены; исторический DB integration запуск не подтверждает текущий transport/EFCoreLibrary0.0.5. [Maintenance API](<Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>), [каталог](<Technical documentation/13-model-catalog-and-keys.md>), [JSON](<Technical documentation/14-responses-json-adapter.md>), [SSE](<Technical documentation/15-responses-sse-adapter.md>), [композиция](<Technical documentation/16-context-composition.md>), [tokenizer/guard](<Technical documentation/07-tokenizer-and-settings.md#public-guard-и-подключение>).
+AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–18 приняты и закоммичены. Доступны настройки/DI/диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance, каталог, canonical JSON/SSE, композиция ModelRequest, offline tokenizer и budget guard. [ContextCompactor и compact transport](<Technical documentation/18-context-compaction.md>) и [tools registry/executor19](<Technical documentation/19-application-tools.md>) доступны; этап19 принят координатором; локальный коммит manifest36 разрешён, этапы20–25 не начаты. Durable recovery/AgentRunner относятся к20. Real HTTP/upstream не проверены; исторический DB integration запуск не подтверждает текущий transport/EFCoreLibrary0.0.5.
 
 ## Бизнес-логика
 
@@ -32,6 +32,8 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 13. [JSON Responses](<Technical documentation/14-responses-json-adapter.md>)
 14. [SSE Responses](<Technical documentation/15-responses-sse-adapter.md>)
 15. [Композиция контекста](<Technical documentation/16-context-composition.md>)
+16. [Сжатие контекста](<Technical documentation/18-context-compaction.md>)
+17. [Инструменты приложения](<Technical documentation/19-application-tools.md>)
 
 ## Требования
 

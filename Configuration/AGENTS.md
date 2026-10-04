@@ -1,5 +1,7 @@
 # Конфигурация ядра
 
+- AddAgentBridgeTools явно подключает singleton registry/executor через TryAdd без исполнения. AddAgentBridgeTool фиксирует полный definition, отклоняет duplicate exact name и регистрирует handler/обязательный validator scoped. Executor создаёт отдельный async scope invocation; не подменять scoped business state singleton. Выбор имён и immutable ToolExecutionLimits задаёт приложение для session; MaxSteps берётся из существующего AgentOptions, новых options/defaults нет.
+
 - AddAgentBridgeCompaction регистрирует scoped ContextCompactor и default TimeProvider.System через TryAdd. ContextBuilder с explicit ordered providers, counter/gateway/writer/options предоставляет приложение. Регистрация не выполняет compact и не расширяет permissions источников. Новых options нет: ContextCompactionOptions.MaxPasses и CodexLbOptions.CompactTimeout уже существовали.
 
 - Здесь находятся options агента, полной истории и рабочего контекста, а также их групповая регистрация. Приложение выбирает источник конфигурации; `IConfiguration` используется только при binding в расширении composition root.

@@ -1,6 +1,6 @@
 # Техническая документация AgentBridge
 
-Документы описывают фактические API конфигурации, диагностики, Domain/Application, EF-хранилища, каталога, JSON/SSE, композиции и offline tokenizer/guard. Этапы00–17 приняты и закоммичены; этап18 принят координатором; локальный коммит утверждённого manifest разрешён. Compact transport и ContextCompactor доступны; tools/AgentRunner отсутствуют, этапы19–25 не начаты. Проверки и ограничения находятся в соответствующих планах.
+Документы описывают фактические API конфигурации, диагностики, Domain/Application, EF-хранилища, каталога, JSON/SSE, композиции и offline tokenizer/guard. Этапы00–18 приняты и закоммичены. Compact transport, ContextCompactor и registry/executor tools19 доступны; этап19 принят координатором; локальный коммит manifest36 разрешён. Durable recovery/AgentRunner20 отсутствуют; этапы20–25 не начаты. Проверки и ограничения находятся в соответствующих планах.
 
 | Раздел | Содержание |
 | --- | --- |
@@ -20,5 +20,6 @@
 | [SSE Responses](15-responses-sse-adapter.md) | Fragmented/multiline framing, partial/terminal canonical state, callback ownership, cancellation/disposal и изолированные проверки |
 | [Композиция контекста](16-context-composition.md) | Public ContextBuilder, ordered providers/window/tail/new input, роли/known function pairs, snapshot guards, отмена и ограничения |
 | [Сжатие контекста](18-context-compaction.md) | Compact JSON, terminal prefix/transient граница, atomic save, bounded passes, UnknownBudget и отдельный guard генерации |
+| [Инструменты приложения](19-application-tools.md) | Registry/обязательный validator/scoped handler, step/output identity, bounds, canonical результаты, partial failures и граница durable recovery20 |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).
