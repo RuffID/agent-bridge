@@ -4,6 +4,7 @@ using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Persistence.EfCore.Models;
+using AgentBridge.Persistence.EfCore.Mapping;
 using AgentBridge.Persistence.EfCore.Repositories;
 using AgentBridge.Persistence.EfCore.UnitOfWork;
 
@@ -72,7 +73,8 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         {
             history.Add(new StoredDialogTurn(turn.Id, turn.Sequence, turn.Status,
                 itemsByTurn[turn.Id].Select(ReadItem),
-                stepsByTurn[turn.Id].Select(step => new StoredModelStep(step.Id, step.Response.ToModelResponse()))));
+                stepsByTurn[turn.Id].Select(step => new StoredModelStep(step.Id, step.Response.ToModelResponse(),
+                    ToolAttemptMapping.Read(step.ToolAttemptsJson)))));
         }
         StoredDialogContext? active = context is null ? null : new StoredDialogContext(context.Version,
             context.ThroughTurnSequence, context.Compaction.ToModelResponse());

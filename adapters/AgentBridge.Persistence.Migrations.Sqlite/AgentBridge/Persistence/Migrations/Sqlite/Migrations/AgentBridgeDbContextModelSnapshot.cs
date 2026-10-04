@@ -208,6 +208,9 @@ namespace AgentBridge.Persistence.Migrations.Sqlite.Migrations
                     b.Property<long>("Sequence")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ToolAttemptsJson")
+                        .HasColumnType("text");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Response", "AgentBridge.Persistence.EfCore.Models.ModelStepRecord.Response#ModelResponseRecord", b1 =>
                         {
                             b1.IsRequired();

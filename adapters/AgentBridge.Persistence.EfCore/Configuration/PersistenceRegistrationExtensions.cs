@@ -56,6 +56,7 @@ public static class PersistenceRegistrationExtensions
         services.AddScoped<TurnContentStaging>();
         services.AddScoped<IDialogCreator, DialogCreationUnitOfWork>();
         services.AddScoped<IDialogTurnWriter, DialogTurnUnitOfWork>();
+        services.AddScoped<IDialogToolAttemptWriter, DialogToolAttemptUnitOfWork>();
         services.AddScoped<IDialogContextWriter, DialogContextUnitOfWork>();
         services.AddScoped<DialogDeletionUnitOfWork>();
         services.AddScoped<IDialogDeletion>(provider => provider.GetRequiredService<DialogDeletionUnitOfWork>());

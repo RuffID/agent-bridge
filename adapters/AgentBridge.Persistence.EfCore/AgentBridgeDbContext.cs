@@ -101,6 +101,7 @@ public class AgentBridgeDbContext : DbContext
         builder.HasKey(record => new { record.DialogId, record.TurnId, record.Id });
         builder.Property(record => record.Id).ValueGeneratedNever();
         builder.HasIndex(record => new { record.DialogId, record.TurnId, record.Sequence }).IsUnique();
+        builder.Property(record => record.ToolAttemptsJson).HasColumnType("text");
         builder.HasOne<DialogTurnRecord>().WithMany().HasForeignKey(record => new { record.DialogId, record.TurnId })
             .OnDelete(DeleteBehavior.Cascade);
         ModelResponseMapping.Configure(builder.ComplexProperty(record => record.Response));

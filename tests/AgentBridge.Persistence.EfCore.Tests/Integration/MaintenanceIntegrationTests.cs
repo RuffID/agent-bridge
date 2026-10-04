@@ -62,15 +62,18 @@ public class MaintenanceIntegrationTests
         using (IServiceScope scope = database.Root.CreateScope())
         {
             IDatabaseMaintenance<AgentBridgeContextKey> maintenance = scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
-            Assert.Single((await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations);
+            Assert.Equal(2, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
             DatabaseMaintenanceResult reapplied = await maintenance.UpdateExistingAsync(TimeSpan.FromSeconds(45));
             Assert.Equal(MaintenanceOutcome.Migrated, reapplied.Outcome);
-            Assert.Single(reapplied.AppliedMigrations);
+            Assert.Equal(2, reapplied.AppliedMigrations.Count);
             Assert.NotNull(reapplied.Backup);
         }
         Assert.Equal(5, (await database.QueryAsync(tables)).Count);
         string expected = provider == DatabaseProvider.SQLite ? "20261003155233_InitialAgentBridgeSchema" : "20261003155235_InitialAgentBridgeSchema";
-        Assert.Equal(expected, Assert.Single(await database.QueryAsync("SELECT \"MigrationId\" FROM \"__AgentBridgeMigrationsHistory\""))["MigrationId"]);
+        IReadOnlyList<IReadOnlyDictionary<string, object?>> history = await database.QueryAsync("SELECT \"MigrationId\" FROM \"__AgentBridgeMigrationsHistory\" ORDER BY \"MigrationId\"");
+        Assert.Equal(2, history.Count);
+        Assert.Equal(expected, history[0]["MigrationId"]);
+        Assert.EndsWith("_AddDurableToolAttempts", (string)history[1]["MigrationId"]!);
         Assert.Equal("Host_001", Assert.Single(await database.QueryAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\""))["MigrationId"]);
     }
 
@@ -90,7 +93,7 @@ public class MaintenanceIntegrationTests
             DatabaseMaintenanceResult migrated = await scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>()
                 .UpdateExistingAsync(TimeSpan.FromSeconds(45));
             Assert.Equal(MaintenanceOutcome.Migrated, migrated.Outcome);
-            Assert.Single(migrated.AppliedMigrations);
+            Assert.Equal(2, migrated.AppliedMigrations.Count);
             artifact = Assert.IsType<LocalBackupArtifact>(migrated.Backup!.Artifact);
             Assert.True(migrated.Backup.Confirms(migrated.Backup.OperationId, migrated.Backup.TargetIdentity,
                 scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>().Capabilities, migrated.Backup.StartedAtUtc));
@@ -156,7 +159,7 @@ public class MaintenanceIntegrationTests
         IDatabaseMaintenance<AgentBridgeContextKey> maintenance = scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
         MaintenanceException failure = await Assert.ThrowsAsync<MaintenanceException>(() => maintenance.UpdateExistingAsync(TimeSpan.FromSeconds(30)));
         Assert.Equal(MaintenanceError.Configuration, failure.Code);
-        Assert.Single((await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations);
+        Assert.Equal(2, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
         Assert.Equal(before, await database.FingerprintAsync());
         Assert.Empty(Directory.EnumerateFiles(database.BackupDirectory));
     }
@@ -252,7 +255,7 @@ public class MaintenanceIntegrationTests
         MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => maintenance.UpdateExistingAsync(TimeSpan.FromSeconds(30)));
         Assert.Equal(MaintenanceError.Configuration, error.Code);
         Assert.Null(error.InnerException);
-        Assert.Single((await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations);
+        Assert.Equal(2, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
         Assert.Equal(before, await database.FingerprintAsync());
         Assert.Empty(Directory.EnumerateFileSystemEntries(database.BackupDirectory));
     }

@@ -1,5 +1,7 @@
 # Сценарные write UoW
 
+- DialogToolAttemptUnitOfWork реализует отдельный IDialogToolAttemptWriter через existing scope/guard/Domain/base CRUD. Start добавляет одну позицию только к Completed сохранённому step InProgress turn. Outcomes меняют Started либо фиксируют pre-action отказ/NotStarted, confirmed outputs добавляются той же transaction. Root revision и размер журнала изменяются атомарно; повтор позиции/terminal outcome запрещён. Никаких handlers/I/O/automatic retries внутри scope.
+
 - `DialogCreationUnitOfWork`, `DialogTurnUnitOfWork`, `DialogContextUnitOfWork`, `DialogDeletionUnitOfWork` реализуют существующие узкие Application write ports. Общего контейнера всех репозиториев нет; read ports не зависят от UoW.
 - `UnitOfWorkScope` владеет begin/save/commit/rollback/dispose и cleanup. `EfUnitOfWorkSession` использует только `IUnitOfWorkContext<AgentBridgeContextKey>` текущей EFCoreLibrary. Transaction Serializable; retry strategies, ambient/enlisted/existing transaction отклоняются. Операции не повторяются автоматически.
 - Один scoped `PersistenceOperationGate` применяется и к read ports, и к write scope. Параллельные/вложенные операции отклоняются до доступа к контексту. Приложение не должно использовать зарегистрированные infrastructure/base repositories напрямую или держать tracked state между операциями. Внешние модель/инструменты и их ожидание не передаются в technical callbacks.

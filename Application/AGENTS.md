@@ -1,22 +1,28 @@
 # Application
 
+## Оркестрация этапа20
+
+- AgentRunner фиксирует owner/version/settings/access/selection/limits; providers один раз на run. Null callback использует JSON, non-null SSE. Compact и отдельный full guard выполняются перед каждой generation; compact failure не становится fallback generation. Existing TurnId (включая legacy без журнала) не replay; незакрытая известная function pair блокирует новое обращение.
+- AgentRunSession сериализует checkpoint writes/token updates и создаёт отдельные short scopes. IDialogToolAttemptWriter.StartAsync должен commit до handler, SaveOutcomesAsync принимает journal+outputs атомарно. LastResult только matching StepId после всех awaited workers/scopes. Unknown без fake output. Legacy null не доказывает отсутствие прежнего действия.
+- Successful compact tokens/window захватываются до возврата в compactor; следующий exception/cancel не возвращает исходный token. Любая неизвестная/отказавшая запись блокирует writes без refresh/retry. Fresh UTC перед каждым write; scope primary+Dispose ошибки сохраняются вместе. Late cancel при accepted terminal может вернуть Canceled/TerminalSaved=true/Turn.Completed без повторного finish. Неожиданные exceptions распространяются после попытки honest finalization; LastResponse/LastTools не логировать.
+
 ## Инструменты этапа19
 
 - ToolRegistry хранит exact definitions и создаёт отдельный async DI scope handler/validator для каждого invocation. Обязательный IToolInvocationValidator приложения проверяет всю schema и текущие права до действия; регистрация и selected names не авторизуют пользователя. Handler metadata должны совпадать с регистрацией.
 - ToolExecutor принимает только Completed step и complete object arguments, сохраняет исходные canonical данные. FIFO known pairing допускает repeated call_id и несколько pending calls того же ID; identity определяется owner/dialog/incarnation/turn/agent + StepId/output position. Закрытые пары не исполняются.
 - Session фиксирует expiry/selection/limits, не допускает concurrent Execute или повтор attempted StepId. MaxSteps считает модельные шаги с pending calls. Calls/concurrency bounded; timeout общий monotonic/cooperative. Все workers/scopes ожидаются; не бросать незавершённый task ради deadline.
 - Fail handler означает подтверждённый отказ, raw message не выходит в canonical error/report. Timeout/exception после начала = Unknown без output. LastResult сохраняет соседние результаты/late success, interruption останавливает session. Primary/cleanup failures сохраняются вместе.
-- Optional IToolExecutionCheckpoint awaited после validator до handler; refusal/exception/cancel запрещает действие и retry. Callback может вызываться параллельно и обязан выделять собственный короткий scope/UoW. Durable журнал, сериализация version-aware checkpoint writes/token updates одного диалога, output persistence и recovery принадлежат20. Session-memory/null checkpoint не защищают restart; AgentRunner отсутствует. Tools/внешнее I/O не исполняются внутри write transaction.
+- Optional IToolExecutionCheckpoint awaited после validator до handler; refusal/exception/cancel запрещает действие и retry. Callback может вызываться параллельно и обязан выделять собственный короткий scope/UoW. AgentRunner20 предоставляет обязательный durable checkpoint; standalone session-memory/null checkpoint не защищают restart. Tools/внешнее I/O не исполняются внутри write transaction.
 
 ## Сжатие этапа18
 
 - ContextCompactor использует ContextBuilder один раз, фиксирует providers и отделяет terminal history от transient tail/new input. Compact-only проекция controls не меняет полный generation request. MaxPasses фиксируется на вызов; threshold/reserve берутся из проверенного ModelSettingsSnapshot.
 - HTTP/counter вне write UoW; fresh TimeProvider UTC непосредственно перед SaveAsync, original/read или successful-save token, без refresh/retry. Только successful save активирует candidate. Ошибка следующего прохода сохраняет последнее принятое окно; unexpected/OCE распространяется, уже сохранённые проходы не откатываются.
-- Completed opaque с null full estimate сохраняется, UnknownBudget останавливает цикл. Known non-reduction не сохраняет candidate. Empty output при непустой history и known broken pairs отклоняются. Ни один статус отчёта не разрешает generation: full ContextBudgetGuard вызывается отдельно. Нет удаления истории/server estimator/AgentRunner.
+- Completed opaque с null full estimate сохраняется, UnknownBudget останавливает цикл. Known non-reduction не сохраняет candidate. Empty output при непустой history и known broken pairs отклоняются. Ни один статус отчёта не разрешает generation: full ContextBudgetGuard вызывается отдельно. Нет удаления истории/server estimator; AgentRunner20 координирует отдельный guard.
 
 ## Назначение и границы
 
-- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения; ContextBuilder готовит ModelRequest по уже прочитанному snapshot. Реализации адаптеров/UoW находятся в Infrastructure, offline tokenizer — в Tokenization; ContextCompactor выполняет только ограниченное сжатие этапа18, AgentRunner отсутствует.
+- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения; ContextBuilder готовит ModelRequest по уже прочитанному snapshot. Реализации адаптеров/UoW находятся в Infrastructure, offline tokenizer — в Tokenization; ContextCompactor выполняет ограниченное сжатие, AgentRunner20 координирует run без EF/HTTP типов.
 - Допустимы Domain, BCL и независимые прикладные модели. EF/DbContext/IQueryable/Expression, HTTP-библиотеки, wire DTO и Web/MVC остаются за границей.
 - `ServiceResult` описывает ожидаемый отказ без данных. `ModelResponse` — отчёт о lifecycle с сохранённым выходом; успех получения отчёта не означает Completed. Неожиданные исключения не маскировать.
 - Канонические элементы и аргументы сохраняются независимыми снимками JsonElement, включая неизвестные поля и opaque data. Это контейнер данных, не реализация Responses mapping или JSON/SSE транспорта.

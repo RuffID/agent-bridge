@@ -94,8 +94,9 @@ public class ProviderDesignTimeTests
         using AgentBridgeDbContext context = CreateFactory(selected).CreateDbContext([]);
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
         Assert.NotNull(assembly.ModelSnapshot);
-        KeyValuePair<string, TypeInfo> registered = Assert.Single(assembly.Migrations);
-        Assert.EndsWith("_InitialAgentBridgeSchema", registered.Key);
+        Assert.Equal(2, assembly.Migrations.Count);
+        KeyValuePair<string, TypeInfo> registered = assembly.Migrations.OrderBy(pair => pair.Key).Last();
+        Assert.EndsWith("_AddDurableToolAttempts", registered.Key);
         Migration migration = assembly.CreateMigration(registered.Value, context.Database.ProviderName!);
         IModelRuntimeInitializer initializer = context.GetService<IModelRuntimeInitializer>();
         IModel snapshotModel = initializer.Initialize(assembly.ModelSnapshot.Model, designTime: true);

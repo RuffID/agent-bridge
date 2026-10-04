@@ -1,0 +1,139 @@
+using AgentBridge.Application.Models;
+using AgentBridge.Application.Ports;
+using AgentBridge.Application.Results;
+using AgentBridge.Domain.Dialogs;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace AgentBridge.Application;
+
+/// <inheritdoc cref="IToolExecutionCheckpoint"/>
+/// <remarks>Владеет успешными tokens одного run; scopes короткие и serialized, неизвестная запись блокирует дальнейшие writes.</remarks>
+internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallContext call, DialogSnapshot original,
+    TimeProvider time) : IToolExecutionCheckpoint, IDialogContextWriter, IDisposable
+{
+    private readonly SemaphoreSlim _writes = new(1, 1);
+    private readonly List<StoredDialogTurn> _turns = [.. original.Turns];
+    private StoredDialogContext? _active = original.ActiveContext;
+    private DialogWriteToken _token = original.Token;
+    private bool _blocked;
+
+    /// <summary>Последняя безопасная storage ошибка либо отсутствие отказа.</summary>
+    public ServiceError? Error { get; private set; }
+    /// <summary>После любого отказа или unknown исхода дальнейшие writes запрещены.</summary>
+    public bool Blocked => _blocked;
+    /// <summary>Подтверждённый state для следующего context build; не перечитывает root ради retry.</summary>
+    public DialogSnapshot Snapshot => new(_token, original.OwnerId, original.CreatedAtUtc, original.ExpiresAtUtc,
+        original.ContentBytes, _turns, _active);
+    /// <summary>Сохранённый turn этого run либо отсутствие Begin.</summary>
+    public StoredDialogTurn? Turn => _turns.SingleOrDefault(turn => turn.Id == call.TurnId);
+
+    /// <summary>Начинает обращение отдельным scope.</summary>
+    public Task<ServiceResult<DialogWriteToken>> BeginAsync(IReadOnlyList<CanonicalModelItem> input, CancellationToken ct) =>
+        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.BeginAsync(access, token, call.TurnId, input, ct),
+            () => _turns.Add(new(call.TurnId, _turns.Count + 1L, DialogTurnStatus.InProgress, input, [])), ct);
+
+    /// <summary>Сохраняет весь model report/calls до начала handler.</summary>
+    public Task<ServiceResult<DialogWriteToken>> AppendAsync(StoredModelStep step) =>
+        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.AppendAsync(access, token, call.TurnId,
+            step.Response.Output, [step], CancellationToken.None), () => ChangeTurn(step.Response.Output, [step]), CancellationToken.None);
+
+    /// <inheritdoc/>
+    public async Task<ServiceResult> BeforeExecuteAsync(ToolExecutionIdentity identity, ToolInvocation invocation,
+        CancellationToken cancellationToken = default)
+    {
+        ServiceResult<DialogWriteToken> saved = await WriteAsync<IDialogToolAttemptWriter>(
+            (writer, access, token) => writer.StartAsync(access, token, identity, cancellationToken),
+            () => ChangeAttempt(identity.StepId, new(identity.OutputIndex, identity.Call.AgentId, ToolAttemptState.Started)), cancellationToken);
+        return saved.Success ? ServiceResult.Ok() : ServiceResult.Fail(saved.Error!);
+    }
+
+    /// <summary>Принимает LastResult после всех awaited workers, включая путь exception/cancel.</summary>
+    public Task<ServiceResult<DialogWriteToken>> SaveOutcomesAsync(Guid stepId, ToolExecutionBatch batch) =>
+        WriteAsync<IDialogToolAttemptWriter>((writer, access, token) => writer.SaveOutcomesAsync(access, token,
+            call.TurnId, stepId, batch, CancellationToken.None), () =>
+        {
+            ChangeTurn(batch.Outputs, []);
+            foreach (ToolExecutionResult result in batch.Results)
+                ChangeAttempt(stepId, new(result.Identity.OutputIndex, result.Identity.Call.AgentId, result.Status switch
+                {
+                    ToolExecutionStatus.Succeeded => ToolAttemptState.Succeeded,
+                    ToolExecutionStatus.Rejected => ToolAttemptState.Rejected,
+                    ToolExecutionStatus.Unknown => ToolAttemptState.Unknown,
+                    ToolExecutionStatus.NotStarted => ToolAttemptState.NotStarted,
+                    _ => throw new InvalidOperationException("Неизвестный исход инструмента.")
+                }));
+        }, CancellationToken.None);
+
+    /// <inheritdoc/>
+    public Task<ServiceResult<DialogWriteToken>> SaveAsync(DialogAccess access, DialogWriteToken expected,
+        long throughTurnSequence, ModelResponse compaction, CancellationToken cancellationToken = default)
+    {
+        if (expected.IncarnationId != _token.IncarnationId || expected.Revision != _token.Revision)
+            throw new InvalidOperationException("Compact передал неподтверждённую версию.");
+        return WriteAsync<IDialogContextWriter>((writer, freshAccess, token) => writer.SaveAsync(freshAccess, token,
+            throughTurnSequence, compaction, cancellationToken),
+            () => _active = new((_active?.Version ?? 0) + 1, throughTurnSequence, compaction), cancellationToken);
+    }
+
+    /// <summary>Finalization не использует отменённый caller token и не повторяет отказавшую запись.</summary>
+    public Task<ServiceResult<DialogWriteToken>> FinishAsync(DialogTurnStatus status) =>
+        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.FinishAsync(access, token, call.TurnId,
+            status, [], [], CancellationToken.None), () => ChangeTurn([], [], status), CancellationToken.None);
+
+    /// <summary>Сериализует scope, fresh UTC, save и local token update; не удерживает контекст между вызовами.</summary>
+    private async Task<ServiceResult<DialogWriteToken>> WriteAsync<TPort>(
+        Func<TPort, DialogAccess, DialogWriteToken, Task<ServiceResult<DialogWriteToken>>> operation,
+        Action accepted, CancellationToken ct) where TPort : notnull
+    {
+        await _writes.WaitAsync(ct);
+        try
+        {
+            if (_blocked) return ServiceResult<DialogWriteToken>.Fail(Error ?? new(ServiceErrorType.Conflict, "Исход предыдущей записи неизвестен."));
+            try
+            {
+                return await AgentRunScope.ExecuteAsync(scopes, async provider =>
+                {
+                    ServiceResult<DialogWriteToken> result = await operation(provider.GetRequiredService<TPort>(),
+                        new(call.DialogId, call.OwnerId, time.GetUtcNow()), _token);
+                    if (!result.Success)
+                    {
+                        Error = result.Error;
+                        _blocked = true;
+                        return result;
+                    }
+                    // При поздней отмене compact факт успешной записи уже захвачен до возвращения в compactor.
+                    _token = result.Data!;
+                    accepted();
+                    return result;
+                });
+            }
+            catch
+            {
+                _blocked = true;
+                throw;
+            }
+        }
+        finally { _writes.Release(); }
+    }
+
+    /// <summary>Обновляет только локальную проекцию подтверждённых items/steps/status.</summary>
+    private void ChangeTurn(IEnumerable<CanonicalModelItem> items, IEnumerable<StoredModelStep> steps, DialogTurnStatus? status = null)
+    {
+        int index = _turns.FindIndex(turn => turn.Id == call.TurnId);
+        StoredDialogTurn prior = _turns[index];
+        _turns[index] = new(prior.Id, prior.Sequence, status ?? prior.Status, prior.Items.Concat(items), prior.ModelSteps.Concat(steps));
+    }
+
+    /// <summary>Заменяет состояние конкретной исходной позиции без глобальной дедупликации call_id.</summary>
+    private void ChangeAttempt(Guid stepId, StoredToolAttempt attempt)
+    {
+        StoredDialogTurn turn = Turn!;
+        StoredModelStep[] steps = turn.ModelSteps.Select(step => step.StepId != stepId ? step :
+            new StoredModelStep(step.StepId, step.Response, step.ToolAttempts.Where(item => item.OutputIndex != attempt.OutputIndex).Append(attempt))).ToArray();
+        int index = _turns.FindIndex(item => item.Id == call.TurnId);
+        _turns[index] = new(turn.Id, turn.Sequence, turn.Status, turn.Items, steps);
+    }
+
+    /// <inheritdoc/>
+    public void Dispose() => _writes.Dispose();
+}

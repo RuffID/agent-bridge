@@ -4,35 +4,33 @@ using System.Collections.Generic;
 using AgentBridge.Persistence.EfCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
+namespace AgentBridge.Persistence.Migrations.Sqlite.Migrations
 {
     [DbContext(typeof(AgentBridgeDbContext))]
-    partial class AgentBridgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261004074344_AddDurableToolAttempts")]
+    partial class AddDurableToolAttempts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
-                .HasAnnotation("Relational:MaxIdentifierLength", 63);
-
-            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
 
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.CanonicalItemRecord", b =>
                 {
                     b.Property<Guid>("DialogId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("TurnId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<long>("Sequence")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ContentJson")
                         .IsRequired()
@@ -49,16 +47,16 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogContextRecord", b =>
                 {
                     b.Property<Guid>("DialogId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<long>("Version")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("CreatedAtUtc")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("ThroughTurnSequence")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Compaction", "AgentBridge.Persistence.EfCore.Models.DialogContextRecord.Compaction#ModelResponseRecord", b1 =>
                         {
@@ -77,11 +75,11 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
                                 .HasColumnName("ResponseErrorMessage");
 
                             b1.Property<int?>("ErrorType")
-                                .HasColumnType("integer")
+                                .HasColumnType("INTEGER")
                                 .HasColumnName("ResponseErrorType");
 
                             b1.Property<int>("FormatVersion")
-                                .HasColumnType("integer")
+                                .HasColumnType("INTEGER")
                                 .HasColumnName("ResponseFormatVersion");
 
                             b1.Property<string>("OutputJson")
@@ -90,7 +88,7 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
                                 .HasColumnName("ResponseOutputJson");
 
                             b1.Property<int>("Status")
-                                .HasColumnType("integer")
+                                .HasColumnType("INTEGER")
                                 .HasColumnName("ResponseStatus");
                         });
 
@@ -115,34 +113,34 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogRecord", b =>
                 {
                     b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<long>("ContentBytes")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("CreatedAtUtc")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("ExpiresAtUtc")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("IncarnationId")
                         .IsConcurrencyToken()
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<long>("LastChangedAtUtc")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("OwnerId")
                         .IsConcurrencyToken()
                         .IsRequired()
-                        .HasColumnType("text")
-                        .UseCollation("C");
+                        .HasColumnType("TEXT")
+                        .UseCollation("BINARY");
 
                     b.Property<long>("Revision")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -167,22 +165,22 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogTurnRecord", b =>
                 {
                     b.Property<Guid>("DialogId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<long?>("FinishedAtUtc")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("Sequence")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<long>("StartedAtUtc")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer");
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("DialogId", "Id");
 
@@ -202,16 +200,16 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.ModelStepRecord", b =>
                 {
                     b.Property<Guid>("DialogId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("TurnId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
+                        .HasColumnType("TEXT");
 
                     b.Property<long>("Sequence")
-                        .HasColumnType("bigint");
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ToolAttemptsJson")
                         .HasColumnType("text");
@@ -233,11 +231,11 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
                                 .HasColumnName("ResponseErrorMessage");
 
                             b1.Property<int?>("ErrorType")
-                                .HasColumnType("integer")
+                                .HasColumnType("INTEGER")
                                 .HasColumnName("ResponseErrorType");
 
                             b1.Property<int>("FormatVersion")
-                                .HasColumnType("integer")
+                                .HasColumnType("INTEGER")
                                 .HasColumnName("ResponseFormatVersion");
 
                             b1.Property<string>("OutputJson")
@@ -246,7 +244,7 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
                                 .HasColumnName("ResponseOutputJson");
 
                             b1.Property<int>("Status")
-                                .HasColumnType("integer")
+                                .HasColumnType("INTEGER")
                                 .HasColumnName("ResponseStatus");
                         });
 

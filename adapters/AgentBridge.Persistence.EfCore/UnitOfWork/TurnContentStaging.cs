@@ -40,6 +40,9 @@ public class TurnContentStaging(ItemRecordQueries items, ModelStepRecordQueries 
         foreach (StoredModelStep step in newSteps)
         {
             ArgumentNullException.ThrowIfNull(step);
+            if (step.ToolAttempts.Count != 0)
+                return ServiceResult<PreparedTurnContent>.Fail(new(ServiceErrorType.Validation,
+                    "Журнал изменяется только через специализированный сценарий попыток."));
             if (!stepIds.Add(step.StepId))
             {
                 return ServiceResult<PreparedTurnContent>.Fail(new ServiceError(ServiceErrorType.Conflict, "Шаг модели уже сохранён в обращении."));

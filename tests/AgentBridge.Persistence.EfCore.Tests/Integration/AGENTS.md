@@ -1,6 +1,7 @@
-# Интеграционные проверки этапов 00–13
+# Интеграционные проверки этапов 00–13 и20
 
-- Запуск только с явным разрешением пользователя на реальные тестовые БД и процессы. Основная реализация приостановлена после этапа 13; последующие этапы здесь не проверяются.
+- Запуск только с явным разрешением пользователя на реальные тестовые БД и процессы. Исторический набор00–13 не выдавать за evidence EFCoreLibrary0.0.5. AgentRunnerIntegrationTests20 проверяет адресные новые durable risks через actual runner/write ports; весь maintenance без новых рисков не повторять.
+- Runner20 tests подтверждают separate-scope Started до handler, атомарность journal+outputs при реальном SQL rollback, lost acknowledgement после real commit, legacy/restart no replay, guards/late delete/cleanup/expiry и новые migration Down/Up с historical rows. Parallel observer использует один parent-aware base query committed step; multi-read DialogReader вправе дать Conflict при соседнем checkpoint и не должен получать retry ради теста.
 - `Dependency=Database` отделяет проверки от изолированного набора. `AGENTBRIDGE_INTEGRATION=1` включает их явно; отсутствующая обязательная конфигурация после включения — ошибка, не skip.
 - Windows runner использует SQLite-файлы в явно выделенном каталоге и PostgreSQL на 127.0.0.1 в отдельном временном Docker-контейнере. Имена БД и тестового пользователя начинаются с `abverify_`. Рабочие секреты и существующие БД запрещены.
 - Операции данных идут через публичные порты AgentBridge и реальные base repositories/scope EFCoreLibrary. SQL для наблюдения схемы и создания отказных условий — через IDatabaseCommands этой библиотеки; не заменять production pipeline.

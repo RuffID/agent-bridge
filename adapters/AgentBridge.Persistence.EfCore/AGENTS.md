@@ -1,5 +1,11 @@
 # Общее EF-хранилище
 
+## Durable попытки этапа20
+
+- ModelSteps.ToolAttemptsJson — отдельный nullable version1 журнал AgentId/output position/state, не canonical payload/envelope. Root owner/incarnation и parent-aware step keys задают остальные identity. Legacy null не разрешает replay; повреждённый формат/позиции отклоняются. ContentBytes учитывает UTF-8 журнала.
+- IDialogToolAttemptWriter подключён в AddAgentBridgePersistence: Start commit перед handler, atomic outcomes+canonical outputs, root/turn/step guards и base CRUD EFCoreLibrary0.0.5. Runtime не запускает migrations. Generated AddDurableToolAttempts созданы штатно по разрешённым командам, initial migrations не регенерировались.
+- Адресные real tests20 SQLite/PostgreSQL разрешены пользователем отдельно от обычного isolated набора; evidence и ограничения в плане20. Это не проверка SQL Server/MySQL или живого HTTP.
+
 ## Ответственность и границы
 
 - Проект `AgentBridge.Persistence.EfCore.csproj` зависит от корневого `agent-bridge.csproj` и реализует его узкие порты хранения. Ядро не ссылается на хранилище; зависимости от codex-lb здесь нет.

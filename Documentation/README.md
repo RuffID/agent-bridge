@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–18 приняты и закоммичены. Доступны настройки/DI/диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance, каталог, canonical JSON/SSE, композиция ModelRequest, offline tokenizer и budget guard. [ContextCompactor и compact transport](<Technical documentation/18-context-compaction.md>) и [tools registry/executor19](<Technical documentation/19-application-tools.md>) доступны; этап19 принят координатором; локальный коммит manifest36 разрешён, этапы20–25 не начаты. Durable recovery/AgentRunner относятся к20. Real HTTP/upstream не проверены; исторический DB integration запуск не подтверждает текущий transport/EFCoreLibrary0.0.5.
+AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–19 приняты и закоммичены. [AgentRunner20](<Technical documentation/20-agent-turn-orchestration.md>) объединяет context/guard/compact/model/tools и durable journal с короткими UoW; этап20 принят координатором, локальный commit разрешён. Новые адресные SQLite/PostgreSQL проверки20 относятся к actual EFCoreLibrary0.0.5; real HTTP/upstream и SQL Server/MySQL не проверены. После завершения20 работа приостановлена по прямой просьбе пользователя;21–25 не начаты, продолжение только новым поручением. OpenSpec CLI отсутствует.
 
 ## Бизнес-логика
 
@@ -34,6 +34,7 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 15. [Композиция контекста](<Technical documentation/16-context-composition.md>)
 16. [Сжатие контекста](<Technical documentation/18-context-compaction.md>)
 17. [Инструменты приложения](<Technical documentation/19-application-tools.md>)
+18. [Полный ход агента](<Technical documentation/20-agent-turn-orchestration.md>)
 
 ## Требования
 

@@ -16,4 +16,6 @@ public class ModelStepRecord : IEntity<Guid>
     public long Sequence { get; set; }
     /// <summary>Полный lifecycle-отчёт; чувствительные данные не логируются.</summary>
     public ModelResponseRecord Response { get; set; } = new();
+    /// <summary>Явный versioned журнал попыток; null у исторических строк не разрешает replay.</summary>
+    public string? ToolAttemptsJson { get; set; }
 }

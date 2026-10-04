@@ -1,5 +1,15 @@
 # Контекст проекта AgentBridge
 
+## Полный ход агента этапа20
+
+Baseline19 принят/закоммичен de58342f5c80e46279e1d7b59fe0665c893c5d4b. Реализован public AgentRunner20: fixed owner/version/settings/access, providers один раз, compact/full guard/model/tools и короткие scopes. [API](<../../../Documentation/Technical documentation/20-agent-turn-orchestration.md>), [change rationale](../../changes/agent-turn-orchestration/context.md), [команды/evidence/manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/20-agent-turn-orchestration.md>). Приёмка ожидается, add/commit не выполнялись. После завершения20 пользователь поручил паузу;21–25 не начинать.
+
+Durable попытки сохраняются отдельной versioned nullable text-колонкой ModelSteps.ToolAttemptsJson, а не в canonical payload/envelope. Исторический null означает отсутствие журнала, но existing TurnId никогда автоматически не replay. Например, Started stepA/position2/call(x) после crash запрещает повтор handler; completed новая пара call(x) в stepB/position1 допустима. Root guards и parent-aware keys сохраняют owner/dialog/incarnation/turn/step, AgentId/position записываются явно. Start transaction завершается до handler, outcomes и confirmed outputs принимаются атомарно. Unknown остаётся без output и блокирует known pair context.
+
+Access resolves один раз; actual settings reader проверяет каталог pinned доступом, старый user reader даёт Unsupported без fallback. Successful compact token/window захватываются до позднего exception/OCE; fail/unknown writes блокируют refresh/retry. Primary и Dispose errors scopes сохраняются вместе. При поздней отмене terminal save допустим Canceled run с уже accepted Turn.Completed/TerminalSaved=true: terminal не переписывается.
+
+SQLite/PostgreSQL evidence20 относится к actual EFCoreLibrary0.0.5, isolated gateway/counter doubles не доказывают live HTTP/server budget. Test lost acknowledgement после реального commit — управляемый отказ подтверждения, не network fault. Новые migrations разрешены двумя точными командами пользователя; existing initial migrations не регенерированы. Down удаляет journal, сохраняя canonical rows и запрет replay turn. OpenSpec CLI отсутствует, validation/archive не выполнены.
+
 ## Инструменты этапа19
 
 Пауза после18 снята отдельным поручением нового координатора только для последовательного блока19–23. Checkpoint18 — 73045a151b6b48accd0fece98f75858c5336a16c. Этап19 реализует explicit registry/executor и принят координатором; локальный коммит manifest36 разрешён; этап20 не начат, 24–25 не разрешены. [Change](../../changes/application-tools/proposal.md), [границы](../../changes/application-tools/context.md), [API](<../../../Documentation/Technical documentation/19-application-tools.md>).

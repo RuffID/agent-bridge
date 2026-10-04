@@ -24,6 +24,21 @@ public class ModelCatalogTests
     private const string SHARED_KEY = "synthetic-shared-key";
     private const string PRIVATE_PAYLOAD = "synthetic-private-payload";
 
+    /// <summary>Run settings проверяются pinned доступом без второго чтения изменившегося источника ключей.</summary>
+    [Fact]
+    public async Task PinnedAccessSettingsUseActualLibraryWithoutResolvingSourceAgain()
+    {
+        using Fixture fixture = new(INDIVIDUAL_KEY);
+        DialogOwnerId owner = DialogOwnerId.From("owner");
+        ModelAccess access = (await fixture.Scope.ServiceProvider.GetRequiredService<IModelAccessResolver>().ResolveAsync(owner)).Data!;
+        fixture.Source.Key = "changed-key";
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadWithAccessAsync(owner, access);
+        Assert.True(result.Success);
+        Assert.Equal(1, fixture.Source.Calls);
+        Assert.Equal("Bearer " + INDIVIDUAL_KEY, Assert.Single(fixture.Handler.Authorizations));
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
     /// <summary>Ключ выбирается один раз, owner сохраняется точно, адрес канонический с префиксом без query.</summary>
     [Theory]
     [InlineData(INDIVIDUAL_KEY, INDIVIDUAL_KEY)]

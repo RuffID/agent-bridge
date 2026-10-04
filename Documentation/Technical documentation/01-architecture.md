@@ -2,6 +2,8 @@
 
 ## Статус
 
+Текущая оркестрация реализована этапом20: [AgentRunner](20-agent-turn-orchestration.md) объединяет existing transport/context/tools и короткие durable writes. Ниже датированные описания ранних этапов сохраняют исторические границы их проверки. Settings/status21 и cleanup orchestration22 отсутствуют.
+
 Целевая платформа — `net10.0`, SDK-style .NET. Существующее ядро `agent-bridge.csproj` сохранено в корне рядом с `agent-bridge.slnx`. Добавлены отдельные проекты транспорта, хранения и тестов; все шесть проектов прошли адресный compile-check на этапе 02. Реализованы типизированные options и групповые расширения регистрации; их API описан в [конфигурации](05-configuration-and-lifecycle.md). Этап 03 добавляет основу диагностики операций через ILogger и её DI-регистрацию; [фактический API](07-tokenizer-and-settings.md#serilog) проверен отдельно от будущих сценариев. На этапе 07 определены прикладные интерфейсы; сценарии агента и транспорта остаются будущими, storage read/write ports реализованы этапами 09–10.
 
 ## Фактические проекты
@@ -51,14 +53,14 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 
 | Рабочее имя | Роль |
 | --- | --- |
-| `AgentRunner` | Координация одного обращения и цикла инструментов |
+| `AgentRunner` (этап20 реализован) | Полный run с frozen providers/settings/access, guard/compact, durable checkpoint и short scopes; [API](20-agent-turn-orchestration.md) |
 | `ContextBuilder` (этап16 реализован, принят координатором) | Полный ordered ModelRequest из providers/window/tail/new input, guards и проверка known function pairs; [API](16-context-composition.md) |
 | `IContextProvider` | Предоставление разрешённых бизнес-данных приложением |
 | `IToolHandler` | Выполнение зарегистрированного инструмента приложения |
 | `IModelGateway` | Независимый от codex-lb порт генерации и сжатия |
-| `CodexLbModelGateway` (JSON14/SSE15 реализованы) | GenerateAsync через actual HttpClientLibrary; callback выбирает SSE; CompactAsync явно Unsupported; [JSON](14-responses-json-adapter.md)/[SSE](15-responses-sse-adapter.md) |
+| `CodexLbModelGateway` (JSON14/SSE15/compact18 реализованы) | GenerateAsync через actual HttpClientLibrary; callback выбирает SSE; отдельный CompactAsync; [JSON](14-responses-json-adapter.md)/[SSE](15-responses-sse-adapter.md)/[compact](18-context-compaction.md) |
 | `IContextTokenCounter` | Tokenizer для известной кодировки модели и учёт полного входного бюджета |
-| `ContextCompactionService` | Создание следующего состояния контекста |
+| `ContextCompactor` (этап18 реализован) | Создание и version-aware сохранение следующего окна; [API](18-context-compaction.md) |
 | `DialogRetentionService` | Координация применения политики хранения |
 | `IDatabaseMaintenance<AgentBridgeContextKey>` (реализован в EFCoreLibrary, подключён этапом 12) | Явные InspectAsync/UpdateExistingAsync/InitializeNewAsync; регистрация без запуска операций |
 | `AgentSettingsService` | Безопасное чтение настроек и выбор модели/effort |

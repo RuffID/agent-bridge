@@ -1,5 +1,7 @@
 # Адаптер codex-lb
 
+- CodexLbModelSettingsReader.ReadWithAccessAsync проверяет exact выбор и каталог уже зафиксированным ModelAccess run без повторного resolver/source I/O. Standalone ReadAsync сохраняет primitive settings snapshot до resolver и исходные typed errors. Snapshot доступа не сохраняется; fake handler actual HttpClientLibrary проверяет смену источника между resolve и catalog.
+
 ## Ответственность и границы
 
 - Проект `AgentBridge.CodexLb.csproj` реализует транспортные порты ядра; зависит от корневого `agent-bridge.csproj`. Обратная ссылка из ядра и зависимость от EF-хранилища запрещены.
