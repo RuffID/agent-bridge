@@ -10,6 +10,10 @@
     <File Path="Documentation/Business logic/04-storage-and-retention.md" />
     <File Path="Documentation/Business logic/05-application-configuration.md" />
     <File Path="Documentation/Business logic/06-models-and-status.md" />
+    <File Path="Documentation/Business logic/07-users-and-access.md" />
+    <File Path="Documentation/Business logic/08-tools-and-permissions.md" />
+    <File Path="Documentation/Business logic/09-errors-and-recovery.md" />
+    <File Path="Documentation/Business logic/10-scenarios-and-limitations.md" />
     <File Path="Documentation/Business logic/README.md" />
   </Folder>
   <Folder Name="/Documentation/Plans/">
@@ -45,6 +49,28 @@
     <File Path="Documentation/Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md" />
     <File Path="Documentation/Plans/AgentBridge Initial Implementation/README.md" />
   </Folder>
+  <Folder Name="/Documentation/Plans/AgentBridge Quality Audit/">
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/00-contract-baseline.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/01-configuration-and-access.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/02-domain-invariants.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/03-persistence-reads.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/04-writes-and-concurrency.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/05-migrations-and-maintenance.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/06-http-json-contracts.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/07-sse-and-cancellation.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/08-context-composition.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/09-token-budget-and-compaction.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/10-tools-and-side-effects.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/11-agent-run-and-recovery.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/12-status-and-cleanup.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/13-dll-delivery.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/14-test-evidence-and-gaps.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/15-final-reconciliation.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/Baseline.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/Findings.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/Methodology.md" />
+    <File Path="Documentation/Plans/AgentBridge Quality Audit/README.md" />
+  </Folder>
   <Folder Name="/Documentation/Technical documentation/">
     <File Path="Documentation/Technical documentation/01-architecture.md" />
     <File Path="Documentation/Technical documentation/02-efcorelibrary.md" />
@@ -58,6 +84,9 @@
     <File Path="Documentation/Technical documentation/10-scenario-unit-of-work.md" />
     <File Path="Documentation/Technical documentation/11-provider-migrations.md" />
     <File Path="Documentation/Technical documentation/13-model-catalog-and-keys.md" />
+    <File Path="Documentation/Technical documentation/14-responses-json-adapter.md" />
+    <File Path="Documentation/Technical documentation/15-responses-sse-adapter.md" />
+    <File Path="Documentation/Technical documentation/16-context-composition.md" />
     <File Path="Documentation/Technical documentation/18-context-compaction.md" />
     <File Path="Documentation/Technical documentation/19-application-tools.md" />
     <File Path="Documentation/Technical documentation/20-agent-turn-orchestration.md" />
