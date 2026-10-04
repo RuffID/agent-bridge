@@ -4,7 +4,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
 
-Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров, два provider migrations проекта и три проекта изолированных тестов. Этапы 00–14 реализованы и приняты координатором; локальный коммит этапа14 разрешён. Доступны настройки, безопасная диагностика, Domain/Application, EF-хранилище/UoW/maintenance, per-call ключи, динамический каталог и каноническая JSON генерация через HttpClientLibrary. SSE, composition, tokenizer, compact и сценарий агента ещё отсутствуют; этапы 15–25 не начаты, checkpoint18 не достигнут.
+Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров, два provider migrations проекта и три проекта изолированных тестов. Этапы 00–15 реализованы и приняты координатором; локальный коммит15 разрешён. Доступны настройки, безопасная диагностика, Domain/Application, EF-хранилище/UoW/maintenance, per-call ключи, динамический каталог и canonical JSON/SSE через HttpClientLibrary. Composition, tokenizer, compact и сценарий агента ещё отсутствуют; этапы 16–25 не начаты, checkpoint18 не достигнут.
 
 | Проект | Сборка / назначение | Текущие production-ссылки |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 ## Документация
 
-Для JSON генерации использовать `AddCodexLbResponses` вместо отдельного `AddCodexLbModelCatalog`; приложение предоставляет свои logging/options/IIndividualModelKeySource/HttpClient, выбирает ModelAccess resolver и вызывает IModelGateway.GenerateAsync вне write UoW. Output/envelope/continuation сохраняются полностью; stream callback и CompactAsync пока Unsupported. [Фактический API, параметры, продолжение, отмена и ограничения](<Documentation/Technical documentation/14-responses-json-adapter.md>).
+Для JSON/SSE генерации использовать `AddCodexLbResponses` вместо отдельного `AddCodexLbModelCatalog`; приложение предоставляет свои logging/options/IIndividualModelKeySource/HttpClient, выбирает ModelAccess resolver и вызывает IModelGateway.GenerateAsync вне write UoW. Null callback выбирает JSON, callback выбирает SSE с последовательными awaited updates; output/envelope/continuation сохраняются. CompactAsync остаётся Unsupported. [JSON API](<Documentation/Technical documentation/14-responses-json-adapter.md>), [SSE API, lifecycle/отмена/disposal и ограничения](<Documentation/Technical documentation/15-responses-sse-adapter.md>).
 
 Вход в документацию: [Documentation/README.md](Documentation/README.md).
 

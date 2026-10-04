@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–14 реализованы и приняты координатором; локальный коммит этапа14 разрешён. Доступны настройки/DI, безопасная диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance, каталог и canonical JSON gateway через HttpClientLibrary. Этапы 15–25 не начаты; checkpoint18 не достигнут. Real HTTP/upstream не проверены; исторический DB integration запуск описан отдельно в плане и не подтверждает новый transport. [Maintenance API](<Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>), [каталог моделей](<Technical documentation/13-model-catalog-and-keys.md>), [JSON gateway](<Technical documentation/14-responses-json-adapter.md>).
+AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–15 реализованы и приняты координатором; локальный коммит15 разрешён. Доступны настройки/DI, безопасная диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance, каталог и canonical JSON/SSE gateway через HttpClientLibrary. Этапы 16–25 не начаты; checkpoint18 не достигнут. Real HTTP/upstream не проверены; исторический DB integration запуск не подтверждает новый transport. [Maintenance API](<Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>), [каталог моделей](<Technical documentation/13-model-catalog-and-keys.md>), [JSON gateway](<Technical documentation/14-responses-json-adapter.md>), [SSE gateway](<Technical documentation/15-responses-sse-adapter.md>).
 
 ## Бизнес-логика
 
@@ -30,6 +30,7 @@ AgentBridge — библиотека ИИ-агентов для .NET 10, под�
 11. [Provider-specific миграции](<Technical documentation/11-provider-migrations.md>)
 12. [Каталог моделей и выбор ключа](<Technical documentation/13-model-catalog-and-keys.md>)
 13. [JSON Responses](<Technical documentation/14-responses-json-adapter.md>)
+14. [SSE Responses](<Technical documentation/15-responses-sse-adapter.md>)
 
 ## Требования
 

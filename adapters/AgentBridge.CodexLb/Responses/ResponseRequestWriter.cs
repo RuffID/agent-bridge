@@ -9,7 +9,7 @@ namespace AgentBridge.CodexLb.Responses;
 internal static class ResponseRequestWriter
 {
     /// <summary>Сохраняет items и вложенные контроли полностью; неизвестные top-level параметры отклоняет до HTTP.</summary>
-    internal static ServiceResult<ResponseRequestBody> Write(ModelRequest request, string? previousResponseId)
+    internal static ServiceResult<ResponseRequestBody> Write(ModelRequest request, string? previousResponseId, bool stream = false)
     {
         Dictionary<string, JsonElement> parameters = new(StringComparer.Ordinal);
         if (request.Parameters is not null)
@@ -33,7 +33,7 @@ internal static class ResponseRequestWriter
             writer.WriteStartObject();
             writer.WriteString("model", request.Model);
             writer.WriteString("instructions", request.Instructions);
-            writer.WriteBoolean("stream", false);
+            writer.WriteBoolean("stream", stream);
             writer.WriteBoolean("store", false);
             writer.WriteStartArray("input");
             foreach (CanonicalModelItem item in request.Input) { item.Content.WriteTo(writer); }

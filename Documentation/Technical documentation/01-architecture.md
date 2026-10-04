@@ -43,7 +43,7 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 
 ## Обязанности типов
 
-Этап 13 добавляет IIndividualModelKeySource приложения, IModelAccessResolver/IModelCatalog/IModelSettingsReader и чистый ModelSelectionValidator. CodexLbModelCatalog использует actual HttpApiClient с per-request Bearer; EF в этом пути нет. Снимок ModelSettingsSnapshot содержит модель, effort и threshold/reserve, без сохранения выбора или запуска агента. [Фактический API этапа 13](13-model-catalog-and-keys.md). JSON Responses реализован этапом 14 через [CodexLbModelGateway](14-responses-json-adapter.md); SSE/compact и управление состоянием диалога остаются будущими.
+Этап 13 добавляет IIndividualModelKeySource приложения, IModelAccessResolver/IModelCatalog/IModelSettingsReader и чистый ModelSelectionValidator. CodexLbModelCatalog использует actual HttpApiClient с per-request Bearer; EF в этом пути нет. Снимок ModelSettingsSnapshot содержит модель, effort и threshold/reserve, без сохранения выбора или запуска агента. [API этапа13](13-model-catalog-and-keys.md). [JSON Responses14](14-responses-json-adapter.md) и [SSE15](15-responses-sse-adapter.md) реализованы через CodexLbModelGateway; compact и управление состоянием диалога остаются будущими.
 
 Интерфейсы IContextProvider, IToolHandler, IModelGateway и IContextTokenCounter определены на этапе 07; библиотечный `IDatabaseMaintenance<AgentBridgeContextKey>` подключён этапом 12, JSON IModelGateway реализован этапом 14. Названия без явного статуса реализации в таблице обозначают будущие типы.
 
@@ -54,7 +54,7 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 | `IContextProvider` | Предоставление разрешённых бизнес-данных приложением |
 | `IToolHandler` | Выполнение зарегистрированного инструмента приложения |
 | `IModelGateway` | Независимый от codex-lb порт генерации и сжатия |
-| `CodexLbModelGateway` (JSON реализован этапом 14) | GenerateAsync через HttpClientLibrary; SSE callback и CompactAsync явно Unsupported; [контракт](14-responses-json-adapter.md) |
+| `CodexLbModelGateway` (JSON14/SSE15 реализованы) | GenerateAsync через actual HttpClientLibrary; callback выбирает SSE; CompactAsync явно Unsupported; [JSON](14-responses-json-adapter.md)/[SSE](15-responses-sse-adapter.md) |
 | `IContextTokenCounter` | Tokenizer для известной кодировки модели и учёт полного входного бюджета |
 | `ContextCompactionService` | Создание следующего состояния контекста |
 | `DialogRetentionService` | Координация применения политики хранения |

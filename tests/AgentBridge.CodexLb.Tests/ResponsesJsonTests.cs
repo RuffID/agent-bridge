@@ -358,16 +358,13 @@ public class ResponsesJsonTests
         Assert.Equal(0, fixture.Handler.Calls);
     }
 
-    /// <summary>Компакт и streaming callback ещё не реализованы, без callback либо HTTP side effects.</summary>
+    /// <summary>Компакт ещё не реализован, без HTTP side effects.</summary>
     [Fact]
-    public async Task CompactAndStreamingAreExplicitlyUnsupported()
+    public async Task CompactIsExplicitlyUnsupported()
     {
         using Fixture fixture = new();
         IModelGateway gateway = fixture.Gateway;
-        ServiceResult<ModelResponse> stream = await gateway.GenerateAsync(fixture.Call, Request(), new(KEY),
-            (_, _) => throw new InvalidOperationException("callback must not run"));
         ServiceResult<ModelResponse> compact = await gateway.CompactAsync(fixture.Call, Request(), new(KEY));
-        Assert.Equal(ServiceErrorType.Unsupported, stream.Error!.Type);
         Assert.Equal(ServiceErrorType.Unsupported, compact.Error!.Type);
         Assert.Equal(0, fixture.Handler.Calls);
     }

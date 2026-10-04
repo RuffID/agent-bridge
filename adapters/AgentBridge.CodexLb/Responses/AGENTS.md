@@ -1,8 +1,8 @@
-# JSON Responses
+# JSON/SSE Responses
 
-## Граница этапа 14
+## Граница этапов 14–15
 
-- CodexLbModelGateway реализует только GenerateAsync JSON через actual HttpApiClient. SSE callback и CompactAsync возвращают Unsupported до HTTP; их не объявлять реализованными.
+- CodexLbModelGateway реализует GenerateAsync через actual HttpApiClient: onUpdate=null выбирает JSON, callback выбирает SSE stream=true. CompactAsync возвращает Unsupported до HTTP. Composition/tokenizer/orchestration не добавлять.
 - Writer передаёт canonical input и function definitions полностью, exact model/effort, stream=false/store=false. Поддержанные контроли: tool_choice, parallel_tool_calls, include, service_tier, truncation, prompt_cache_key, text, дополнительные reasoning поля без override effort. Незнакомый top-level control — Unsupported, неверная форма/дубликат — Validation. Default include reasoning.encrypted_content добавляется только при отсутствии explicit include.
 - Output остаётся ordered canonical snapshots; envelope/continuation отдельны от input. Completed требует явный status, output array и отсутствие error. Unknown lifecycle/missing output — Incomplete, explicit error/failed — Failed с полным envelope. Server cancelled без подтверждённой caller cancellation не объявлять Canceled.
 - Continuation хранит adapter version и SHA-256 binding dialog/owner/agent/endpoint/key без ключа; turnId не входит, чтобы продолжать следующий turn. Это защита от случайного смешивания trusted application data, не криптографическая авторизация и не доказательство upstream owner. codex-lb отвечает за account routing. Неизвестные metadata сохраняются, но outgoing только previous_response_id и x-codex-turn-state. Новый envelope без безопасного id удаляет прежний anchor; id сохраняется без изменений в envelope. Не использовать fallback на старый anchor.
@@ -10,6 +10,13 @@
 - До полного отчёта caller cancellation распространяется OCE с исходным токеном; после полного отчёта — Canceled с сохранёнными output/envelope/continuation. Explicit typed HTTP/model/JSON failure не заменяется поздней отменой. Caller имеет приоритет над deadline.
 - ResponseErrorReader публикует status и закрытый allowlist type/code/param из Complete valid error JSON. Unknown fields — null; raw message/headers/body/reason/exception не логировать и не публиковать. Envelope/continuation сами чувствительны и не являются безопасным UI DTO.
 
+## SSE
+
+- SseEventReader читает строгий UTF-8 с optional начальным BOM, LF/CRLF/CR и multiline data через app-owned stream в HttpStreamResponseResult. Comments/id/retry игнорируются. Незакрытый frame на EOF не dispatch; [DONE] не completion.
+- ResponseSseState собирает indexed items и partial text/function arguments/reasoning отдельно от raw response envelope. Непустой response.output авторитетен и заменяет собранный список; absent/empty допускает backfill. Полные items сохраняют unknown/opaque поля, output сортируется по protocol index. Invalid links/shape дают безопасный Rejected, partial data остаются в Failed.
+- Только response.completed с completed response, output либо collected items, без error подтверждает Completed. Failed/error имеют приоритет, incomplete/EOF не Completed. Server cancelled без caller cancellation не Canceled. При cancellation после canonical data возвращается Canceled; deadline после данных — Failed/Timeout. До данных действуют JSON правила OCE/typed timeout.
+- HttpStreamResponseResult освобождается через await using. Callbacks sequential awaited в вызывающем task, без background work; исключения callback (включая JsonException/OCE/HTTP) распространяются тем же объектом и исключаются из transport catches. Никаких callbacks после возврата; unexpected I/O не нормализовать. Continuation использует принятый JSON binding/allowlist без нового account policy.
+
 ## Проверка
 
-Public AddCodexLbResponses → IModelGateway → actual HttpClientLibrary → fake HttpMessageHandler/local streams в ResponsesJsonTests. Cancellation после полного JSON моделировать cancellation на disposal локального stream; tasks отменять/await. Сеть, host, app, DB и произвольные scripts не запускать. Commands/results — в плане этапа 14.
+Public AddCodexLbResponses → IModelGateway → actual HttpClientLibrary → fake HttpMessageHandler/local streams в ResponsesJsonTests/ResponsesSseTests. Cancellation после полного JSON/terminal SSE моделировать cancellation на disposal локального stream; tasks отменять/await. Сеть, host, app, DB и произвольные scripts не запускать. Commands/results — в планах этапов 14–15.

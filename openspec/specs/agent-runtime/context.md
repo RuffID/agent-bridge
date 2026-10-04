@@ -1,12 +1,22 @@
 # Контекст проекта AgentBridge
 
-## JSON Responses этапа 14
+## SSE Responses этапа 15
+
+Этап15 реализован, адресно проверен и принят координатором; локальный коммит разрешён. Этапы16–25 не начаты. [Change](../../changes/responses-sse-adapter/proposal.md), [API и пример](<../../../Documentation/Technical documentation/15-responses-sse-adapter.md>), [отчёт/manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/15-responses-sse-adapter.md>). CLI отсутствует, validation не выполнена, change не архивирован.
+
+Существующий callback выбирает SSE stream=true, null сохраняет JSON этапа14. Actual HttpClientLibrary возвращает wrapper; gateway owns его disposal и deadline CTS. SSE framing читает строгий UTF-8 (начальный BOM допустим) независимо от fragment boundaries; multiline data объединяется LF. EOF/DONE не completion. Непустой terminal output авторитетен; empty/absent допускает собранные indexed items. Raw envelope остаётся исходным, backfill не переписывает его. Unknown/opaque item fields сохраняются, tools не выполняются.
+
+Например, function_call added, arguments.delta="{\"id\":" и EOF возвращают Incomplete с call_id/partial arguments. Приложение не принимает это как успешный инструмент. Caller после данных возвращает Canceled; deadline после данных — Failed/Timeout с тем же output. Callback exceptions распространяются тем же объектом, обновления sequential awaited без background tasks. JSON и SSE имеют тот же bound continuation, без нового account policy. Binding — trusted-data guard, не доказательство upstream account ownership.
+
+Изолированный transport suite191/0/0, адресный cleanup regression7/0/0; actual library/fake handlers/local streams без сети/hosting. Live compatibility не доказана, DB/core suites не повторялись при неизменном ядре. Stable context подробнее в техничке; historical этап14 ниже сохранён с явным checkpoint.
+
+## JSON Responses этапа 14 (исторический checkpoint)
 
 Статус: **Реализован, адресно проверен и принят координатором; локальный коммит разрешён**. Пользователь возобновил работу после исторической паузы после 13; только этап 14. Этапы 15–25 не начаты, checkpoint18 не достигнут. [Change](../../changes/responses-json-adapter/proposal.md), [фактический API/пример](<../../../Documentation/Technical documentation/14-responses-json-adapter.md>), [команды/результаты/manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/14-responses-json-adapter.md>). CLI validation не выполнена; limitation принята координатором, change не архивирован.
 
 Public AddCodexLbResponses регистрирует JSON IModelGateway вместе с существующим catalog/resolver и actual HttpApiClient. App owns HttpClient/logging/handlers; adapter owns deadline/linked CTS. Только fake HTTP/local streams проверены, live upstream не доказан. Никаких network retries либо key/model/account fallback.
 
-Пример: input содержит function_call_output и encrypted reasoning; completed output состоит только из function_call/opaque compaction. Items/order/unknown fields сохраняются, usage/model/error и весь envelope отдельны от next input. ModelRequestParameters хранит независимые дополнительные контроли; обязательные поля не override. Include по умолчанию запрашивает encrypted reasoning, explicit include сохраняется. SSE callback/CompactAsync пока Unsupported.
+Пример: input содержит function_call_output и encrypted reasoning; completed output состоит только из function_call/opaque compaction. Items/order/unknown fields сохраняются, usage/model/error и весь envelope отдельны от next input. ModelRequestParameters хранит независимые дополнительные контроли; обязательные поля не override. Include по умолчанию запрашивает encrypted reasoning, explicit include сохраняется. На checkpoint14 SSE callback/CompactAsync были Unsupported; SSE реализован этапом15 выше, CompactAsync остаётся Unsupported.
 
 Согласован 2026-10-04 binding продолжения к dialog/owner/agent/endpoint/key hash без сохранения ключа. Это защита от случайного смешивания trusted app data, не серверная авторизация. Передаются только previous_response_id/x-codex-turn-state; unknown metadata сохраняются. Отсутствующий новый id удаляет старый anchor. Полный malformed id остаётся в envelope, пригодного anchor при этом нет. Upstream owner проверяет codex-lb.
 

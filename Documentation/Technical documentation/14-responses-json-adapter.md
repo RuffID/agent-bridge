@@ -59,6 +59,6 @@ Reader извлекает только закрытые известные зн�
 
 ## Нереализованные методы и доказательства
 
-onUpdate callback в GenerateAsync и CompactAsync возвращают Unsupported до HTTP/callback. SSE15, composition16, tokenizer17, compact18, executor tools19 не реализованы. Финальный checkpoint18 не достигнут.
+На checkpoint14 onUpdate callback и CompactAsync возвращали Unsupported. Этап15 реализовал [SSE callback](15-responses-sse-adapter.md); onUpdate=null сохраняет описанный JSON путь. CompactAsync остаётся Unsupported до HTTP; composition16, tokenizer17, compact18, executor tools19 не реализованы. Финальный checkpoint18 не достигнут.
 
 Тесты ResponsesJsonTests проходят public DI/resolver/gateway через actual HttpClientLibrary 0.0.0.5 с fake handler/local streams. Они подтверждают snapshot/order/lifecycle/errors/disposal/cancellation/binding/safe logger/no retries в этом pipeline. Live codex-lb/OpenAI/account ownership/upstream compatibility и app handlers не проверены. Domain/persistence, соседние библиотеки и generated migrations не менялись; прежние DB integration results не повторены и не выдаются за проверку этого транспорта.
