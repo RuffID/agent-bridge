@@ -22,7 +22,7 @@
 | `IExpiredDialogReader` | Ограниченная выборка кандидатов по сроку |
 | `IExpiredDialogDeletion` | Удаление кандидата после повторной проверки incarnation/version/expiry |
 
-Шлюз, провайдеры контекста, handler registry, tokenizer и AgentRunner ещё не реализованы. Этап 09 добавил read ports; этап 10 реализовал write ports/UoW через `AddAgentBridgePersistence`. Это ещё не полный сценарий агента.
+JSON IModelGateway реализован этапом 14 через `AddCodexLbResponses`; SSE callback и CompactAsync явно Unsupported. Провайдеры контекста, handler registry, tokenizer и AgentRunner ещё не реализованы. Этап 09 добавил read ports; этап 10 реализовал write ports/UoW через `AddAgentBridgePersistence`. Это ещё не полный сценарий агента. [Фактический JSON transport](14-responses-json-adapter.md).
 
 ## Результаты и отмена
 
@@ -36,7 +36,7 @@
 
 `CanonicalModelItem` хранит полный объект элемента; `CanonicalModelEnvelope` — весь объект результата, включая id/usage/discriminator/unknown fields. `ModelContinuation` сохраняет непрозрачные метаданные для того же диалога и upstream-владения. JsonElement клонируется, поэтому уничтожение исходного JsonDocument не повреждает снимок. Это чистый контейнер BCL, без wire DTO, HTTP serializer или SSE parser; mapping остаётся этапам 14–15.
 
-`ModelRequest` копирует Input и Tools, содержит полные инструкции, выбранную модель/effort и continuation. `ModelAccess` отдельно фиксирует уже выбранный ключ на конкретный вызов. Секрет раскрывается только явным `RevealApiKey` для транспорта; ToString и обычная сериализация не раскрывают его. Выбор индивидуального/общего ключа ещё не реализован (этап 13). Сырые protocol/envelope/continuation данные также чувствительные и не предназначены для логов.
+`ModelRequest` копирует Input и Tools, содержит полные инструкции, выбранную модель/effort, continuation и optional независимый `ModelRequestParameters` snapshot этапа 14. Поддержку контролей и запрет override mandatory fields проверяет adapter; будущий tokenizer должен учитывать полный подготовленный запрос с Parameters. `ModelAccess` фиксирует уже выбранный ключ на конкретный вызов; resolver этапа 13 использует shared только при null. Секрет раскрывается только явным `RevealApiKey` для транспорта; ToString и обычная сериализация не раскрывают его. Сырые protocol/envelope/continuation/parameters чувствительны и не предназначены для логов.
 
 `StoredDialogTurn.Items` содержит канонические элементы истории. `ModelSteps` отдельно связывает каждый StoredModelStep.StepId с полным ModelResponse. Envelope не помещается в список items для следующего input. `StoredDialogContext.Compaction` сохраняет полный compact-отчёт, а Items возвращает его каноническое окно. ThroughTurnSequence остаётся только terminal-prefix metadata; точная граница отдельных items и composition предстоят на этапах 14–18. Чтение не отбрасывает историю по этому числу.
 

@@ -1,6 +1,6 @@
 # Техническая документация AgentBridge
 
-Документы описывают фактические API конфигурации, диагностики, Domain, прикладных портов, EF-хранилища и каталога моделей. Этапы 00–13 реализованы и приняты; запрещённые проверки пропущены. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты. Реализованы read/write UoW, migrations/maintenance и каталог через HttpClientLibrary; сценарий агента и Responses/SSE/compact ещё отсутствуют. Проверки и ограничения находятся в соответствующих планах.
+Документы описывают фактические API конфигурации, диагностики, Domain/Application, EF-хранилища, каталога и JSON gateway. Этапы 00–14 реализованы и приняты координатором; локальный коммит этапа14 разрешён. SSE/composition/tokenizer/compact и сценарий агента отсутствуют; этапы 15–25 не начаты, checkpoint18 не достигнут. Проверки и ограничения находятся в соответствующих планах.
 
 | Раздел | Содержание |
 | --- | --- |
@@ -16,5 +16,6 @@
 | [Сценарные Unit of Work](10-scenario-unit-of-work.md) | Write ports, общий scope EFCoreLibrary, Domain Restore, guards и ограничения атомарности |
 | [Provider migrations](11-provider-migrations.md) | Отдельные сборки/factories, runtime identity, tooling, подготовленная модель и блокер генерации |
 | [Каталог моделей и ключи](13-model-catalog-and-keys.md) | Application source, per-call доступ, dynamic capabilities, проверка model/effort/input budget и безопасные снимки |
+| [JSON Responses](14-responses-json-adapter.md) | Public DI/gateway, canonical controls/items/envelope, bound continuation, safe errors, deadline/caller/disposal и Unsupported SSE/compact |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

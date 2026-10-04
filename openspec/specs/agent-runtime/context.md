@@ -1,8 +1,20 @@
 # Контекст проекта AgentBridge
 
+## JSON Responses этапа 14
+
+Статус: **Реализован, адресно проверен и принят координатором; локальный коммит разрешён**. Пользователь возобновил работу после исторической паузы после 13; только этап 14. Этапы 15–25 не начаты, checkpoint18 не достигнут. [Change](../../changes/responses-json-adapter/proposal.md), [фактический API/пример](<../../../Documentation/Technical documentation/14-responses-json-adapter.md>), [команды/результаты/manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/14-responses-json-adapter.md>). CLI validation не выполнена; limitation принята координатором, change не архивирован.
+
+Public AddCodexLbResponses регистрирует JSON IModelGateway вместе с существующим catalog/resolver и actual HttpApiClient. App owns HttpClient/logging/handlers; adapter owns deadline/linked CTS. Только fake HTTP/local streams проверены, live upstream не доказан. Никаких network retries либо key/model/account fallback.
+
+Пример: input содержит function_call_output и encrypted reasoning; completed output состоит только из function_call/opaque compaction. Items/order/unknown fields сохраняются, usage/model/error и весь envelope отдельны от next input. ModelRequestParameters хранит независимые дополнительные контроли; обязательные поля не override. Include по умолчанию запрашивает encrypted reasoning, explicit include сохраняется. SSE callback/CompactAsync пока Unsupported.
+
+Согласован 2026-10-04 binding продолжения к dialog/owner/agent/endpoint/key hash без сохранения ключа. Это защита от случайного смешивания trusted app data, не серверная авторизация. Передаются только previous_response_id/x-codex-turn-state; unknown metadata сохраняются. Отсутствующий новый id удаляет старый anchor. Полный malformed id остаётся в envelope, пригодного anchor при этом нет. Upstream owner проверяет codex-lb.
+
+GenerationTimeout действует на send/body; после полного отчёта late caller cancellation сохраняет данные в Canceled, до отчёта — OCE с исходным token. Explicit typed failure приоритетнее late cancellation, caller приоритетнее deadline. Safe error adapter хранит numeric status и closed allowlist type/code/param; raw message/headers/body/reason/exception никогда не логируются. Canonical envelope чувствителен и сохраняет исходную модельную ошибку для протокола.
+
 ## Каталог моделей и ключи этапа 13
 
-Статус: **Реализован и принят; запрещённые проверки пропущены**. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты. [Change](../../changes/model-catalog-and-keys/proposal.md), [фактический API](<../../../Documentation/Technical documentation/13-model-catalog-and-keys.md>), [команды и ограничения](<../../../Documentation/Plans/AgentBridge Initial Implementation/13-model-catalog-and-keys.md>). CLI validation не выполнена; change не архивирован.
+Статус: **Реализован и принят; запрещённые проверки пропущены**. Исторический checkpoint приёмки 2026-10-03: цепочка приостановлена после 13, этапы 14–25 не начаты на тот момент. Текущий этап 14 описан выше. [Change](../../changes/model-catalog-and-keys/proposal.md), [фактический API](<../../../Documentation/Technical documentation/13-model-catalog-and-keys.md>), [команды и ограничения](<../../../Documentation/Plans/AgentBridge Initial Implementation/13-model-catalog-and-keys.md>). CLI validation не выполнена; change не архивирован.
 
 IIndividualModelKeySource принадлежит приложению. CodexLbModelAccessResolver использует SharedApiKey только при null; заданный ошибочный ключ, exception источника или отказ сервера не разрешают fallback. ModelAccess передаётся на вызов и не входит в persistence/безопасные snapshots. Приложение владеет HttpClient и своими logging scopes/handlers; AddCodexLbModelCatalog создаёт actual HttpApiClient текущей HttpClientLibrary без регистрации host или сетевых побочных действий.
 

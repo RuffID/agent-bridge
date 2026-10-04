@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–13 реализованы и приняты; запрещённые проверки пропущены. Доступны настройки/DI, безопасная диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance и каталог моделей через HttpClientLibrary: источник индивидуального ключа, per-call доступ и проверка model/effort/input budget. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты; агент, Responses/SSE/compact ещё отсутствуют. Реальные HTTP/upstream и restart/атомарность/восстановимость на БД не подтверждены. [Maintenance API](<Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>), [каталог моделей](<Technical documentation/13-model-catalog-and-keys.md>).
+AgentBridge — библиотека ИИ-агентов для .NET 10, подключаемая обычными DLL. Этапы 00–14 реализованы и приняты координатором; локальный коммит этапа14 разрешён. Доступны настройки/DI, безопасная диагностика, Domain/Application, EF-хранилище/UoW/migrations/maintenance, каталог и canonical JSON gateway через HttpClientLibrary. Этапы 15–25 не начаты; checkpoint18 не достигнут. Real HTTP/upstream не проверены; исторический DB integration запуск описан отдельно в плане и не подтверждает новый transport. [Maintenance API](<Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>), [каталог моделей](<Technical documentation/13-model-catalog-and-keys.md>), [JSON gateway](<Technical documentation/14-responses-json-adapter.md>).
 
 ## Бизнес-логика
 
@@ -29,6 +29,7 @@ AgentBridge — библиотека ИИ-агентов для .NET 10, под�
 10. [Сценарные Unit of Work](<Technical documentation/10-scenario-unit-of-work.md>)
 11. [Provider-specific миграции](<Technical documentation/11-provider-migrations.md>)
 12. [Каталог моделей и выбор ключа](<Technical documentation/13-model-catalog-and-keys.md>)
+13. [JSON Responses](<Technical documentation/14-responses-json-adapter.md>)
 
 ## Требования
 

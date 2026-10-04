@@ -4,7 +4,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
 
-Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров, два provider migrations проекта и три проекта изолированных тестов. Этапы 00–13 реализованы и приняты; запрещённые проверки пропущены. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты. Доступны настройки, безопасная диагностика, защищённый Domain, прикладные порты, EF-хранилище/UoW/maintenance, выбор API-ключа и динамический каталог моделей через HttpClientLibrary. Сценарий агента и Responses/SSE/compact транспорт ещё отсутствуют; следующий порядок описывает интеграцию с учётом этих ограничений.
+Создана основа решения .NET 10: ядро в корне, два отдельных проекта адаптеров, два provider migrations проекта и три проекта изолированных тестов. Этапы 00–14 реализованы и приняты координатором; локальный коммит этапа14 разрешён. Доступны настройки, безопасная диагностика, Domain/Application, EF-хранилище/UoW/maintenance, per-call ключи, динамический каталог и каноническая JSON генерация через HttpClientLibrary. SSE, composition, tokenizer, compact и сценарий агента ещё отсутствуют; этапы 15–25 не начаты, checkpoint18 не достигнут.
 
 | Проект | Сборка / назначение | Текущие production-ссылки |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 ## Подключение
 
-Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в пять DLL из таблицы; HTTP ещё не реализован; EF-хранилище имеет read/write ports, выбирает provider migrations assembly и предоставляет явный maintenance API. Приложение поставляет выбранную migrations DLL и зависимости EFCoreLibrary maintenance, SQLite native runtime либо PostgreSQL pg_dump. [Фабрики и схема](<Documentation/Technical documentation/11-provider-migrations.md>), [подключение обслуживания](<Documentation/Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>).
+Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в пять DLL из таблицы; каталог и JSON Responses используют HttpClientLibrary. EF-хранилище имеет read/write ports, выбирает provider migrations assembly и предоставляет явный maintenance API. Приложение поставляет выбранную migrations DLL и зависимости EFCoreLibrary maintenance, SQLite native runtime либо PostgreSQL pg_dump. [Фабрики и схема](<Documentation/Technical documentation/11-provider-migrations.md>), [подключение обслуживания](<Documentation/Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>).
 
 1. Добавить в .NET 10-приложение ссылки на DLL ядра, адаптера codex-lb и выбранной инфраструктуры хранения вместе с зависимостями времени выполнения. AgentBridge не распространяется NuGet-пакетом.
 2. Подключить совместимые DLL EFCoreLibrary и HttpClientLibrary. Выбрать SQLite или PostgreSQL и соответствующий EF Core provider.
@@ -67,6 +67,8 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 Для диагностики доступен `AddAgentBridgeDiagnostics` из `AgentBridge.Diagnostics`. Приложение передаёт свой Serilog logger стандартному `AddLogging(logging => logging.AddSerilog(applicationLogger, dispose: false))`, затем регистрирует диагностику. Приложение владеет logger, sinks и их освобождением; AgentBridge не заменяет `Log.Logger`. `BeginOperation` измеряет длительность и принимает только enum операции, GUID корреляции и раздельные caller/deadline-токены. Владелец явно завершает наблюдение через `Complete` или `Fail`; автоматической интеграции ещё не реализованных сценариев нет. Пример реальной проверки options, поля событий и контракт отмены: [Serilog и диагностика](<Documentation/Technical documentation/07-tokenizer-and-settings.md#serilog>).
 
 ## Документация
+
+Для JSON генерации использовать `AddCodexLbResponses` вместо отдельного `AddCodexLbModelCatalog`; приложение предоставляет свои logging/options/IIndividualModelKeySource/HttpClient, выбирает ModelAccess resolver и вызывает IModelGateway.GenerateAsync вне write UoW. Output/envelope/continuation сохраняются полностью; stream callback и CompactAsync пока Unsupported. [Фактический API, параметры, продолжение, отмена и ограничения](<Documentation/Technical documentation/14-responses-json-adapter.md>).
 
 Вход в документацию: [Documentation/README.md](Documentation/README.md).
 

@@ -4,7 +4,7 @@
 
 Все исходящие HTTP-запросы адаптера выполняются через HttpClientLibrary из `D:\Media\User\source\repos\work\HttpClientLibrary`.
 
-На этапе 00 исходный [проект библиотеки](../../../work/HttpClientLibrary/HttpClientLibrary.csproj) имел FileVersion 0.0.0.4. На согласованном этапе 04 реализована версия 0.0.0.5 с прежними `net8.0;net10.0` и Logging Abstractions `10.0.2`. Сборки и изолированные тесты обоих TFM проверены, FileVersion/TFM/MVID/hash build DLL сверены с тестовыми копиями. Этап 13 подключает локальный ProjectReference и actual HttpApiClient для `/v1/models`; Responses/SSE/compact ещё не реализованы. Точные результаты библиотеки: [этап 04](<../Plans/AgentBridge Initial Implementation/04-httpclientlibrary-logging.md>), [API каталога](13-model-catalog-and-keys.md).
+На этапе 00 исходный [проект библиотеки](../../../work/HttpClientLibrary/HttpClientLibrary.csproj) имел FileVersion 0.0.0.4. На согласованном этапе 04 реализована версия 0.0.0.5 с прежними `net8.0;net10.0` и Logging Abstractions `10.0.2`. Сборки и изолированные тесты обоих TFM проверены, FileVersion/TFM/MVID/hash build DLL сверены с тестовыми копиями. Этап 13 подключает actual HttpApiClient для `/v1/models`, этап 14 — JSON `/v1/responses`; SSE/compact ещё не реализованы. Точные результаты библиотеки: [этап 04](<../Plans/AgentBridge Initial Implementation/04-httpclientlibrary-logging.md>), [API каталога](13-model-catalog-and-keys.md), [JSON gateway](14-responses-json-adapter.md).
 
 | Реальный тип | Использование |
 | --- | --- |
@@ -30,7 +30,7 @@ SSE-парсер относится к адаптеру codex-lb: общий HTT
 
 ## Проверка текущего codex-lb
 
-Контракты сверены с локальными исходниками 2026-10-03. Проверка статическая; работа живого сервера и конкретного upstream не проверялась.
+Контракты повторно сверены с локальными исходниками v1_requests.py/requests.py/models.py/api.py/affinity.py 2026-10-04 для этапа 14. Проверка статическая; работа живого сервера и конкретного upstream не проверялась.
 
 | Публичный маршрут | Контракт |
 | --- | --- |
@@ -98,7 +98,7 @@ HTTP 2xx или полученный text delta сами по себе не до
 
 HttpErrorResponseOptions.MaxBodyBytes по умолчанию 65536. Чтение ограничено лимитом плюс один проверочный байт, без доверия к Content-Length, с cancellation. Complete содержит полный текст, Truncated — декодируемый prefix, остальные состояния Empty/UnsupportedContent/InvalidEncoding — null. Complete не гарантирует валидность JSON. Поддерживается строгий UTF-8 (BOM допустим) для text/*, application/json, *+json и отсутствующего Content-Type; иная объявленная кодировка/тип — UnsupportedContent. Незавершённый UTF-8 символ на лимите исключается из prefix, реальные неверные байты дают InvalidEncoding без replacement chars. Непрочитанный остаток не проверяется.
 
-ResponseSnippet остаётся ограниченным 2000 UTF-16 символами preview с заменой CR/LF. Для type/code/param будущий Responses/SSE адаптер разбирает BodyText только при Complete и валидном envelope. Он же интерпретирует server correlation и Retry-After, проверяет безопасность возвращаемых полей. Raw headers/body могут содержать секреты и не логируются даже при JsonStructure. Неполнота или отсутствие полей не доказывают безопасность retry. Каталог этапа 13 реализован с безопасными ошибками только по HTTP-статусу; полноценная нормализация Responses/SSE error envelope и Retry-After этапов 14–15 ещё не реализована.
+ResponseSnippet остаётся ограниченным 2000 UTF-16 символами preview с заменой CR/LF. JSON Responses этапа 14 разбирает BodyText только при Complete и валидном error envelope; closed allowlist type/code/param исключает произвольные секретные values. Status сохраняется в error адаптера, Application получает semantic Type. Raw headers/body не логируются даже при JsonStructure. Каталог этапа 13 сохраняет status-only mapping; server correlation/Retry-After и SSE ещё не реализованы. Неполнота либо отсутствие полей не доказывают безопасность retry; retries/fallback отсутствуют. [Фактическая нормализация и ограничения](14-responses-json-adapter.md).
 
 `AddCodexLbModelCatalog` принимает необязательный `HttpClientLoggingOptions`; например, `new HttpClientLoggingOptions { ErrorContentMode = HttpErrorContentLogMode.JsonStructure }`. Actual HttpApiClient получает ILogger приложения и явный error limit 65536. Проверки без сети и ограничения кодировок описаны также в [README HttpClientLibrary](../../../work/HttpClientLibrary/README.md).
 

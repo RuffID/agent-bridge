@@ -5,7 +5,8 @@ public class ModelRequest
 {
     /// <summary>Копирует вход и инструменты; выбор допустимой модели и effort проверяется будущим сценарием.</summary>
     public ModelRequest(string model, string? reasoningEffort, string instructions,
-        IEnumerable<CanonicalModelItem> input, IEnumerable<ModelToolDefinition> tools, ModelContinuation? continuation = null)
+        IEnumerable<CanonicalModelItem> input, IEnumerable<ModelToolDefinition> tools, ModelContinuation? continuation = null,
+        ModelRequestParameters? parameters = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(model);
         ArgumentNullException.ThrowIfNull(instructions);
@@ -19,6 +20,7 @@ public class ModelRequest
         Input = ContractSnapshot.Copy(input);
         Tools = ContractSnapshot.Copy(tools);
         Continuation = continuation;
+        Parameters = parameters;
     }
 
     /// <summary>Зафиксированная выбранная модель.</summary>
@@ -33,4 +35,6 @@ public class ModelRequest
     public IReadOnlyList<ModelToolDefinition> Tools { get; }
     /// <summary>Зафиксированные метаданные продолжения только этого диалога и upstream-владения.</summary>
     public ModelContinuation? Continuation { get; }
+    /// <summary>Независимые дополнительные контроли; неизвестную поддержку адаптер отклоняет явно.</summary>
+    public ModelRequestParameters? Parameters { get; }
 }

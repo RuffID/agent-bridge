@@ -6,6 +6,50 @@
 
 ## Требования
 
+### Requirement: Каноническая JSON генерация Responses
+
+JSON gateway MUST отправлять canonical base-prefix POST /v1/responses через HttpClientLibrary с per-call ModelAccess и stream=false/store=false. Model/instructions/exact effort, ordered canonical input и полные function definitions MUST сохраняться. Поддержанные параметры MUST иметь независимый снимок; mandatory fields и effort MUST NOT переопределяться. Unknown top-level controls MUST давать Unsupported до HTTP, malformed/duplicate controls — Validation. Default include reasoning.encrypted_content MUST добавляться только при отсутствии explicit include. Output MUST сохранять порядок/unknown/opaque поля отдельно от полного envelope/continuation. Completed MUST требовать status=completed, output array и отсутствие explicit error; HTTP 2xx/видимый текст MUST NOT заменять это подтверждение. Failed/incomplete/unknown lifecycle MUST сохранять известный output/envelope.
+
+#### Scenario: Нет видимого текста
+
+- **WHEN** completed JSON содержит только function_call/reasoning/compaction
+- **THEN** gateway сохраняет весь ordered output и полный независимый envelope как Completed.
+
+#### Scenario: Нет canonical output
+
+- **WHEN** JSON содержит completed, но не содержит output
+- **THEN** gateway возвращает Incomplete с полным envelope, без фиктивного completion.
+
+### Requirement: Безопасные ошибки и ограниченный JSON вызов
+
+JSON gateway MUST нормализовать HTTP error по status и закрытым известным безопасным type/code/param только из Complete valid error envelope. Raw body/headers/reason/message/exception MUST NOT попадать в публичную ошибку/logger. Truncated/invalid/unsupported body MUST NOT трактоваться как complete envelope. Вызов MUST иметь конечный GenerationTimeout на отправку/чтение. До получения полного отчёта caller cancellation MUST распространяться OCE с исходным token; после полного отчёта MUST возвращаться Canceled с сохранёнными output/envelope/continuation. Explicit typed HTTP/model/JSON failure MUST сохранять приоритет над поздней отменой. Caller MUST иметь приоритет над deadline. Неожиданный I/O MUST распространяться без retry. Request/response MUST освобождаться на успехе/отказе/JSON error/отмене. Streaming callback и compact JSON gateway MUST давать Unsupported до HTTP.
+
+#### Scenario: Поздняя отмена
+
+- **WHEN** caller отменяется после полного получения canonical JSON
+- **THEN** отчёт Canceled сохраняет output/envelope/continuation
+- **AND** explicit typed failure не подменяется отменой.
+
+#### Scenario: Error prefix и секретные values
+
+- **WHEN** HTTP error body неполный, либо error type/code/param содержит неизвестный текст
+- **THEN** public error сохраняет status и только известные безопасные поля
+- **AND** raw message не публикуется, retry отсутствует.
+
+### Requirement: Продолжение только своего JSON вызова
+
+Continuation JSON adapter MUST связывать previous_response_id/x-codex-turn-state с dialog/owner/agent, endpoint и отпечатком выбранного ключа без сохранения ключа. Несовпадение либо unknown format MUST отклоняться до HTTP. Unknown metadata MUST сохраняться, но MUST NOT становиться input, произвольными headers или разрешением retry/смены account. Новый envelope без пригодного id MUST удалять старый previous_response_id; исходный id MUST сохраняться в envelope. Upstream ownership MUST оставаться ответственностью codex-lb.
+
+#### Scenario: Другой контекст или ключ
+
+- **WHEN** continuation передано с другим dialog/owner/agent/key/endpoint
+- **THEN** gateway отказывает до HTTP без fallback.
+
+#### Scenario: Новый ответ без anchor
+
+- **WHEN** новый JSON не содержит пригодного id
+- **THEN** новый continuation не отправляет previous_response_id старого ответа.
+
 ### Requirement: Динамический каталог выбранного ключа
 
 AgentBridge MUST читать канонический `/v1/models` через HttpClientLibrary с per-call ModelAccess и без client_version. Каталог MUST NOT заменяться статическим списком, прошлым снимком другого ключа или скрытым retry. Снимки MUST сохранять необходимые объявленные budgets, усилия и флаги независимо от исходного JSON. Отсутствующий metadata MUST оставаться неизвестным.
