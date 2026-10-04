@@ -6,6 +6,11 @@ namespace AgentBridge.Application.Ports;
 /// <summary>Короткая атомарная граница принятия нового рабочего окна после внешнего compact.</summary>
 public interface IDialogContextWriter
 {
+    /// <summary>Сохраняет provenance выбранной модели отдельно от canonical данных; legacy writer явно отказывается.</summary>
+    Task<ServiceResult<DialogWriteToken>> SaveWithModelAsync(DialogAccess access, DialogWriteToken expected,
+        long throughTurnSequence, ModelResponse compaction, string selectedModel,
+        CancellationToken cancellationToken = default) => Task.FromResult(ServiceResult<DialogWriteToken>.Fail(
+            new(ServiceErrorType.Unsupported, "Writer не поддерживает provenance модели compact.")));
     /// <summary>Проверяет существование, access/token ID, владельца, срок, incarnation/revision и terminal prefix;
     /// принимает следующую версию окна и сохраняет историю. Отказ оставляет прежнее окно актуальным.</summary>
     /// <remarks>Prefix не откатывается и не включает InProgress/дыры. Compaction должен иметь статус Completed;

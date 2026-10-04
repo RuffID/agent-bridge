@@ -3,7 +3,7 @@ namespace AgentBridge.Application.Models;
 /// <summary>Явный input одного нового turn; права на агента и provider selection принадлежат приложению.</summary>
 public class AgentRunRequest
 {
-    /// <summary>Копирует input/selection; model/effort null используют existing settings reader.</summary>
+    /// <summary>Копирует input/selection; model/effort null используют saved dialog selection, затем defaults reader приложения.</summary>
     public AgentRunRequest(ApplicationCallContext call, IEnumerable<CanonicalModelItem> input,
         IEnumerable<string> selectedToolNames, ToolExecutionLimits toolLimits, string? model = null,
         string? effort = null, string? instructions = null, ModelRequestParameters? parameters = null)

@@ -7,7 +7,8 @@ public class DialogSnapshot
 {
     /// <summary>Фиксирует метаданные, всю историю и активное окно без фильтрации по terminal prefix.</summary>
     public DialogSnapshot(DialogWriteToken token, DialogOwnerId ownerId, DateTimeOffset createdAtUtc,
-        DateTimeOffset expiresAtUtc, long contentBytes, IEnumerable<StoredDialogTurn> turns, StoredDialogContext? activeContext)
+        DateTimeOffset expiresAtUtc, long contentBytes, IEnumerable<StoredDialogTurn> turns, StoredDialogContext? activeContext,
+        DialogModelSelection? selection = null)
     {
         ArgumentNullException.ThrowIfNull(token);
         ArgumentNullException.ThrowIfNull(ownerId);
@@ -21,6 +22,7 @@ public class DialogSnapshot
         ContentBytes = contentBytes;
         Turns = ContractSnapshot.Copy(turns);
         ActiveContext = activeContext;
+        Selection = selection;
     }
 
     /// <summary>Сохраняемое условие актуальности прочитанных данных.</summary>
@@ -37,6 +39,8 @@ public class DialogSnapshot
     public IReadOnlyList<StoredDialogTurn> Turns { get; }
     /// <summary>Последнее принятое окно либо отсутствие сжатия.</summary>
     public StoredDialogContext? ActiveContext { get; }
+    /// <summary>Сохранённый выбор с независимой версией; null использует defaults приложения.</summary>
+    public DialogModelSelection? Selection { get; }
     /// <summary>Проверяет истечение для интерфейса на явном UTC; равенство сроку означает истечение.</summary>
     public bool IsExpired(DateTimeOffset nowUtc)
     {

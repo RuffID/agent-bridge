@@ -215,3 +215,13 @@ UTC ticks в INTEGER/bigint сохраняют точность и сортир�
 
 При следующем сообщении «Когда доставят?» AgentBridge восстанавливает контекст этого диалога. Пользователю не требуется заново указывать заказ, если необходимые сведения остаются доступны в рамках политики хранения.
 
+## Настройки и статус конкретного диалога — этап21
+
+Пользователь выбрал хранение model/effort в БД AgentBridge для конкретного диалога и независимую settings version. Defaults остаются у приложения. Например, активный ход начинает high, UI сохраняет low, этот ход завершает high, следующий начинает low; request override применяется только к одному ходу. DialogSettings не меняет revision/даты истории. Token и SelectionVersion доступны в safe read snapshot для следующего CAS; stale save даёт Conflict без повтора. Driver busy/serialization и неизвестный commit не маскируются ожидаемым конфликтом.
+
+Пользователь подтвердил отдельный compatibility порт приложения: opaque другой/неизвестной selected модели без подтверждения даёт Unsupported с сохранением контекста. Selected/server model передаются раздельно, совпадение server имени не доказывает совместимость. Model-independent inspector отличает shape от доступности BPE mapping. Standalone compact и historical строки имеют nullable provenance и не получают выдуманное имя.
+
+Safe status сохраняет сроки и байты даже после expiry или отказа каталога. Размер относится к сохранённому рабочему input; transient providers/new input/tools следующего run проверяются отдельно. Null full estimate не заменяется known tokens, CanContinue не гарантирует full generation budget. Settings, pinned snapshots и provenance не входят в ContentBytes содержимого. Down/Up21 сохраняет canonical историю и count, но теряет новые metadata; Up возвращает null.
+
+Схема21 создана штатным tooling по отдельному разрешению; actual SQLite/PostgreSQL checks подтверждают restart/CAS/races/rollback/running snapshot и Down/Up. HTTP проверен только actual HttpClientLibrary/fake handler. OpenSpec CLI отсутствует, static review не называется validation, change не архивирован. [Нормативные требования](spec.md), [API и ограничения21](<../../../Documentation/Technical documentation/21-settings-and-dialog-status.md>), [команды, manifest и результаты](<../../../Documentation/Plans/AgentBridge Initial Implementation/21-settings-and-dialog-status.md>).
+

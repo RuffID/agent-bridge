@@ -16,7 +16,7 @@ namespace AgentBridge.Application;
 public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IModelSettingsReader settingsReader,
     IModelAccessResolver accessResolver, IModelGateway gateway, IContextTokenCounter counter, IToolRegistry registry,
     IToolExecutor executor, TimeProvider time, IOptionsSnapshot<AgentOptions> options,
-    IOptionsSnapshot<ContextCompactionOptions> compactionOptions)
+    IOptionsSnapshot<ContextCompactionOptions> compactionOptions, ContextModelGuard compatibility)
 {
     /// <summary>Передаёт предварительные updates и возвращает явный итог, без автоматического восстановления действий.</summary>
     public async Task<AgentRunResult> RunAsync(AgentRunRequest request,
@@ -57,9 +57,11 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             ServiceResult<ModelAccess> access = await accessResolver.ResolveAsync(request.Call.OwnerId, cancellationToken);
             if (!access.Success) return Report(AgentRunStatus.Failed, access.Error!);
             ServiceResult<ModelSettingsSnapshot> selected = await settingsReader.ReadWithAccessAsync(request.Call.OwnerId,
-                access.Data!, request.Model, request.Effort, cancellationToken);
+                access.Data!, request.Model ?? dialog.Selection?.Model, request.Effort ?? dialog.Selection?.Effort, cancellationToken);
             if (!selected.Success) return Report(AgentRunStatus.Failed, selected.Error!);
             settings = selected.Data!;
+            ServiceResult compatible = await compatibility.CheckAsync(request.Call, dialog, settings, cancellationToken);
+            if (!compatible.Success) return Report(AgentRunStatus.Failed, compatible.Error!);
             ModelRequest initial = new(settings.Model.Id, settings.ReasoningEffort, instructions, request.Input, tools,
                 parameters: request.Parameters);
             ServiceResult<ModelRequest> prepared = await builder.BuildAsync(request.Call, dialog, initial, time.GetUtcNow(), cancellationToken);
@@ -68,7 +70,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             int historyCount = (dialog.ActiveContext?.Items.Count ?? 0) + dialog.Turns.Where(turn => turn.Sequence > through).Sum(turn => turn.Items.Count);
             CanonicalModelItem[] providerItems = prepared.Data!.Input.Take(prepared.Data.Input.Count - historyCount - request.Input.Count).ToArray();
             ContextBuilder frozen = new([new FrozenProvider(providerItems)]);
-            session = new(scopes, request.Call, dialog, time);
+            session = new(scopes, request.Call, dialog, time, TurnModelSettings.From(settings));
             ServiceResult<DialogWriteToken> begun = await session.BeginAsync(request.Input, cancellationToken);
             if (!begun.Success) return Report(AgentRunStatus.Failed, begun.Error!);
             ToolExecutionSession toolSession = executor.CreateSession(request.Call, session.Snapshot.Token, dialog.ExpiresAtUtc,

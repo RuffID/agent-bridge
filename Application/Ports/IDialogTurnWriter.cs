@@ -11,6 +11,11 @@ namespace AgentBridge.Application.Ports;
 /// EF-адаптер использует общий сценарный scope/UoW; EF-сессия не удерживается во время сети.</remarks>
 public interface IDialogTurnWriter
 {
+    /// <summary>Атомарно начинает обращение с фиксированными безопасными настройками; legacy writer явно отказывается.</summary>
+    Task<ServiceResult<DialogWriteToken>> BeginWithSettingsAsync(DialogAccess access, DialogWriteToken expected,
+        Guid turnId, IReadOnlyList<CanonicalModelItem> input, TurnModelSettings settings,
+        CancellationToken cancellationToken = default) => Task.FromResult(ServiceResult<DialogWriteToken>.Fail(
+            new(ServiceErrorType.Unsupported, "Writer не поддерживает фиксацию настроек обращения.")));
     /// <summary>Атомарно начинает обращение с порядком начала и сохраняет его исходный input.</summary>
     Task<ServiceResult<DialogWriteToken>> BeginAsync(DialogAccess access, DialogWriteToken expected,
         Guid turnId, IReadOnlyList<CanonicalModelItem> input, CancellationToken cancellationToken = default);

@@ -1,5 +1,8 @@
 # Сценарные write UoW
 
+- DialogSettingsUnitOfWork21 сохраняет только отдельную строку выбора через base CRUD. Guard проверяет original root token/owner/incarnation/expiry, Settings.Version — independent CAS. Ни revision истории, ни active snapshot не refresh/retry. UnitOfWorkScope распознаёт только exact settings DbUpdateConcurrency/PK collision; FK/driver/serialization/commit errors остаются исключениями. External catalog/compatibility вызывается до scope.
+- BeginWithSettingsAsync атомарно сохраняет turn snapshot; legacy Begin допускает null. Terminal update читает прежний SettingsJson parent-aware и не теряет его. SaveWithModelAsync сохраняет selected compact provenance; standalone SaveAsync оставляет null. Settings/provenance metadata не входят в ContentBytes.
+
 - DialogToolAttemptUnitOfWork реализует отдельный IDialogToolAttemptWriter через existing scope/guard/Domain/base CRUD. Start добавляет одну позицию только к Completed сохранённому step InProgress turn. Outcomes меняют Started либо фиксируют pre-action отказ/NotStarted, confirmed outputs добавляются той же transaction. Root revision и размер журнала изменяются атомарно; повтор позиции/terminal outcome запрещён. Никаких handlers/I/O/automatic retries внутри scope.
 
 - `DialogCreationUnitOfWork`, `DialogTurnUnitOfWork`, `DialogContextUnitOfWork`, `DialogDeletionUnitOfWork` реализуют существующие узкие Application write ports. Общего контейнера всех репозиториев нет; read ports не зависят от UoW.

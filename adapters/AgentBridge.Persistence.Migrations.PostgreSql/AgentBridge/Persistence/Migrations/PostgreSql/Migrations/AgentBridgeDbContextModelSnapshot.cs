@@ -57,6 +57,9 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
                     b.Property<long>("CreatedAtUtc")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("SelectedModel")
+                        .HasColumnType("text");
+
                     b.Property<long>("ThroughTurnSequence")
                         .HasColumnType("bigint");
 
@@ -164,6 +167,35 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
                         });
                 });
 
+            modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogSettingsRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Effort")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DialogSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Settings_Effort", "length(\"Effort\") > 0");
+
+                            t.HasCheckConstraint("CK_Settings_Model", "length(\"Model\") > 0");
+
+                            t.HasCheckConstraint("CK_Settings_Version", "\"Version\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogTurnRecord", b =>
                 {
                     b.Property<Guid>("DialogId")
@@ -177,6 +209,9 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
 
                     b.Property<long>("Sequence")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("SettingsJson")
+                        .HasColumnType("text");
 
                     b.Property<long>("StartedAtUtc")
                         .HasColumnType("bigint");
@@ -281,6 +316,15 @@ namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations
                     b.HasOne("AgentBridge.Persistence.EfCore.Models.DialogRecord", null)
                         .WithMany()
                         .HasForeignKey("DialogId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogSettingsRecord", b =>
+                {
+                    b.HasOne("AgentBridge.Persistence.EfCore.Models.DialogRecord", null)
+                        .WithOne()
+                        .HasForeignKey("AgentBridge.Persistence.EfCore.Models.DialogSettingsRecord", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

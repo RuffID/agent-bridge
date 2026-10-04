@@ -1,5 +1,10 @@
 # Application
 
+- AgentSettingsService21 читает safe limits/status и сохраняет exact model/effort для конкретного owner/dialog через IDialogSettingsWriter. SelectionVersion независима от history revision: смена выбора не инвалидирует active run. Reader snapshot задаёт приоритет request override → saved dialog selection → defaults приложения. Read/status возвращают safe dialog token того же snapshot; stale root/settings — Conflict без refresh/retry.
+- AgentRunner атомарно фиксирует TurnModelSettings через BeginWithSettingsAsync; legacy custom writer получает Unsupported без primitive fallback. AgentRunSession сохраняет selected compact model через SaveWithModelAsync отдельно от envelope; standalone/legacy SaveAsync сохраняет unknown provenance. Snapshot не содержит ModelAccess.
+- ContextModelGuard использует model-independent IContextContentInspector, а не tokenizer mapping/budget. Opaque другой/неизвестной selected модели требует IContextModelCompatibility приложения; selected/server не приравниваются. Sources сохраняют отдельные occurrences output и residual input/tools без global dedup. История не меняется. Совместимость не подтверждает token budget.
+- DialogStatus.ContextSize — stored active window + непокрытая история без instructions/providers/new input/tools. Unknown estimate/count error остаются явными; CanContinue позволяет готовить запрос, full generation guard обязателен. Метаданные expiry доступны после истечения, но никакая статусная проекция не разрешает late write.
+
 ## Оркестрация этапа20
 
 - AgentRunner фиксирует owner/version/settings/access/selection/limits; providers один раз на run. Null callback использует JSON, non-null SSE. Compact и отдельный full guard выполняются перед каждой generation; compact failure не становится fallback generation. Existing TurnId (включая legacy без журнала) не replay; незакрытая известная function pair блокирует новое обращение.

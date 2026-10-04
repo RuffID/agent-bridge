@@ -56,24 +56,25 @@ public class MaintenanceIntegrationTests
         Assert.Equal("Host_001", Assert.Single(await database.QueryAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\""))["MigrationId"]);
         Assert.Empty(await database.QueryAsync("SELECT \"MigrationId\" FROM \"__AgentBridgeMigrationsHistory\""));
         string tables = provider == DatabaseProvider.SQLite
-            ? "SELECT name FROM sqlite_schema WHERE type='table' AND name IN ('Dialogs','DialogTurns','ModelSteps','CanonicalItems','DialogContexts')"
-            : "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('Dialogs','DialogTurns','ModelSteps','CanonicalItems','DialogContexts')";
+            ? "SELECT name FROM sqlite_schema WHERE type='table' AND name IN ('Dialogs','DialogTurns','ModelSteps','CanonicalItems','DialogContexts','DialogSettings')"
+            : "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('Dialogs','DialogTurns','ModelSteps','CanonicalItems','DialogContexts','DialogSettings')";
         Assert.Empty(await database.QueryAsync(tables));
         using (IServiceScope scope = database.Root.CreateScope())
         {
             IDatabaseMaintenance<AgentBridgeContextKey> maintenance = scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
-            Assert.Equal(2, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
+            Assert.Equal(3, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
             DatabaseMaintenanceResult reapplied = await maintenance.UpdateExistingAsync(TimeSpan.FromSeconds(45));
             Assert.Equal(MaintenanceOutcome.Migrated, reapplied.Outcome);
-            Assert.Equal(2, reapplied.AppliedMigrations.Count);
+            Assert.Equal(3, reapplied.AppliedMigrations.Count);
             Assert.NotNull(reapplied.Backup);
         }
-        Assert.Equal(5, (await database.QueryAsync(tables)).Count);
+        Assert.Equal(6, (await database.QueryAsync(tables)).Count);
         string expected = provider == DatabaseProvider.SQLite ? "20261003155233_InitialAgentBridgeSchema" : "20261003155235_InitialAgentBridgeSchema";
         IReadOnlyList<IReadOnlyDictionary<string, object?>> history = await database.QueryAsync("SELECT \"MigrationId\" FROM \"__AgentBridgeMigrationsHistory\" ORDER BY \"MigrationId\"");
-        Assert.Equal(2, history.Count);
+        Assert.Equal(3, history.Count);
         Assert.Equal(expected, history[0]["MigrationId"]);
         Assert.EndsWith("_AddDurableToolAttempts", (string)history[1]["MigrationId"]!);
+        Assert.EndsWith("_AddDialogSettings", (string)history[2]["MigrationId"]!);
         Assert.Equal("Host_001", Assert.Single(await database.QueryAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\""))["MigrationId"]);
     }
 
@@ -93,7 +94,7 @@ public class MaintenanceIntegrationTests
             DatabaseMaintenanceResult migrated = await scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>()
                 .UpdateExistingAsync(TimeSpan.FromSeconds(45));
             Assert.Equal(MaintenanceOutcome.Migrated, migrated.Outcome);
-            Assert.Equal(2, migrated.AppliedMigrations.Count);
+            Assert.Equal(3, migrated.AppliedMigrations.Count);
             artifact = Assert.IsType<LocalBackupArtifact>(migrated.Backup!.Artifact);
             Assert.True(migrated.Backup.Confirms(migrated.Backup.OperationId, migrated.Backup.TargetIdentity,
                 scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>().Capabilities, migrated.Backup.StartedAtUtc));
@@ -159,7 +160,7 @@ public class MaintenanceIntegrationTests
         IDatabaseMaintenance<AgentBridgeContextKey> maintenance = scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
         MaintenanceException failure = await Assert.ThrowsAsync<MaintenanceException>(() => maintenance.UpdateExistingAsync(TimeSpan.FromSeconds(30)));
         Assert.Equal(MaintenanceError.Configuration, failure.Code);
-        Assert.Equal(2, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
+        Assert.Equal(3, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
         Assert.Equal(before, await database.FingerprintAsync());
         Assert.Empty(Directory.EnumerateFiles(database.BackupDirectory));
     }
@@ -255,7 +256,7 @@ public class MaintenanceIntegrationTests
         MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => maintenance.UpdateExistingAsync(TimeSpan.FromSeconds(30)));
         Assert.Equal(MaintenanceError.Configuration, error.Code);
         Assert.Null(error.InnerException);
-        Assert.Equal(2, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
+        Assert.Equal(3, (await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).PendingMigrations.Count);
         Assert.Equal(before, await database.FingerprintAsync());
         Assert.Empty(Directory.EnumerateFileSystemEntries(database.BackupDirectory));
     }

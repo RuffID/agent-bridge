@@ -52,7 +52,7 @@ public class ProviderDesignTimeTests
         IModel runtimeModel = runtime.GetService<IDesignTimeModel>().Model;
         Assert.Equal(runtimeModel.ToDebugString(MetadataDebugStringOptions.LongDefault),
             designModel.ToDebugString(MetadataDebugStringOptions.LongDefault));
-        Assert.Equal(new[] { "CanonicalItems", "DialogContexts", "DialogTurns", "Dialogs", "ModelSteps" },
+        Assert.Equal(new[] { "CanonicalItems", "DialogContexts", "DialogSettings", "DialogTurns", "Dialogs", "ModelSteps" },
             designModel.GetEntityTypes().Select(entity => entity.GetTableName()).OrderBy(name => name, StringComparer.Ordinal));
         IEntityType root = designModel.FindEntityType(typeof(DialogRecord))!;
         Assert.Equal(collation, root.FindProperty(nameof(DialogRecord.OwnerId))!.GetCollation());
@@ -67,7 +67,7 @@ public class ProviderDesignTimeTests
         {
             Assert.True(root.FindProperty(name)!.IsConcurrencyToken);
         }
-        Assert.Equal(4, designModel.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()).Count());
+        Assert.Equal(5, designModel.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()).Count());
         Assert.All(designModel.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()),
             foreignKey => Assert.Equal(DeleteBehavior.Cascade, foreignKey.DeleteBehavior));
     }
@@ -94,9 +94,9 @@ public class ProviderDesignTimeTests
         using AgentBridgeDbContext context = CreateFactory(selected).CreateDbContext([]);
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
         Assert.NotNull(assembly.ModelSnapshot);
-        Assert.Equal(2, assembly.Migrations.Count);
+        Assert.Equal(3, assembly.Migrations.Count);
         KeyValuePair<string, TypeInfo> registered = assembly.Migrations.OrderBy(pair => pair.Key).Last();
-        Assert.EndsWith("_AddDurableToolAttempts", registered.Key);
+        Assert.EndsWith("_AddDialogSettings", registered.Key);
         Migration migration = assembly.CreateMigration(registered.Value, context.Database.ProviderName!);
         IModelRuntimeInitializer initializer = context.GetService<IModelRuntimeInitializer>();
         IModel snapshotModel = initializer.Initialize(assembly.ModelSnapshot.Model, designTime: true);

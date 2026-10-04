@@ -35,7 +35,7 @@ internal class FakeWriteFixture
         DialogStateLoader state = new(new(Turns.Repository), new(Contexts.Repository));
         TurnContentStaging content = new(new(Items.Repository), new(Steps.Repository), Items.Staging(), Steps.Staging());
         Creator = new(scope, roots, Roots.Staging());
-        Writer = new(scope, guard, state, content, Roots.Staging(), Turns.Staging());
+        Writer = new(scope, guard, state, content, Roots.Staging(), Turns.Staging(), new(Turns.Repository));
         ContextWriter = new(scope, guard, state, Roots.Staging(), Contexts.Staging());
         Deletion = new(scope, guard, roots, Roots.Staging());
         Session.OnBegin = () =>

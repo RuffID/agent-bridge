@@ -16,6 +16,45 @@ public class AgentRunnerTests
     private static readonly DateTimeOffset NOW = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);
     private static readonly ModelToolDefinition TOOL = new("action", "Действие", JsonSerializer.SerializeToElement(new { type = "object" }), false);
 
+    /// <summary>Per-request effort перекрывает per-dialog выбор; смена выбора после Begin не меняет already pinned request.</summary>
+    [Fact]
+    public async Task StoredSelectionAndOverrideRemainPinnedDuringRun()
+    {
+        Probe probe = new();
+        probe.Replace([], selection: new(1, "gpt-5", "low"));
+        probe.AfterWrite = kind =>
+        {
+            if (kind == "begin") probe.Replace(probe.Dialog.Turns, selection: new(2, "gpt-4", "low"));
+        };
+        probe.Responses.Enqueue(ModelResponse.Completed([Call("call")]));
+        probe.Responses.Enqueue(ModelResponse.Completed([Message("done")]));
+        await using ServiceProvider root = Services(probe).BuildServiceProvider();
+        AgentRunResult result = await RunAsync(root, new(probe.Call, [Message("input")], [TOOL.Name], new(8, 8, 2, TimeSpan.FromMinutes(1)), effort: "high"));
+        Assert.Equal(AgentRunStatus.Completed, result.Status);
+        Assert.Equal("gpt-5", result.Settings!.Model.Id);
+        Assert.Equal("high", result.Settings.ReasoningEffort);
+        Assert.Equal("gpt-5", result.Turn!.Settings!.Model);
+        Assert.Equal("high", result.Turn.Settings.Effort);
+        Assert.Equal("gpt-4", probe.Dialog.Selection!.Model);
+        Assert.Equal("low", probe.Dialog.Selection.Effort);
+        Assert.All(probe.Requests, request => { Assert.Equal("gpt-5", request.Model); Assert.Equal("high", request.ReasoningEffort); });
+        Assert.Equal(1, probe.SettingsCalls);
+    }
+
+    /// <summary>Writer без atomic snapshot контракта отказывает до Begin/model, без primitive fallback.</summary>
+    [Fact]
+    public async Task LegacyTurnWriterDoesNotStartWithoutSnapshotSupport()
+    {
+        Probe probe = new();
+        ServiceCollection services = Services(probe);
+        services.AddSingleton<IDialogTurnWriter, LegacyWriter>();
+        await using ServiceProvider root = services.BuildServiceProvider();
+        AgentRunResult result = await RunAsync(root, Request(probe));
+        Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
+        Assert.Empty(probe.Events);
+        Assert.Equal(0, probe.Generations);
+    }
+
     /// <summary>Старый user reader без pinned-access контракта останавливается явно до provider/model/write.</summary>
     [Fact]
     public async Task LegacySettingsReaderFailsWithoutUnpinnedFallback()
@@ -230,7 +269,7 @@ public class AgentRunnerTests
     public async Task SuccessfulCompactSurvivesNextPassExceptionOrCancellation(bool cancel)
     {
         Probe probe = new() { Threshold = 50 };
-        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [])]);
+        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [], new("gpt-5", "high", 50, 10, 1000))]);
         using CancellationTokenSource caller = new();
         Exception primary = new InvalidOperationException("compact second pass");
         probe.Compact = () =>
@@ -255,7 +294,7 @@ public class AgentRunnerTests
     public async Task CancellationImmediatelyAfterCompactSaveKeepsAcceptedToken()
     {
         Probe probe = new() { Threshold = 50 };
-        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [])]);
+        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [], new("gpt-5", "high", 50, 10, 1000))]);
         using CancellationTokenSource caller = new();
         probe.AfterWrite = kind => { if (kind == "context") caller.Cancel(); };
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
@@ -272,7 +311,7 @@ public class AgentRunnerTests
     public async Task CompactFailureRunsSeparateGuardAndStopsGeneration()
     {
         Probe probe = new() { Threshold = 50 };
-        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [])]);
+        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [], new("gpt-5", "high", 50, 10, 1000))]);
         probe.Compact = () => Task.FromResult(ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Rejected, "compact refused")));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         AgentRunResult result = await RunAsync(root, Request(probe));
@@ -287,7 +326,7 @@ public class AgentRunnerTests
     public async Task OpaqueCompactIsPersistedButFullGuardRefuses()
     {
         Probe probe = new() { Threshold = 50 };
-        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [])]);
+        probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [], new("gpt-5", "high", 50, 10, 1000))]);
         probe.Compact = () => Task.FromResult(ServiceResult<ModelResponse>.Ok(ModelResponse.Completed([Item("{\"type\":\"compaction\",\"encrypted_content\":\"opaque\"}")])));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         AgentRunResult result = await RunAsync(root, Request(probe));
@@ -488,8 +527,9 @@ public class AgentRunnerTests
         public Func<ToolInvocation, CancellationToken, Task<ServiceResult<ToolOutput>>> Action = (_, _) => Task.FromResult(Success());
         public Func<Task<ServiceResult<ModelResponse>>> Compact = () => Task.FromResult(ServiceResult<ModelResponse>.Ok(ModelResponse.Completed([Message("small")])));
         public Probe() => Dialog = new(new(Call.DialogId, Guid.NewGuid(), 0), Call.OwnerId, NOW, NOW.AddDays(1), 0, [], null);
-        public void Replace(IEnumerable<StoredDialogTurn> turns, DialogWriteToken? token = null, StoredDialogContext? active = null) =>
-            Dialog = new(token ?? Dialog.Token, Dialog.OwnerId, Dialog.CreatedAtUtc, Dialog.ExpiresAtUtc, 0, turns, active ?? Dialog.ActiveContext);
+        public void Replace(IEnumerable<StoredDialogTurn> turns, DialogWriteToken? token = null, StoredDialogContext? active = null,
+            DialogModelSelection? selection = null) =>
+            Dialog = new(token ?? Dialog.Token, Dialog.OwnerId, Dialog.CreatedAtUtc, Dialog.ExpiresAtUtc, 0, turns, active ?? Dialog.ActiveContext, selection ?? Dialog.Selection);
     }
     private class Clock : TimeProvider
     {
@@ -499,6 +539,16 @@ public class AgentRunnerTests
     /// <inheritdoc/>
     private class Store(Probe probe) : IDialogReader, IDialogTurnWriter, IDialogToolAttemptWriter, IDialogContextWriter, IAsyncDisposable
     {
+        /// <inheritdoc/>
+        public Task<ServiceResult<DialogWriteToken>> BeginWithSettingsAsync(DialogAccess access, DialogWriteToken expected, Guid turnId,
+            IReadOnlyList<CanonicalModelItem> input, TurnModelSettings settings, CancellationToken cancellationToken = default) =>
+            Write("begin", access, expected, token => probe.Replace(probe.Dialog.Turns.Append(
+                new(turnId, probe.Dialog.Turns.Count + 1, DialogTurnStatus.InProgress, input, [], settings)), token));
+        /// <inheritdoc/>
+        public Task<ServiceResult<DialogWriteToken>> SaveWithModelAsync(DialogAccess access, DialogWriteToken expected,
+            long throughTurnSequence, ModelResponse compaction, string selectedModel, CancellationToken cancellationToken = default) =>
+            Write("context", access, expected, token => probe.Replace(probe.Dialog.Turns, token,
+                new((probe.Dialog.ActiveContext?.Version ?? 0) + 1, throughTurnSequence, compaction, selectedModel)));
         private readonly Guid _scope = Guid.NewGuid();
         private string? _lastKind;
         /// <inheritdoc/>
@@ -546,10 +596,10 @@ public class AgentRunnerTests
         public ValueTask DisposeAsync() => probe.ThrowScopeAt is not null && probe.ThrowScopeAt == _lastKind
             ? ValueTask.FromException(probe.ScopeException) : ValueTask.CompletedTask;
         private void Change(Guid turnId, DialogWriteToken token, IEnumerable<CanonicalModelItem> items, IEnumerable<StoredModelStep> steps, DialogTurnStatus? status = null) =>
-            probe.Replace(probe.Dialog.Turns.Select(turn => turn.Id != turnId ? turn : new StoredDialogTurn(turn.Id, turn.Sequence, status ?? turn.Status, turn.Items.Concat(items), turn.ModelSteps.Concat(steps))), token);
+            probe.Replace(probe.Dialog.Turns.Select(turn => turn.Id != turnId ? turn : new StoredDialogTurn(turn.Id, turn.Sequence, status ?? turn.Status, turn.Items.Concat(items), turn.ModelSteps.Concat(steps), turn.Settings)), token);
         private void Attempt(Guid turnId, Guid stepId, StoredToolAttempt attempt, DialogWriteToken token) =>
             probe.Replace(probe.Dialog.Turns.Select(turn => turn.Id != turnId ? turn : new StoredDialogTurn(turn.Id, turn.Sequence, turn.Status, turn.Items,
-                turn.ModelSteps.Select(step => step.StepId != stepId ? step : new StoredModelStep(step.StepId, step.Response, step.ToolAttempts.Where(prior => prior.OutputIndex != attempt.OutputIndex).Append(attempt))))), token);
+                turn.ModelSteps.Select(step => step.StepId != stepId ? step : new StoredModelStep(step.StepId, step.Response, step.ToolAttempts.Where(prior => prior.OutputIndex != attempt.OutputIndex).Append(attempt))), turn.Settings)), token);
     }
     /// <inheritdoc/>
     private class Settings(Probe probe) : IModelSettingsReader
@@ -560,8 +610,8 @@ public class AgentRunnerTests
         public Task<ServiceResult<ModelSettingsSnapshot>> ReadWithAccessAsync(DialogOwnerId ownerId, ModelAccess access, string? model = null, string? effort = null, CancellationToken ct = default)
         {
             probe.SettingsCalls++; Assert.Same(probe.Access, access);
-            ModelCapabilities capabilities = new("gpt-5", true, 1000, 1000, 100, ["high"], "high", ["text"], true, true, true, true, false);
-            return Task.FromResult(ServiceResult<ModelSettingsSnapshot>.Ok(new(capabilities, "high", probe.Threshold, 10)));
+            ModelCapabilities capabilities = new(model ?? "gpt-5", true, 1000, 1000, 100, ["high", "low"], "high", ["text"], true, true, true, true, false);
+            return Task.FromResult(ServiceResult<ModelSettingsSnapshot>.Ok(new(capabilities, effort ?? "high", probe.Threshold, 10)));
         }
     }
     /// <inheritdoc/>
@@ -570,6 +620,21 @@ public class AgentRunnerTests
         /// <inheritdoc/>
         public Task<ServiceResult<ModelSettingsSnapshot>> ReadAsync(DialogOwnerId ownerId, string? model = null, string? effort = null, CancellationToken ct = default) =>
             throw new InvalidOperationException("Fallback на legacy reader запрещён.");
+    }
+
+    /// <inheritdoc/>
+    private class LegacyWriter : IDialogTurnWriter
+    {
+        /// <inheritdoc/>
+        public Task<ServiceResult<DialogWriteToken>> BeginAsync(DialogAccess access, DialogWriteToken expected, Guid turnId,
+            IReadOnlyList<CanonicalModelItem> input, CancellationToken cancellationToken = default) => throw new InvalidOperationException("Legacy Begin запрещён.");
+        /// <inheritdoc/>
+        public Task<ServiceResult<DialogWriteToken>> AppendAsync(DialogAccess access, DialogWriteToken expected, Guid turnId,
+            IReadOnlyList<CanonicalModelItem> items, IReadOnlyList<StoredModelStep> modelSteps, CancellationToken cancellationToken = default) => throw new InvalidOperationException();
+        /// <inheritdoc/>
+        public Task<ServiceResult<DialogWriteToken>> FinishAsync(DialogAccess access, DialogWriteToken expected, Guid turnId,
+            DialogTurnStatus status, IReadOnlyList<CanonicalModelItem> newItems, IReadOnlyList<StoredModelStep> modelSteps,
+            CancellationToken cancellationToken = default) => throw new InvalidOperationException();
     }
     /// <inheritdoc/>
     private class Access(Probe probe) : IModelAccessResolver

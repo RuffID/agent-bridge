@@ -7,6 +7,8 @@ namespace AgentBridge.Persistence.EfCore.Models;
 /// <remarks>Строка обращения с идентичностью внутри диалога и стабильным порядком начала.</remarks>
 public class DialogTurnRecord : IEntity<Guid>
 {
+    /// <summary>Безопасные фиксированные настройки начала обращения; null для historical rows.</summary>
+    public string? SettingsJson { get; set; }
     /// <inheritdoc/>
     public Guid Id { get; set; }
     /// <summary>Обязательный родитель.</summary>

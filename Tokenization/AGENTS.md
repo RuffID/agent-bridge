@@ -1,5 +1,7 @@
 # Offline tokenization
 
+- ContextTokenCounter также реализует IContextContentInspector через тот же canonical shape parser, без BPE/model mapping. Это только opaque/unknown classification, не input estimate. Текстовая совместимость не зависит от поддержки exact model tokenizer; CountAsync неизвестной модели по-прежнему Unsupported. DI registration сохраняет отдельные custom counter/inspector.
+
 - Здесь реализация IContextTokenCounter через Microsoft.ML.Tokenizers2.0.0 и embedded O200kBase/Cl100kBase словари. Runtime network/download отсутствует. Mapping конечный, exact/ordinal, первичные источники и дата в техничке07; библиотечный model resolver/prefix fallback не применять.
 - KnownTokens считает известные payload, не billing. JSON framing — только локальная оценка полного известного input. Opaque/multimodal/unknown fields или continuation state => estimate null, известный текст сохраняется. Не токенизировать IDs/base64/encrypted content как скрытый input.
 - Reserve/threshold принадлежат Application.ContextBudgetGuard, не BPE tokenizer. Counter/guard не меняют историю, не вызывают compact/HTTP/DB. Не вводить opaque estimates без согласования.

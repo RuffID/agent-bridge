@@ -1,4 +1,6 @@
 using AgentBridge.Application;
+using AgentBridge.Application.Ports;
+using AgentBridge.Tokenization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -13,6 +15,8 @@ public static class AgentBridgeRunnerExtensions
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<AgentRunner>();
+        services.TryAddSingleton<IContextContentInspector, ContextTokenCounter>();
+        services.TryAddScoped<ContextModelGuard>();
         return services;
     }
 }

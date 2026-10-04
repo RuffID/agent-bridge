@@ -3,6 +3,8 @@ namespace AgentBridge.Persistence.EfCore.Models;
 /// <summary>Принятый compact; активным считается максимальная Version, прежние состояния не удаляются.</summary>
 public class DialogContextRecord
 {
+    /// <summary>Выбранная модель compact; null при неизвестном provenance.</summary>
+    public string? SelectedModel { get; set; }
     /// <summary>Обязательный диалог.</summary>
     public Guid DialogId { get; set; }
     /// <summary>Последовательная версия принятого состояния, начиная с единицы.</summary>

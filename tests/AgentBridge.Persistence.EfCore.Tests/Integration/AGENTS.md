@@ -1,5 +1,7 @@
 # Интеграционные проверки этапов 00–13 и20
 
+- DialogSettingsIntegrationTests21 добавляет адресные actual settings/provenance риски на EFCoreLibrary0.0.5: independent version не ломает активный runner token, новый run/override, restart, atomic rollback, cascade/guards, first insert и update concurrency. Typed stale/CAS Conflict отличать от busy/serialization driver errors без retry. Down/Up21 сохраняет canonical history и ContentBytes содержимого, но settings/provenance намеренно теряются и возвращаются null.
+
 - Запуск только с явным разрешением пользователя на реальные тестовые БД и процессы. Исторический набор00–13 не выдавать за evidence EFCoreLibrary0.0.5. AgentRunnerIntegrationTests20 проверяет адресные новые durable risks через actual runner/write ports; весь maintenance без новых рисков не повторять.
 - Runner20 tests подтверждают separate-scope Started до handler, атомарность journal+outputs при реальном SQL rollback, lost acknowledgement после real commit, legacy/restart no replay, guards/late delete/cleanup/expiry и новые migration Down/Up с historical rows. Parallel observer использует один parent-aware base query committed step; multi-read DialogReader вправе дать Conflict при соседнем checkpoint и не должен получать retry ради теста.
 - `Dependency=Database` отделяет проверки от изолированного набора. `AGENTBRIDGE_INTEGRATION=1` включает их явно; отсутствующая обязательная конфигурация после включения — ошибка, не skip.

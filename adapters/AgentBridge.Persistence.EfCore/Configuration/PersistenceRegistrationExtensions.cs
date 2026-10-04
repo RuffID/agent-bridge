@@ -48,6 +48,7 @@ public static class PersistenceRegistrationExtensions
         services.AddScoped<ItemRecordQueries>();
         services.AddScoped<ModelStepRecordQueries>();
         services.AddScoped<ContextRecordQueries>();
+        services.AddScoped<SettingsRecordQueries>();
         services.AddScoped<PersistenceOperationGate>();
         services.AddScoped<IUnitOfWorkSession, EfUnitOfWorkSession>();
         services.AddScoped<UnitOfWorkScope>();
@@ -58,6 +59,7 @@ public static class PersistenceRegistrationExtensions
         services.AddScoped<IDialogTurnWriter, DialogTurnUnitOfWork>();
         services.AddScoped<IDialogToolAttemptWriter, DialogToolAttemptUnitOfWork>();
         services.AddScoped<IDialogContextWriter, DialogContextUnitOfWork>();
+        services.AddScoped<IDialogSettingsWriter, DialogSettingsUnitOfWork>();
         services.AddScoped<DialogDeletionUnitOfWork>();
         services.AddScoped<IDialogDeletion>(provider => provider.GetRequiredService<DialogDeletionUnitOfWork>());
         services.AddScoped<IExpiredDialogDeletion>(provider => provider.GetRequiredService<DialogDeletionUnitOfWork>());

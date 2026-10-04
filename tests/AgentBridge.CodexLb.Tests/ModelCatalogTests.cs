@@ -3,6 +3,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AgentBridge.Application.Models;
+using AgentBridge.Application;
+using AgentBridge.Tokenization;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.CodexLb.Configuration;
@@ -23,6 +25,34 @@ public class ModelCatalogTests
     private const string INDIVIDUAL_KEY = "synthetic-individual-key";
     private const string SHARED_KEY = "synthetic-shared-key";
     private const string PRIVATE_PAYLOAD = "synthetic-private-payload";
+
+    /// <summary>Safe settings21 проверяет per-dialog новый выбор actual reader/HttpClientLibrary, не меняя defaults или ключ.</summary>
+    [Fact]
+    public async Task PublicSettingsServiceValidatesStoredChoiceThroughActualHttpLibrary()
+    {
+        using Fixture fixture = new(INDIVIDUAL_KEY);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        ApplicationCallContext call = new(DialogId.From(Guid.NewGuid()), DialogOwnerId.From("owner"), Guid.NewGuid(), "agent");
+        SelectionStore store = new(new(new(call.DialogId, Guid.NewGuid(), 0), call.OwnerId, now.AddHours(-1), now.AddDays(1), 0, [], null));
+        ContextTokenCounter counter = new();
+        AgentSettingsService service = new(store, store, fixture.Reader, new(counter, []), counter, TimeProvider.System,
+            fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>(),
+            fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ContextCompactionOptions>>(),
+            fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<AgentOptions>>());
+        AgentSettingsSnapshot initial = (await service.ReadAsync(call)).Data!;
+        Assert.Equal("application-model", initial.Model.Model.Id);
+        fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse(Catalog(40_000, "new-effort").Replace("application-model", "selected-model", StringComparison.Ordinal)));
+        Assert.True((await service.SelectAsync(call, initial.Token, initial.SelectionVersion, "selected-model", "new-effort")).Success);
+        AgentSettingsSnapshot selected = (await service.ReadAsync(call)).Data!;
+        Assert.Equal("selected-model", selected.Model.Model.Id);
+        Assert.Equal("new-effort", selected.Model.ReasoningEffort);
+        Assert.Equal(1, selected.SelectionVersion);
+        Assert.Equal("application-model", fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<CodexLbOptions>>().Value.Model);
+        Assert.Equal(3, fixture.Handler.Calls);
+        Assert.All(fixture.Handler.Authorizations, authorization => Assert.Equal("Bearer " + INDIVIDUAL_KEY, authorization));
+        AssertSafe(JsonSerializer.Serialize(selected));
+        AssertSafe(fixture.Log.Text);
+    }
 
     /// <summary>Run settings проверяются pinned доступом без второго чтения изменившегося источника ключей.</summary>
     [Fact]
@@ -438,6 +468,23 @@ public class ModelCatalogTests
             LastOwner = ownerId.Value;
             if (Failure is not null) throw Failure;
             return Task.FromResult(Key);
+        }
+    }
+
+    /// <inheritdoc cref="IDialogReader"/>
+    private class SelectionStore(DialogSnapshot dialog) : IDialogReader, IDialogSettingsWriter
+    {
+        private DialogSnapshot _dialog = dialog;
+        /// <inheritdoc/>
+        public Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default) =>
+            Task.FromResult(ServiceResult<DialogSnapshot>.Ok(_dialog));
+        /// <inheritdoc/>
+        public Task<ServiceResult<DialogModelSelection>> SaveAsync(DialogAccess access, DialogWriteToken expected, long expectedVersion,
+            ModelSettingsSnapshot settings, CancellationToken cancellationToken = default)
+        {
+            DialogModelSelection selection = new(expectedVersion + 1, settings.Model.Id, settings.ReasoningEffort);
+            _dialog = new(_dialog.Token, _dialog.OwnerId, _dialog.CreatedAtUtc, _dialog.ExpiresAtUtc, _dialog.ContentBytes, [], null, selection);
+            return Task.FromResult(ServiceResult<DialogModelSelection>.Ok(selection));
         }
     }
 

@@ -1,5 +1,11 @@
 # Общее EF-хранилище
 
+## Settings этапа21
+
+- DialogSettings — шестая mapped таблица, optional per-dialog выбор и independent concurrency Version. Settings UoW проверяет owner/expiry/incarnation/history token внутри Serializable scope, но не меняет root Revision/LastChangedAtUtc. Concurrent settings не инвалидируют active run; stale выбора — Conflict, driver busy/serialization исключения не маскируются retry.
+- DialogTurns.SettingsJson version1 сохраняет primitive настройки BeginWithSettingsAsync; terminal update сохраняет прежний JSON. DialogContexts.SelectedModel — nullable selected provenance compact, отдельно от server model envelope. Historical rows остаются null, defaults не выдумываются. Read проверяет selection version повторно вместе с root guards. Current schema создана разрешёнными AddDialogSettings.
+- ContentBytes считает canonical items, полные reports/compact и tool journal. Owner/model selection/turn settings/provenance — метаданные и не входят в содержимое; выбор не требует root size update и не влияет на soft-limit/expiry. Это не физический размер БД. Down21 удаляет только новые metadata/settings; canonical payload и его счётчик сохраняются.
+
 ## Durable попытки этапа20
 
 - ModelSteps.ToolAttemptsJson — отдельный nullable version1 журнал AgentId/output position/state, не canonical payload/envelope. Root owner/incarnation и parent-aware step keys задают остальные identity. Legacy null не разрешает replay; повреждённый формат/позиции отклоняются. ContentBytes учитывает UTF-8 журнала.

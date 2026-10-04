@@ -9,9 +9,19 @@ namespace AgentBridge.Tokenization;
 
 /// <inheritdoc/>
 /// <remarks>Точная BPE-токенизация известных payload; JSON framing только оценка, не server count.</remarks>
-public class ContextTokenCounter : IContextTokenCounter
+public class ContextTokenCounter : IContextTokenCounter, IContextContentInspector
 {
     private static readonly JsonSerializerOptions jsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    /// <inheritdoc cref="IContextContentInspector.HasOpaqueContent"/>
+    public bool HasOpaqueContent(IEnumerable<CanonicalModelItem> items, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        PayloadCount payload = new(null, cancellationToken);
+        foreach (CanonicalModelItem item in items) payload.Item(item.Content);
+        cancellationToken.ThrowIfCancellationRequested();
+        return payload.HasOpaqueContent;
+    }
 
     /// <inheritdoc/>
     public Task<ServiceResult<ContextTokenCount>> CountAsync(ModelRequest request, CancellationToken cancellationToken = default)
@@ -60,13 +70,13 @@ public class ContextTokenCounter : IContextTokenCounter
     /// <summary>Локальное состояние одного подсчёта, без содержимого в ошибках или логах.</summary>
     private class PayloadCount
     {
-        private readonly TiktokenTokenizer tokenizer;
+        private readonly TiktokenTokenizer? tokenizer;
         private readonly CancellationToken cancellationToken;
         internal long KnownTokens { get; private set; }
         internal bool HasOpaqueContent { get; private set; }
         internal Dictionary<string, JsonElement> InputParameters { get; } = new(StringComparer.Ordinal);
 
-        internal PayloadCount(TiktokenTokenizer tokenizer, CancellationToken cancellationToken)
+        internal PayloadCount(TiktokenTokenizer? tokenizer, CancellationToken cancellationToken)
         {
             this.tokenizer = tokenizer;
             this.cancellationToken = cancellationToken;
@@ -76,7 +86,7 @@ public class ContextTokenCounter : IContextTokenCounter
         internal int CountText(string text)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            int count = tokenizer.CountTokens(text);
+            int count = tokenizer?.CountTokens(text) ?? 0;
             cancellationToken.ThrowIfCancellationRequested();
             return count;
         }

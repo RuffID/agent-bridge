@@ -7,7 +7,7 @@ public class StoredDialogTurn
 {
     /// <summary>Копирует каноническое содержимое обращения в сохранённом порядке.</summary>
     public StoredDialogTurn(Guid id, long sequence, DialogTurnStatus status, IEnumerable<CanonicalModelItem> items,
-        IEnumerable<StoredModelStep> modelSteps)
+        IEnumerable<StoredModelStep> modelSteps, TurnModelSettings? settings = null)
     {
         if (id == Guid.Empty)
         {
@@ -23,6 +23,7 @@ public class StoredDialogTurn
         Status = status;
         Items = ContractSnapshot.Copy(items);
         ModelSteps = ContractSnapshot.Copy(modelSteps);
+        Settings = settings;
     }
 
     /// <summary>Идентичность обращения.</summary>
@@ -35,4 +36,6 @@ public class StoredDialogTurn
     public IReadOnlyList<CanonicalModelItem> Items { get; }
     /// <summary>Результаты шагов в порядке выполнения с полными metadata/envelope, отдельно от input-items.</summary>
     public IReadOnlyList<StoredModelStep> ModelSteps { get; }
+    /// <summary>Настройки начала обращения; null для legacy или primitive Begin без snapshot.</summary>
+    public TurnModelSettings? Settings { get; }
 }

@@ -1,5 +1,8 @@
 # Изолированные тесты
 
+- AgentSettingsTests21 проверяет public settings/status, actual BPE/model-independent shape, independent versions, changed options/new scopes, exact selection, legacy/opaque provenance, selected/server различие и отсутствие secrets. AgentRunnerTests добавляет pinned saved selection/request override и Unsupported legacy writer. ModelCatalogTests проходит safe settings → actual HttpClientLibrary/fake handler без сети. Mapping/model/factory tests проверяют current six-table schema/versioned snapshots без БД.
+- Integration/DialogSettingsIntegrationTests21 отдельно проверяет SQLite/PostgreSQL restart, atomic snapshot, active run при независимой смене settings, rollback после настоящего SQL SaveChanges, root guards/cascade, first-insert/update races и historical Down/Up. Busy/serialization exception не называется typed Conflict. Historical maintenance cases не повторяются без нового риска.
+
 - AgentRunnerTests проходят public DI/run → actual builder/compactor/guard/executor с isolated storage/gateway/counter doubles. Проверяются providers/access/settings один раз, repeated IDs, durable ordering/restart отказ, partial/Unknown/cancel, token capture после compact, full guard после tools, primary+save+scope-dispose failures, LastResult identity и awaited neighbors. Fake store не доказывает SQL atomicity. ModelCatalogTests.ReadWithAccessAsync проходит actual HttpClientLibrary/fake handler без сети; legacy reader получает Unsupported без fallback.
 - Адресные реальные проверки20 находятся в Integration/AgentRunnerIntegrationTests; их evidence относится к EFCoreLibrary0.0.5. Тестовая потеря acknowledgement после настоящего start commit не является реальным сетевым сбоем; проверяет guard restart и отсутствие action/retry.
 

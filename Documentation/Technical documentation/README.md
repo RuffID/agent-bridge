@@ -22,5 +22,6 @@
 | [Сжатие контекста](18-context-compaction.md) | Compact JSON, terminal prefix/transient граница, atomic save, bounded passes, UnknownBudget и отдельный guard генерации |
 | [Инструменты приложения](19-application-tools.md) | Registry/обязательный validator/scoped handler, step/output identity, bounds, canonical результаты, partial failures и граница durable recovery20 |
 | [Полный ход агента](20-agent-turn-orchestration.md) | Fixed settings/access/providers, compact/guard/model/tools, short scopes, durable journal, partial/cancel/restart и ограничения |
+| [Настройки и статус диалога](21-settings-and-dialog-status.md) | Safe read/select/status, per-dialog independent version, atomic run snapshot, expiry/bytes/context и opaque compatibility |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

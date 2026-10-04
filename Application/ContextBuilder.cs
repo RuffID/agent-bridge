@@ -26,6 +26,16 @@ public class ContextBuilder
     /// <returns>Полный ModelRequest либо безопасный отказ без частичного запроса.</returns>
     public async Task<ServiceResult<ModelRequest>> BuildAsync(ApplicationCallContext call, DialogSnapshot dialog,
         ModelRequest newRequest, DateTimeOffset nowUtc, CancellationToken cancellationToken = default)
+        => await BuildCoreAsync(call, dialog, newRequest, nowUtc, false, cancellationToken);
+
+    /// <summary>Проецирует сохраняемый контекст для статуса истёкшего диалога; не разрешает запись/генерацию.</summary>
+    internal Task<ServiceResult<ModelRequest>> BuildForStatusAsync(ApplicationCallContext call, DialogSnapshot dialog,
+        ModelRequest newRequest, DateTimeOffset nowUtc, CancellationToken cancellationToken) =>
+        BuildCoreAsync(call, dialog, newRequest, nowUtc, true, cancellationToken);
+
+    /// <summary>Общая сборка с отдельной read-only политикой expiry для статуса.</summary>
+    private async Task<ServiceResult<ModelRequest>> BuildCoreAsync(ApplicationCallContext call, DialogSnapshot dialog,
+        ModelRequest newRequest, DateTimeOffset nowUtc, bool allowExpired, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(dialog);
@@ -33,7 +43,7 @@ public class ContextBuilder
         ContractSnapshot.Utc(nowUtc);
         cancellationToken.ThrowIfCancellationRequested();
 
-        ServiceError? error = ValidateDialog(call, dialog, nowUtc, cancellationToken);
+        ServiceError? error = ValidateDialog(call, dialog, nowUtc, cancellationToken, allowExpired);
         if (error is not null)
         {
             return ServiceResult<ModelRequest>.Fail(error);
@@ -82,7 +92,7 @@ public class ContextBuilder
 
     /// <summary>Проверяет владельца, диалог, срок и непрерывность terminal prefix без изменения snapshot.</summary>
     private static ServiceError? ValidateDialog(ApplicationCallContext call, DialogSnapshot dialog, DateTimeOffset nowUtc,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool allowExpired)
     {
         if (!dialog.OwnerId.Equals(call.OwnerId))
         {
@@ -92,7 +102,7 @@ public class ContextBuilder
         {
             return new(ServiceErrorType.Conflict, "Снимок относится к другому диалогу.");
         }
-        if (dialog.IsExpired(nowUtc))
+        if (!allowExpired && dialog.IsExpired(nowUtc))
         {
             return new(ServiceErrorType.Expired, "Срок доступности диалога истёк.");
         }

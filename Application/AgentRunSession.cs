@@ -9,7 +9,7 @@ namespace AgentBridge.Application;
 /// <inheritdoc cref="IToolExecutionCheckpoint"/>
 /// <remarks>Владеет успешными tokens одного run; scopes короткие и serialized, неизвестная запись блокирует дальнейшие writes.</remarks>
 internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallContext call, DialogSnapshot original,
-    TimeProvider time) : IToolExecutionCheckpoint, IDialogContextWriter, IDisposable
+    TimeProvider time, TurnModelSettings settings) : IToolExecutionCheckpoint, IDialogContextWriter, IDisposable
 {
     private readonly SemaphoreSlim _writes = new(1, 1);
     private readonly List<StoredDialogTurn> _turns = [.. original.Turns];
@@ -23,14 +23,14 @@ internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallConte
     public bool Blocked => _blocked;
     /// <summary>Подтверждённый state для следующего context build; не перечитывает root ради retry.</summary>
     public DialogSnapshot Snapshot => new(_token, original.OwnerId, original.CreatedAtUtc, original.ExpiresAtUtc,
-        original.ContentBytes, _turns, _active);
+        original.ContentBytes, _turns, _active, original.Selection);
     /// <summary>Сохранённый turn этого run либо отсутствие Begin.</summary>
     public StoredDialogTurn? Turn => _turns.SingleOrDefault(turn => turn.Id == call.TurnId);
 
     /// <summary>Начинает обращение отдельным scope.</summary>
     public Task<ServiceResult<DialogWriteToken>> BeginAsync(IReadOnlyList<CanonicalModelItem> input, CancellationToken ct) =>
-        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.BeginAsync(access, token, call.TurnId, input, ct),
-            () => _turns.Add(new(call.TurnId, _turns.Count + 1L, DialogTurnStatus.InProgress, input, [])), ct);
+        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.BeginWithSettingsAsync(access, token, call.TurnId, input, settings, ct),
+            () => _turns.Add(new(call.TurnId, _turns.Count + 1L, DialogTurnStatus.InProgress, input, [], settings)), ct);
 
     /// <summary>Сохраняет весь model report/calls до начала handler.</summary>
     public Task<ServiceResult<DialogWriteToken>> AppendAsync(StoredModelStep step) =>
@@ -70,9 +70,9 @@ internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallConte
     {
         if (expected.IncarnationId != _token.IncarnationId || expected.Revision != _token.Revision)
             throw new InvalidOperationException("Compact передал неподтверждённую версию.");
-        return WriteAsync<IDialogContextWriter>((writer, freshAccess, token) => writer.SaveAsync(freshAccess, token,
-            throughTurnSequence, compaction, cancellationToken),
-            () => _active = new((_active?.Version ?? 0) + 1, throughTurnSequence, compaction), cancellationToken);
+        return WriteAsync<IDialogContextWriter>((writer, freshAccess, token) => writer.SaveWithModelAsync(freshAccess, token,
+            throughTurnSequence, compaction, settings.Model, cancellationToken),
+            () => _active = new((_active?.Version ?? 0) + 1, throughTurnSequence, compaction, settings.Model), cancellationToken);
     }
 
     /// <summary>Finalization не использует отменённый caller token и не повторяет отказавшую запись.</summary>
@@ -121,7 +121,7 @@ internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallConte
     {
         int index = _turns.FindIndex(turn => turn.Id == call.TurnId);
         StoredDialogTurn prior = _turns[index];
-        _turns[index] = new(prior.Id, prior.Sequence, status ?? prior.Status, prior.Items.Concat(items), prior.ModelSteps.Concat(steps));
+        _turns[index] = new(prior.Id, prior.Sequence, status ?? prior.Status, prior.Items.Concat(items), prior.ModelSteps.Concat(steps), prior.Settings);
     }
 
     /// <summary>Заменяет состояние конкретной исходной позиции без глобальной дедупликации call_id.</summary>
@@ -131,7 +131,7 @@ internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallConte
         StoredModelStep[] steps = turn.ModelSteps.Select(step => step.StepId != stepId ? step :
             new StoredModelStep(step.StepId, step.Response, step.ToolAttempts.Where(item => item.OutputIndex != attempt.OutputIndex).Append(attempt))).ToArray();
         int index = _turns.FindIndex(item => item.Id == call.TurnId);
-        _turns[index] = new(turn.Id, turn.Sequence, turn.Status, turn.Items, steps);
+        _turns[index] = new(turn.Id, turn.Sequence, turn.Status, turn.Items, steps, turn.Settings);
     }
 
     /// <inheritdoc/>

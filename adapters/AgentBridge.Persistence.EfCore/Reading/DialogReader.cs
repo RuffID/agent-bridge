@@ -14,7 +14,7 @@ namespace AgentBridge.Persistence.EfCore.Reading;
 /// <remarks>Повторное чтение root отклоняет изменившуюся жизнь/версию без скрытого retry.
 /// Это не транзакционный снимок; token требует атомарной проверки сценарием записи этапа 10.</remarks>
 public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
-    ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate) : IDialogReader
+    ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate, SettingsRecordQueries settings) : IDialogReader
 {
     /// <inheritdoc/>
     public async Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default)
@@ -44,6 +44,7 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         List<CanonicalItemRecord> itemRecords = await items.ReadAsync(dialogId, cancellationToken);
         List<ModelStepRecord> stepRecords = await steps.ReadAsync(dialogId, cancellationToken);
         DialogContextRecord? context = await contexts.ReadActiveAsync(dialogId, cancellationToken);
+        DialogModelSelection? selection = (await settings.FindAsync(dialogId, cancellationToken))?.ToSelection();
         DialogRecord? current = await dialogs.FindAsync(dialogId, cancellationToken);
         if (current is null)
         {
@@ -57,6 +58,9 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.Conflict, "Диалог изменился во время чтения."));
         }
+        DialogModelSelection? currentSelection = (await settings.FindAsync(dialogId, cancellationToken))?.ToSelection();
+        if ((currentSelection?.Version ?? 0) != (selection?.Version ?? 0))
+            return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Conflict, "Настройки изменились во время чтения."));
         HashSet<Guid> turnIds = turnRecords.Select(turn => turn.Id).ToHashSet();
         if (itemRecords.Any(item => !turnIds.Contains(item.TurnId)) || stepRecords.Any(step => !turnIds.Contains(step.TurnId)))
         {
@@ -74,13 +78,13 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
             history.Add(new StoredDialogTurn(turn.Id, turn.Sequence, turn.Status,
                 itemsByTurn[turn.Id].Select(ReadItem),
                 stepsByTurn[turn.Id].Select(step => new StoredModelStep(step.Id, step.Response.ToModelResponse(),
-                    ToolAttemptMapping.Read(step.ToolAttemptsJson)))));
+                    ToolAttemptMapping.Read(step.ToolAttemptsJson))), TurnSettingsMapping.Read(turn.SettingsJson)));
         }
         StoredDialogContext? active = context is null ? null : new StoredDialogContext(context.Version,
-            context.ThroughTurnSequence, context.Compaction.ToModelResponse());
+            context.ThroughTurnSequence, context.Compaction.ToModelResponse(), context.SelectedModel);
         DialogWriteToken token = new(access.DialogId, incarnationId, revision);
         return ServiceResult<DialogSnapshot>.Ok(new DialogSnapshot(token, DialogOwnerId.From(ownerId),
-            createdAtUtc, expiresAtUtc, contentBytes, history, active));
+            createdAtUtc, expiresAtUtc, contentBytes, history, active, selection));
     }
 
     /// <summary>Копирует полный канонический item независимо от срока жизни документа.</summary>

@@ -28,6 +28,7 @@ public class AgentBridgeDbContext : DbContext
         ConfigureItem(modelBuilder);
         ConfigureModelStep(modelBuilder);
         ConfigureContext(modelBuilder);
+        ConfigureSettings(modelBuilder);
     }
 
     /// <summary>Фиксированные метаданные и optimistic token; guards existence/expiry/ownership здесь не исполняются.</summary>
@@ -71,6 +72,7 @@ public class AgentBridgeDbContext : DbContext
         builder.HasKey(record => new { record.DialogId, record.Id });
         builder.Property(record => record.Id).ValueGeneratedNever();
         builder.Property(record => record.Status).HasConversion<int>();
+        builder.Property(record => record.SettingsJson).HasColumnType("text");
         builder.Property(record => record.StartedAtUtc).HasConversion<UtcTicksConverter>();
         builder.Property(record => record.FinishedAtUtc).HasConversion<UtcTicksConverter>();
         builder.HasIndex(record => new { record.DialogId, record.Sequence }).IsUnique();
@@ -122,6 +124,25 @@ public class AgentBridgeDbContext : DbContext
         builder.Property(record => record.Version).ValueGeneratedNever();
         builder.Property(record => record.CreatedAtUtc).HasConversion<UtcTicksConverter>();
         builder.HasOne<DialogRecord>().WithMany().HasForeignKey(record => record.DialogId).OnDelete(DeleteBehavior.Cascade);
+        builder.Property(record => record.SelectedModel).HasColumnType("text");
         ModelResponseMapping.Configure(builder.ComplexProperty(record => record.Compaction));
+    }
+
+    /// <summary>Independent CAS версия, cascade вместе с диалогом; root revision не меняется.</summary>
+    private static void ConfigureSettings(ModelBuilder modelBuilder)
+    {
+        EntityTypeBuilder<DialogSettingsRecord> builder = modelBuilder.Entity<DialogSettingsRecord>();
+        builder.ToTable("DialogSettings", table =>
+        {
+            table.HasCheckConstraint("CK_Settings_Version", "\"Version\" > 0");
+            table.HasCheckConstraint("CK_Settings_Model", "length(\"Model\") > 0");
+            table.HasCheckConstraint("CK_Settings_Effort", "length(\"Effort\") > 0");
+        });
+        builder.HasKey(record => record.Id);
+        builder.Property(record => record.Id).ValueGeneratedNever();
+        builder.Property(record => record.Version).IsConcurrencyToken();
+        builder.Property(record => record.Model).HasColumnType("text").IsRequired();
+        builder.Property(record => record.Effort).HasColumnType("text").IsRequired();
+        builder.HasOne<DialogRecord>().WithOne().HasForeignKey<DialogSettingsRecord>(record => record.Id).OnDelete(DeleteBehavior.Cascade);
     }
 }

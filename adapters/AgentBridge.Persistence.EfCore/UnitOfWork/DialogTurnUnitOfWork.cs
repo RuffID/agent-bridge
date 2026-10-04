@@ -4,13 +4,22 @@ using AgentBridge.Application.Results;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Repositories;
+using AgentBridge.Persistence.EfCore.Mapping;
 
 namespace AgentBridge.Persistence.EfCore.UnitOfWork;
 
 /// <inheritdoc/>
 public class DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard, DialogStateLoader stateLoader,
-    TurnContentStaging content, RecordStaging<DialogRecord> dialogs, RecordStaging<DialogTurnRecord> turns) : IDialogTurnWriter
+    TurnContentStaging content, RecordStaging<DialogRecord> dialogs, RecordStaging<DialogTurnRecord> turns,
+    TurnRecordQueries turnQueries) : IDialogTurnWriter
 {
+    /// <inheritdoc/>
+    public Task<ServiceResult<DialogWriteToken>> BeginWithSettingsAsync(DialogAccess access, DialogWriteToken expected,
+        Guid turnId, IReadOnlyList<CanonicalModelItem> input, TurnModelSettings settings, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        return ChangeAsync(access, expected, turnId, input, [], null, true, cancellationToken, settings);
+    }
     /// <inheritdoc/>
     public Task<ServiceResult<DialogWriteToken>> BeginAsync(DialogAccess access, DialogWriteToken expected,
         Guid turnId, IReadOnlyList<CanonicalModelItem> input, CancellationToken cancellationToken = default) =>
@@ -37,7 +46,7 @@ public class DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard,
     /// <summary>Координирует внешние guards, локальные Domain-инварианты и согласованный пакет строк одной transaction.</summary>
     private Task<ServiceResult<DialogWriteToken>> ChangeAsync(DialogAccess access, DialogWriteToken expected, Guid turnId,
         IReadOnlyList<CanonicalModelItem> items, IReadOnlyList<StoredModelStep> modelSteps, DialogTurnStatus? terminal,
-        bool begin, CancellationToken cancellationToken)
+        bool begin, CancellationToken cancellationToken, TurnModelSettings? settings = null)
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(modelSteps);
@@ -76,12 +85,15 @@ public class DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard,
             {
                 return ServiceResult<DialogWriteToken>.Fail(prepared.Error!);
             }
+            string? settingsJson = begin ? TurnSettingsMapping.Write(settings) :
+                (await turnQueries.FindAsync(root.Id, turnId, ct))?.SettingsJson;
             DialogWriteToken next = DialogWriteResults.Apply(root, dialog, prepared.Data!.AddedBytes);
             DialogTurn turn = dialog.Turns.Single(item => item.Id == turnId);
             DialogTurnRecord record = new()
             {
                 DialogId = root.Id, Id = turn.Id, Sequence = turn.Sequence, Status = turn.Status,
-                StartedAtUtc = turn.StartedAtUtc, FinishedAtUtc = turn.FinishedAtUtc
+                StartedAtUtc = turn.StartedAtUtc, FinishedAtUtc = turn.FinishedAtUtc,
+                SettingsJson = settingsJson
             };
             if (begin) { turns.StageCreate(record); }
             else if (terminal is not null) { turns.StageUpdate(record); }

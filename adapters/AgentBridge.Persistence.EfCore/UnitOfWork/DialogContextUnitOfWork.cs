@@ -14,6 +14,19 @@ public class DialogContextUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard gua
     /// <inheritdoc/>
     public Task<ServiceResult<DialogWriteToken>> SaveAsync(DialogAccess access, DialogWriteToken expected,
         long throughTurnSequence, ModelResponse compaction, CancellationToken cancellationToken = default)
+        => SaveCoreAsync(access, expected, throughTurnSequence, compaction, null, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<ServiceResult<DialogWriteToken>> SaveWithModelAsync(DialogAccess access, DialogWriteToken expected,
+        long throughTurnSequence, ModelResponse compaction, string selectedModel, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectedModel);
+        return SaveCoreAsync(access, expected, throughTurnSequence, compaction, selectedModel, cancellationToken);
+    }
+
+    /// <summary>Общее атомарное сохранение с optional provenance legacy primitive вызова.</summary>
+    private Task<ServiceResult<DialogWriteToken>> SaveCoreAsync(DialogAccess access, DialogWriteToken expected,
+        long throughTurnSequence, ModelResponse compaction, string? selectedModel, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(compaction);
         if (compaction.Status != ModelResponseStatus.Completed)
@@ -47,7 +60,7 @@ public class DialogContextUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard gua
             contexts.StageCreate(new DialogContextRecord
             {
                 DialogId = root.Id, Version = context.Version, ThroughTurnSequence = context.ThroughTurnSequence,
-                CreatedAtUtc = context.CreatedAtUtc, Compaction = response
+                CreatedAtUtc = context.CreatedAtUtc, Compaction = response, SelectedModel = selectedModel
             });
             dialogs.StageUpdate(root);
             return ServiceResult<DialogWriteToken>.Ok(next);

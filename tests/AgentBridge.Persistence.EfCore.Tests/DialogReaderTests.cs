@@ -294,6 +294,7 @@ public class DialogReaderTests
         public FakeBaseRepository<CanonicalItemRecord> Items { get; } = new();
         public FakeBaseRepository<ModelStepRecord> Steps { get; } = new();
         public FakeBaseRepository<DialogContextRecord> Contexts { get; } = new();
+        public FakeBaseRepository<DialogSettingsRecord> Settings { get; } = new();
         public DialogRecord Dialog { get; } = new()
         {
             Id = Guid.NewGuid(), IncarnationId = Guid.NewGuid(), Revision = 17, OwnerId = " User:Б ",
@@ -307,7 +308,7 @@ public class DialogReaderTests
         {
             Dialogs.Records.Add(Dialog);
             Reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(Dialogs), Dialogs),
-                new(Turns), new(Items), new(Steps), new(Contexts), new());
+                new(Turns), new(Items), new(Steps), new(Contexts), new(), new(new FakeSettingsByIdRepository(Settings)));
         }
 
         /// <summary>Фиксирует владельца и явное время; системные часы не используются.</summary>

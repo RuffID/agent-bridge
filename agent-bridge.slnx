@@ -61,6 +61,7 @@
     <File Path="Documentation/Technical documentation/18-context-compaction.md" />
     <File Path="Documentation/Technical documentation/19-application-tools.md" />
     <File Path="Documentation/Technical documentation/20-agent-turn-orchestration.md" />
+    <File Path="Documentation/Technical documentation/21-settings-and-dialog-status.md" />
     <File Path="Documentation/Technical documentation/README.md" />
   </Folder>
   <Project Path="agent-bridge.csproj" />

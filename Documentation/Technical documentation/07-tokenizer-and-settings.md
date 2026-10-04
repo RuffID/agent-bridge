@@ -16,9 +16,9 @@ AgentBridge использует tokenizer, соответствующий из�
 
 ## Проектируемые контракты
 
-Этап13 реализует независимые IIndividualModelKeySource/IModelAccessResolver/IModelCatalog/IModelSettingsReader, ModelCapabilities/ModelCatalogSnapshot/ModelSettingsSnapshot и ModelSelectionValidator. Это чтение/проверка модельных настроек, без их сохранения или статуса диалога. [Точные API, бюджет и безопасные ошибки](13-model-catalog-and-keys.md). Offline tokenizer и guard реализованы17; управление настройками21 ещё отсутствует.
+Этап13 реализует независимые IIndividualModelKeySource/IModelAccessResolver/IModelCatalog/IModelSettingsReader, ModelCapabilities/ModelCatalogSnapshot/ModelSettingsSnapshot и ModelSelectionValidator. [Точные API, бюджет и безопасные ошибки](13-model-catalog-and-keys.md). Offline tokenizer и guard реализованы17; сохранение выбора конкретного диалога и безопасный статус реализованы21: [API и ограничения](21-settings-and-dialog-status.md).
 
-`IContextTokenCounter.CountAsync(ModelRequest, CancellationToken)` получает весь prepared ModelRequest. `ContextTokenCount` разделяет KnownTokens, nullable EstimatedInputTokens и HasOpaqueContent. Реализация17 доступна через `AddAgentBridgeTokenization`; [фактические порты](09-application-ports.md). AgentSettingsSnapshot/AgentSettingsService/DialogStatus ниже остаются будущими типами.
+`IContextTokenCounter.CountAsync(ModelRequest, CancellationToken)` получает весь prepared ModelRequest. `ContextTokenCount` разделяет KnownTokens, nullable EstimatedInputTokens и HasOpaqueContent. Реализация17 доступна через `AddAgentBridgeTokenization`; [фактические порты](09-application-ports.md). AgentSettingsSnapshot/AgentSettingsService/DialogStatus реализованы21. Counter также предоставляет model-independent IContextContentInspector для проверки формы opaque, без обращения к BPE mapping.
 
 ### Проверенный exact mapping и источники
 
@@ -76,7 +76,7 @@ ContextBudgetGuard guard = serviceProvider.GetRequiredService<ContextBudgetGuard
 ServiceResult<ContextBudgetAssessment> checkedBudget = await guard.CheckAsync(preparedRequest, settings, cancellationToken);
 ```
 
-TryAdd singleton counter/transient guard сохраняет явные регистрации приложения и повторный вызов не дублирует services. Регистрация не вызывает tokenizer/HTTP/DB и не запускает host. Guard вызывается явно приложением: gateway этапов14–15 пока не требует его, AgentRunner20 не реализован; автоматический запрет отправки в transport не добавлен. Например request с новым коротким текстом и длинной schema может выйти за лимит; изображение или continuation с тем же текстом у встроенного offline counter возвращает известную часть, но guard отказывает из-за null estimate. Независимый IContextTokenCounter/ContextTokenCount сохраняет существующую возможность обоснованной полной оценки приложения при HasOpaqueContent=true: guard проверяет estimate, а не требует false opaque. Новый источник такой оценки на17 не реализуется. [Нормативные требования](../../openspec/specs/agent-runtime/spec.md), [контекст решения](../../openspec/specs/agent-runtime/context.md).
+TryAdd singleton counter/transient guard сохраняет явные регистрации приложения и повторный вызов не дублирует services. Регистрация не вызывает tokenizer/HTTP/DB и не запускает host. Guard вызывается явно приложением либо AgentRunner20 для полного prepared request; прямой gateway этапов14–15 не требует его автоматически. Например request с новым коротким текстом и длинной schema может выйти за лимит; изображение или continuation с тем же текстом у встроенного offline counter возвращает известную часть, но guard отказывает из-за null estimate. Независимый IContextTokenCounter/ContextTokenCount сохраняет возможность обоснованной полной оценки приложения при HasOpaqueContent=true: guard проверяет estimate, а не требует false opaque. Новый источник такой оценки на17 не реализуется. [Нормативные требования](../../openspec/specs/agent-runtime/spec.md), [контекст решения](../../openspec/specs/agent-runtime/context.md).
 
 | Тип | Обязанность |
 | --- | --- |
@@ -86,7 +86,7 @@ TryAdd singleton counter/transient guard сохраняет явные реги�
 | `IModelAccessResolver` (реализован этапом 13) | Индивидуальный ключ приложения или общий только при null, без повторов после ошибки |
 | `IContextTokenCounter` | Подсчёт по tokenizer и раздельное представление известного/непрозрачного бюджета |
 
-Приоритет effort: override запроса, затем настройка выбранного агента, затем настроенное значение по умолчанию. Итог проверяется по доступной модели и политике ключа. Для одного выполняющегося обращения используется фиксированный снимок настроек.
+Приоритет effort: override запроса, затем сохранённый выбор конкретного диалога, затем default приложения. Итог проверяется по доступной модели и политике ключа. AgentRunner атомарно фиксирует TurnModelSettings при BeginWithSettingsAsync; отдельная версия DialogSettings не меняет token активного хода. [Смена модели и проверка opaque](21-settings-and-dialog-status.md).
 
 Авторизация на чтение настроек и смену модели определяется приложением. Контракт чтения не возвращает секреты. `IIndividualModelKeySource` принадлежит приложению; `IModelAccessResolver` не сохраняет ключ внутри диалога.
 

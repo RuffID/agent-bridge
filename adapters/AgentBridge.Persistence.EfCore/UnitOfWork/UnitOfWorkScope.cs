@@ -15,16 +15,16 @@ public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGat
 {
     /// <summary>Выполняет короткую операцию с данными; распознаёт только доказанный root concurrency conflict.</summary>
     public Task<ServiceResult<T>> ExecuteAsync<T>(Func<CancellationToken, Task<ServiceResult<T>>> action,
-        CancellationToken cancellationToken, bool creatingDialog = false) where T : class =>
-        ExecuteCoreAsync(action, result => result.Success, ServiceResult<T>.Fail, cancellationToken, creatingDialog);
+        CancellationToken cancellationToken, bool creatingDialog = false, bool writingSettings = false) where T : class =>
+        ExecuteCoreAsync(action, result => result.Success, ServiceResult<T>.Fail, cancellationToken, creatingDialog, writingSettings);
 
     /// <summary>Выполняет короткую команду без данных.</summary>
     public Task<ServiceResult> ExecuteAsync(Func<CancellationToken, Task<ServiceResult>> action, CancellationToken cancellationToken) =>
-        ExecuteCoreAsync(action, result => result.Success, ServiceResult.Fail, cancellationToken, false);
+        ExecuteCoreAsync(action, result => result.Success, ServiceResult.Fail, cancellationToken, false, false);
 
     /// <summary>Владеет transaction до dispose и сохраняет первичную и вторичные ошибки без подмены Conflict.</summary>
     private async Task<T> ExecuteCoreAsync<T>(Func<CancellationToken, Task<T>> action, Func<T, bool> succeeded,
-        Func<ServiceError, T> conflict, CancellationToken cancellationToken, bool creatingDialog)
+        Func<ServiceError, T> conflict, CancellationToken cancellationToken, bool creatingDialog, bool writingSettings)
     {
         using IDisposable lease = gate.Enter();
         cancellationToken.ThrowIfCancellationRequested();
@@ -43,7 +43,7 @@ public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGat
                 {
                     await session.SaveChangesAsync(cancellationToken);
                 }
-                catch (DbUpdateException error) when (IsRootConflict(error, creatingDialog))
+                catch (DbUpdateException error) when (IsRootConflict(error, creatingDialog) || writingSettings && IsSettingsConflict(error))
                 {
                     result = conflict(new ServiceError(ServiceErrorType.Conflict, "Диалог изменён конкурентной операцией."));
                 }
@@ -107,6 +107,19 @@ public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGat
             SqliteException sqlite => sqlite.SqliteExtendedErrorCode == 1555,
             PostgresException postgres => postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
                 postgres.TableName == "Dialogs" && postgres.ConstraintName == "PK_Dialogs",
+            _ => false
+        };
+    }
+
+    /// <summary>Распознаёт только CAS/PK конкретной строки выбора, без маскировки FK/driver/serialization ошибок.</summary>
+    private static bool IsSettingsConflict(DbUpdateException error)
+    {
+        if (error.Entries.Count != 1 || error.Entries[0].Entity is not DialogSettingsRecord) return false;
+        return error is DbUpdateConcurrencyException || error.InnerException switch
+        {
+            SqliteException sqlite => sqlite.SqliteExtendedErrorCode == 1555,
+            PostgresException postgres => postgres.SqlState == PostgresErrorCodes.UniqueViolation
+                && postgres.TableName == "DialogSettings" && postgres.ConstraintName == "PK_DialogSettings",
             _ => false
         };
     }
