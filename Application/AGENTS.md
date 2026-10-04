@@ -2,7 +2,7 @@
 
 ## Назначение и границы
 
-- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения. Реализации адаптеров/UoW находятся в Infrastructure, оркестрация и токенизация ещё отсутствуют.
+- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения; ContextBuilder готовит ModelRequest по уже прочитанному snapshot. Реализации адаптеров/UoW находятся в Infrastructure, оркестрация и токенизация ещё отсутствуют.
 - Допустимы Domain, BCL и независимые прикладные модели. EF/DbContext/IQueryable/Expression, HTTP-библиотеки, wire DTO и Web/MVC остаются за границей.
 - `ServiceResult` описывает ожидаемый отказ без данных. `ModelResponse` — отчёт о lifecycle с сохранённым выходом; успех получения отчёта не означает Completed. Неожиданные исключения не маскировать.
 - Канонические элементы и аргументы сохраняются независимыми снимками JsonElement, включая неизвестные поля и opaque data. Это контейнер данных, не реализация Responses mapping или JSON/SSE транспорта.
@@ -13,5 +13,7 @@
 - Реализации чтения в EF-адаптере этапа 09 повторно проверяют primitive owner/incarnation/revision после загрузки детей и возвращают NotFound/Forbidden/Conflict без данных при изменении root. Read DTO не является разрешением записи или транзакционным снимком; атомарные write ports реализованы этапом 10 в EF-адаптере.
 - Результаты шагов модели сохраняются отдельными StoredModelStep внутри обращения; compact сохраняет весь ModelResponse. Envelope/continuity не выдаются за элементы следующего input. Реализации коротких операций используют общий сценарный scope/UoW этапа 10.
 - `DialogWriteToken` содержит сохраняемые incarnation/revision. Это условие записи, не авторизация и не доменный `DialogStateVersion`. Реализации этапа 10 повторно проверяют существование, владельца, явное NowUtc и token в одной границе с записью. Новый локальный snapshot после валидирующего Restore допустим только после проверки исходного persisted token. Не подменять старый token новым ради принятия внешнего результата.
-- Метаданные terminal prefix не разрешают отбрасывать канонические элементы. Точная граница items/composition остаётся этапам 14–18.
+- ContextBuilder принимает только явно выбранную приложением ordered provider selection, ждёт каждый источник последовательно, передаёт actual call/новый input и сохраняет любые canonical роли. Owner/dialog/expiry/terminal prefix проверяются до I/O. Snapshot не содержит AgentId: не вводить persisted agent ownership; права проверяет приложение, continuation binding — adapter.
+- Composition порядок: provider items → active context items → полный tail turns после terminal prefix → ещё не сохранённый newRequest.Input. Instructions остаются отдельным системным полем. Envelope/continuation не input, StoredModelStep не дублирует Items; continuation передаётся только явно. Prefix0 сохраняет всю историю, InProgress не покрывается.
+- Known function pairs проверяются по call_id через всю композицию; каждый output закрывает один предшествующий незакрытый call, повторные ID разных пар допустимы. Незакрытый call, включая partial arguments, даёт safe Conflict без запроса, malformed pair — Validation. Не проверять скрытые вызовы opaque/unknown state, не исправлять arguments/output и не удалять историю. DTO/token не write authorization, builder не читает часы и не продлевает срок.
 - Изолированные contract-тесты — `tests/AgentBridge.Tests/ApplicationPortsTests.cs`; без адаптеров, хоста, HTTP и БД.

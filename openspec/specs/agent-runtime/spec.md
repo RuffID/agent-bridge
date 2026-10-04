@@ -6,6 +6,55 @@
 
 ## Требования
 
+### Requirement: Полная детерминированная композиция контекста
+
+Composition MUST сохранять инструкции в ModelRequest.Instructions и объединять input в порядке: вклады разрешённых провайдеров приложения, Items активного StoredDialogContext, Items всех обращений после ThroughTurnSequence, новый ещё не сохранённый input. При отсутствии окна MUST включаться вся история. Порядок провайдеров и элементов MUST сохраняться. Tools, exact model/effort, parameters и явно переданный continuation MUST сохраняться в подготовленном ModelRequest. Envelope/continuation MUST NOT становиться input. StoredDialogTurn.Items MUST быть единственным источником элементов истории; output из StoredModelStep MUST NOT включаться повторно. Unknown/opaque поля и исходные роли MUST сохраняться без текстовой сводки или нормализации.
+
+#### Scenario: Сжатое окно и хвост
+
+- **WHEN** принятое окно покрывает первые два terminal обращения и третье ещё выполняется
+- **THEN** input содержит Items окна, все Items третьего обращения и новый input
+- **AND** output третьего обращения не дублируется из ModelSteps.
+
+#### Scenario: Пустой префикс
+
+- **WHEN** ThroughTurnSequence равен 0
+- **THEN** все обращения включаются после Items активного окна без item cutoff.
+
+### Requirement: Исходные роли и полные пары функций
+
+Провайдер приложения MUST отвечать за авторизацию своего вклада. Composition MUST принимать его canonical items с исходными ролями без повышения до системной роли или ограничения набора ролей. Проверка известных function_call/function_call_output MUST выполняться по call_id во всей подготовленной последовательности, включая границы вкладов/окна/хвоста/new input. Каждый output MUST сопоставляться с предшествующим ещё не закрытым call того же ID; call_id MUST допускать повторное использование в разных парах. Известный function_call без последующего результата MUST давать явный безопасный отказ до возврата ModelRequest, включая сохранённый call с partial arguments после обрыва. Некорректная известная пара MUST отклоняться без выдумывания результата, удаления или изменения истории. Opaque/unknown элементы MUST сохраняться без попытки проверки скрытых внутри них вызовов; arguments/output MUST NOT переписываться.
+
+#### Scenario: Вызов без результата
+
+- **WHEN** текущий хвост содержит function_call с частичными arguments и без function_call_output
+- **THEN** composition возвращает явный отказ без ModelRequest
+- **AND** исходные Items и lifecycle отчёт остаются неизменными.
+
+#### Scenario: Пара на границе источников
+
+- **WHEN** известный function_call находится в Items окна, а соответствующий function_call_output в хвосте
+- **THEN** проверка использует полную последовательность и сохраняет оба элемента в исходном порядке.
+
+#### Scenario: Повторное использование call_id
+
+- **WHEN** два обращения содержат отдельные полные пары с одним call_id
+- **THEN** композиция сохраняет обе пары без отказа по глобальной уникальности ID.
+
+### Requirement: Защищённая композиция и последовательные провайдеры
+
+Composition MUST проверять соответствие dialog/owner прочитанного snapshot и явный UTC срок до вызова провайдеров. nowUtc >= ExpiresAtUtc MUST отклонять подготовку. Повреждённый порядок обращений, отсутствующая часть prefix, InProgress внутри покрытого prefix или непринятый compact MUST отклоняться явно без исправления данных. Composition MUST NOT менять snapshot, фиксированные даты, token или выдавать разрешение записи. Провайдеры MUST получать actual ApplicationCallContext и новый input, MUST вызываться последовательно с caller token, без fan-out. Ожидаемая ошибка MUST передаваться тем же ServiceError без частичного запроса; неожиданные exceptions MUST распространяться без fallback. Отмена MUST соблюдаться до провайдера и после его успешного завершения.
+
+#### Scenario: Другой владелец или точная граница срока
+
+- **WHEN** owner не совпадает либо nowUtc равен ExpiresAtUtc
+- **THEN** запрос не возвращается и провайдеры не вызываются.
+
+#### Scenario: Отказ второго провайдера
+
+- **WHEN** первый провайдер успешен, а второй возвращает ожидаемую ошибку
+- **THEN** composition передаёт ту же ошибку без запроса и не вызывает следующих провайдеров.
+
 ### Requirement: Потоковый Responses gateway
 
 GenerateAsync MUST выбирать stream=true при наличии onUpdate и MUST сохранять JSON stream=false при null. SSE MUST читаться через HttpStreamResponseResult actual HttpClientLibrary. Parser MUST поддерживать строгий UTF-8 fragmentation, optional начальный BOM, LF/CRLF/CR, comments и многострочные data. [DONE], HTTP2xx, delta и EOF MUST NOT подтверждать Completed; незакрытый frame на EOF MUST NOT dispatch. Completed MUST требовать response.completed с completed response без error и canonical output либо собранными item events. Непустой response.output MUST быть авторитетным и заменять collected items; absent/empty MUST допускать backfill. Failed/incomplete MUST сохранять известные output/envelope; unknown/opaque поля и output order MUST сохраняться. Function arguments и текстовые delta MUST сохраняться в неполных items при EOF. Continuation MUST применять binding/allowlist/id rules JSON adapter.

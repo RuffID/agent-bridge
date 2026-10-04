@@ -50,7 +50,7 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 | Рабочее имя | Роль |
 | --- | --- |
 | `AgentRunner` | Координация одного обращения и цикла инструментов |
-| `ContextBuilder` | Подготовка рабочего контекста без подмены ролей сообщений |
+| `ContextBuilder` (этап16 реализован, принят координатором) | Полный ordered ModelRequest из providers/window/tail/new input, guards и проверка known function pairs; [API](16-context-composition.md) |
 | `IContextProvider` | Предоставление разрешённых бизнес-данных приложением |
 | `IToolHandler` | Выполнение зарегистрированного инструмента приложения |
 | `IModelGateway` | Независимый от codex-lb порт генерации и сжатия |

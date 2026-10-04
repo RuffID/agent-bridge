@@ -2,7 +2,17 @@
 
 ## SSE Responses этапа 15
 
-Этап15 реализован, адресно проверен и принят координатором; локальный коммит разрешён. Этапы16–25 не начаты. [Change](../../changes/responses-sse-adapter/proposal.md), [API и пример](<../../../Documentation/Technical documentation/15-responses-sse-adapter.md>), [отчёт/manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/15-responses-sse-adapter.md>). CLI отсутствует, validation не выполнена, change не архивирован.
+Этап15 принят и закоммичен `1d99721c4c4689cb06f9d71be2ba02380cdd0458`. Этап16 реализован и адресно проверен, принят координатором; локальный коммит разрешён. Этапы17–25 не начаты, checkpoint18 не достигнут. [SSE change](../../changes/responses-sse-adapter/proposal.md), [SSE API](<../../../Documentation/Technical documentation/15-responses-sse-adapter.md>). CLI отсутствует, validation не выполнена, changes не архивированы.
+
+## Композиция этапа 16
+
+ContextBuilder получает прочитанный DialogSnapshot, actual ApplicationCallContext, явное nowUtc и ModelRequest с только ещё не сохранённым input. Приложение выбирает упорядоченную последовательность IContextProvider и управляет её scope/правами. Builder последовательно ожидает каждый вклад, сохраняет его любые исходные canonical роли, затем добавляет Items активного окна, полный хвост после terminal prefix и новый input. Инструкции остаются в отдельном системном поле Instructions; tools/parameters/exact model/effort/явный continuation сохраняются. Нет неявного продолжения из compact/ModelSteps, envelope не становится input, output из ModelSteps не дублирует Items.
+
+Пользователь согласовал отказ до готового запроса при известном function_call без результата, включая partial arguments после обрыва. Проверка call_id идёт по полной последовательности; каждый output закрывает один предшествующий незакрытый call, ID может повторяться в отдельных парах. Скрытые вызовы opaque/unknown state не проверяются, arguments/output не переписываются. При ошибке исходная история и lifecycle отчёты остаются целыми. Пример: call окна + output хвоста допустимы, call хвоста без результата — явный Conflict, без выдуманного output.
+
+Owner/dialog/expiry/prefix проверяются до provider I/O. now==expiry запрещает подготовку, prefix0 сохраняет всю историю, InProgress не покрывается; terminal Incomplete/Failed/Canceled не объявляются успешными, но являются конечными статусами prefix. Нет persisted agent ownership: snapshot не содержит AgentId; actual AgentId передаётся выбранным приложением провайдерам, transport проверяет continuation binding. DTO/token не разрешают позднюю запись, её guards остаются в write UoW, без внешнего I/O.
+
+59 composition cases и 27 затронутых contract cases прошли, 0 failed/0 skipped; test project и ядро собраны без предупреждений/ошибок. Tokenizer/budget/compact/tools execution/orchestration/поиск отсутствуют. [Change](../../changes/context-composition/proposal.md), [API](<../../../Documentation/Technical documentation/16-context-composition.md>), [точные проверки и manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/16-context-composition.md>). CLI validation не выполнена, change не архивирован.
 
 Существующий callback выбирает SSE stream=true, null сохраняет JSON этапа14. Actual HttpClientLibrary возвращает wrapper; gateway owns его disposal и deadline CTS. SSE framing читает строгий UTF-8 (начальный BOM допустим) независимо от fragment boundaries; multiline data объединяется LF. EOF/DONE не completion. Непустой terminal output авторитетен; empty/absent допускает собранные indexed items. Raw envelope остаётся исходным, backfill не переписывает его. Unknown/opaque item fields сохраняются, tools не выполняются.
 

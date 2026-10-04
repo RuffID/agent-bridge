@@ -27,7 +27,7 @@ public class ModelRequest
     public string Model { get; }
     /// <summary>Выбранное усилие либо отсутствие явного значения.</summary>
     public string? ReasoningEffort { get; }
-    /// <summary>Полные инструкции агента.</summary>
+    /// <summary>Полные системные инструкции агента, отдельно от ролей canonical Input.</summary>
     public string Instructions { get; }
     /// <summary>Упорядоченные сообщения, инструменты и opaque-элементы подготовленного входа.</summary>
     public IReadOnlyList<CanonicalModelItem> Input { get; }

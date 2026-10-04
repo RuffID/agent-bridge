@@ -1,6 +1,6 @@
 # Техническая документация AgentBridge
 
-Документы описывают фактические API конфигурации, диагностики, Domain/Application, EF-хранилища, каталога и JSON/SSE gateway. Этапы 00–15 реализованы и приняты координатором; локальный коммит15 разрешён. Composition/tokenizer/compact и сценарий агента отсутствуют; этапы 16–25 не начаты, checkpoint18 не достигнут. Проверки и ограничения находятся в соответствующих планах.
+Документы описывают фактические API конфигурации, диагностики, Domain/Application, EF-хранилища, каталога, JSON/SSE gateway и композиции. Этапы 00–15 приняты и закоммичены. Этап16 реализован и адресно проверен, принят координатором; локальный коммит разрешён. Tokenizer/compact, выполнение инструментов и сценарий агента отсутствуют; этапы 17–25 не начаты, checkpoint18 не достигнут. Проверки и ограничения находятся в соответствующих планах.
 
 | Раздел | Содержание |
 | --- | --- |
@@ -18,5 +18,6 @@
 | [Каталог моделей и ключи](13-model-catalog-and-keys.md) | Application source, per-call доступ, dynamic capabilities, проверка model/effort/input budget и безопасные снимки |
 | [JSON Responses](14-responses-json-adapter.md) | Public DI/gateway, canonical controls/items/envelope, bound continuation, safe errors, deadline/caller/disposal |
 | [SSE Responses](15-responses-sse-adapter.md) | Fragmented/multiline framing, partial/terminal canonical state, callback ownership, cancellation/disposal и изолированные проверки |
+| [Композиция контекста](16-context-composition.md) | Public ContextBuilder, ordered providers/window/tail/new input, роли/known function pairs, snapshot guards, отмена и ограничения |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

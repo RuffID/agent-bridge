@@ -6,6 +6,6 @@ public class ContextContribution
     /// <summary>Фиксирует полный упорядоченный вклад; пустой вклад является допустимым результатом.</summary>
     public ContextContribution(IEnumerable<CanonicalModelItem> items) => Items = ContractSnapshot.Copy(items);
 
-    /// <summary>Неизменяемые данные; роли и включение в контекст проверяет будущий сборщик.</summary>
+    /// <summary>Полные неизменяемые данные с исходными ролями; авторизация вклада принадлежит провайдеру.</summary>
     public IReadOnlyList<CanonicalModelItem> Items { get; }
 }

@@ -1,6 +1,6 @@
 # Прикладные контракты
 
-Этап 13 расширяет Application независимыми портами доступа/каталога и безопасными model settings snapshots. [Фактический API и ограничения](13-model-catalog-and-keys.md). ModelAccess теперь выбирается resolver адаптера через индивидуальный источник приложения; generation/compact реализация IModelGateway ещё отсутствует.
+Этап 13 расширяет Application независимыми портами доступа/каталога и безопасными model settings snapshots. [Фактический API и ограничения](13-model-catalog-and-keys.md). ModelAccess выбирается resolver адаптера через индивидуальный источник приложения; JSON/SSE generation реализована этапами14–15, compact отсутствует. Этап16 добавляет public ContextBuilder с уже прочитанным snapshot и выбранной ordered provider selection: [композиция и guards](16-context-composition.md).
 
 Реализации существующих read/write ports, короткая transaction и правила внешнего ожидания: [этап 10](10-scenario-unit-of-work.md). Application не получил EF-зависимостей или публичного transaction callback.
 
@@ -22,7 +22,7 @@
 | `IExpiredDialogReader` | Ограниченная выборка кандидатов по сроку |
 | `IExpiredDialogDeletion` | Удаление кандидата после повторной проверки incarnation/version/expiry |
 
-JSON IModelGateway реализован этапом 14 через `AddCodexLbResponses`; SSE callback и CompactAsync явно Unsupported. Провайдеры контекста, handler registry, tokenizer и AgentRunner ещё не реализованы. Этап 09 добавил read ports; этап 10 реализовал write ports/UoW через `AddAgentBridgePersistence`. Это ещё не полный сценарий агента. [Фактический JSON transport](14-responses-json-adapter.md).
+JSON/SSE IModelGateway реализован этапами14–15 через `AddCodexLbResponses`; CompactAsync явно Unsupported. Провайдеры контекста принадлежат приложению, ContextBuilder16 последовательно собирает их вклады. Handler registry, tokenizer и AgentRunner ещё не реализованы. Этап 09 добавил read ports; этап 10 реализовал write ports/UoW через `AddAgentBridgePersistence`. Это ещё не полный сценарий агента. [JSON](14-responses-json-adapter.md), [SSE](15-responses-sse-adapter.md), [composition](16-context-composition.md).
 
 ## Результаты и отмена
 
@@ -38,7 +38,7 @@ JSON IModelGateway реализован этапом 14 через `AddCodexLbRe
 
 `ModelRequest` копирует Input и Tools, содержит полные инструкции, выбранную модель/effort, continuation и optional независимый `ModelRequestParameters` snapshot этапа 14. Поддержку контролей и запрет override mandatory fields проверяет adapter; будущий tokenizer должен учитывать полный подготовленный запрос с Parameters. `ModelAccess` фиксирует уже выбранный ключ на конкретный вызов; resolver этапа 13 использует shared только при null. Секрет раскрывается только явным `RevealApiKey` для транспорта; ToString и обычная сериализация не раскрывают его. Сырые protocol/envelope/continuation/parameters чувствительны и не предназначены для логов.
 
-`StoredDialogTurn.Items` содержит канонические элементы истории. `ModelSteps` отдельно связывает каждый StoredModelStep.StepId с полным ModelResponse. Envelope не помещается в список items для следующего input. `StoredDialogContext.Compaction` сохраняет полный compact-отчёт, а Items возвращает его каноническое окно. ThroughTurnSequence остаётся только terminal-prefix metadata; точная граница отдельных items и composition предстоят на этапах 14–18. Чтение не отбрасывает историю по этому числу.
+`StoredDialogTurn.Items` содержит канонические элементы истории. `ModelSteps` отдельно связывает каждый StoredModelStep.StepId с полным ModelResponse. Envelope не помещается в список items для следующего input. `StoredDialogContext.Compaction` сохраняет полный compact-отчёт, а Items возвращает его каноническое окно. ThroughTurnSequence остаётся только terminal-prefix metadata; чтение не отбрасывает историю по этому числу. Composition16 замещает только покрытые terminal turns активным окном, полный tail включается без item cutoff и без повторного output из ModelSteps.
 
 ## Короткие операции хранения
 
