@@ -1,0 +1,9 @@
+<Project>
+  <ItemGroup>
+    <Reference Include="$(MSBuildThisFileDirectory)lib\*.dll">
+      <Private>true</Private>
+    </Reference>
+    <None Include="$(MSBuildThisFileDirectory)lib\*.xml" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(MSBuildThisFileDirectory)native\win-x64\e_sqlite3.dll" Link="e_sqlite3.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

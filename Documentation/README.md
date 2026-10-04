@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–22 приняты и закоммичены. [AgentRunner20](<Technical documentation/20-agent-turn-orchestration.md>) объединяет context/guard/compact/model/tools и durable journal с короткими UoW. Этап21 добавляет [настройки и статус диалога](<Technical documentation/21-settings-and-dialog-status.md>),22 — [явную bounded очистку](<Technical documentation/22-expired-dialog-cleanup.md>). [Этап23](<Plans/AgentBridge Initial Implementation/23-cross-component-verification.md>) проверил actual runner/transport/persistence:32 DB cases, включая2 backup/restore текущей схемы на EFCoreLibrary0.0.5, и25 isolated;0 failed/skipped. HTTP только fake handler/local streams. Этап23 принят координатором; локальная фиксация manifest15 разрешена, hash — в git log и итоговом ответе. После23 STOP;24–25 не начаты. Real HTTP/upstream и SQL Server/MySQL не проверены, OpenSpec CLI отсутствует.
+AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–23 приняты и закоммичены; HEAD23 `7e9d533d80393bd85b08e1b17567038e12ec8a16`. [Этап23](<Plans/AgentBridge Initial Implementation/23-cross-component-verification.md>) содержит историческое evidence32 DB/25 isolated с fake HTTP. [Поставка24](<Technical documentation/24-dll-delivery.md>) подготовлена для .NET10/win-x64, SQLite/PostgreSQL: два внешних compile-only потребителя и8 isolated metadata/XML checks. Этап24 принят координатором, локальный commit manifest24 разрешён; продолжение25 передаётся отдельному исполнителю. Runtime/native, real HTTP/upstream и SQL Server/MySQL в24 не проверялись; OpenSpec CLI отсутствует.
 
 ## Бизнес-логика
 
@@ -37,6 +37,7 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 18. [Полный ход агента](<Technical documentation/20-agent-turn-orchestration.md>)
 19. [Настройки и статус диалога](<Technical documentation/21-settings-and-dialog-status.md>)
 20. [Очистка истёкших диалогов](<Technical documentation/22-expired-dialog-cleanup.md>)
+21. [Автономная поставка DLL](<Technical documentation/24-dll-delivery.md>)
 
 ## Требования
 

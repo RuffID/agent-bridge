@@ -1,6 +1,6 @@
 # Техническая документация AgentBridge
 
-Документы описывают фактические API ядра, хранения, транспорта, AgentRunner20, settings/status21 и очистки22. Этапы00–21 приняты и закоммичены. Пауза после20 снята пользователем;22 реализован, проверен и принят координатором, локальный коммит разрешён. До приёмки add/commit не выполнялись. Этапы23–25 этим исполнителем не начаты. Проверки и ограничения находятся в соответствующих планах.
+Документы описывают фактические API ядра, хранения, транспорта, AgentRunner20, settings/status21, очистки22 и поставку24. Этапы00–23 приняты и закоммичены. Этап24 реализован, проверен в пределах compile/metadata и принят координатором; локальный commit manifest24 разрешён,25 передаётся отдельному исполнителю. Проверки и ограничения находятся в соответствующих планах.
 
 | Раздел | Содержание |
 | --- | --- |
@@ -24,5 +24,6 @@
 | [Полный ход агента](20-agent-turn-orchestration.md) | Fixed settings/access/providers, compact/guard/model/tools, short scopes, durable journal, partial/cancel/restart и ограничения |
 | [Настройки и статус диалога](21-settings-and-dialog-status.md) | Safe read/select/status, per-dialog independent version, atomic run snapshot, expiry/bytes/context и opaque compatibility |
 | [Очистка истёкших диалогов](22-expired-dialog-cleanup.md) | Явный bounded пакет, отдельные scopes/fresh UTC, partial/canceled/unknown и existing guards/cascade |
+| [Поставка DLL](24-dll-delivery.md) | .NET10/win-x64, полный состав SQLite/PostgreSQL, XML/inheritdoc, бинарные ссылки и внешние требования |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

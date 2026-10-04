@@ -1,10 +1,10 @@
 # Первоначальная реализация AgentBridge
 
-## Checkpoint23 — STOP после проверки
+## Checkpoint24 — принят координатором
 
-Блок19–23 реализован, проверен и принят;19–22 локально закоммичены. HEAD22=89c28e839bf12584027b81494c31557c91279935, parent21=6482d595cb1f89eeb30ec33696026aa6c1bde1cc,20=95c28fae3773efa9e8e4d0281282340f5ac9e6c0,19=de58342f5c80e46279e1d7b59fe0665c893c5d4b. [Отчёт23, полный manifest15 и передача следующему координатору](23-cross-component-verification.md). Координатор принял23 и разрешил локальный commit ровно15 файлов; hash — в git log и итоговом ответе. **После23 STOP;24–25 НЕ НАЧАТЫ.** OpenSpec CLI отсутствует, validation не выполнена, changes не архивированы.
+Блок19–23 реализован, проверен, принят и закоммичен. HEAD23=`7e9d533d80393bd85b08e1b17567038e12ec8a16`, parent22=`89c28e839bf12584027b81494c31557c91279935`,21=`6482d595cb1f89eeb30ec33696026aa6c1bde1cc`,20=`95c28fae3773efa9e8e4d0281282340f5ac9e6c0`,19=`de58342f5c80e46279e1d7b59fe0665c893c5d4b`. [Отчёт23](23-cross-component-verification.md) сохраняет историческую передачу; пауза24 снята ранее, пользователь поручил координатору проверить24 и продолжить25; координатор независимо принял24. [Отчёт24 и полный manifest](24-dll-delivery.md): DLL SQLite/PostgreSQL для win-x64, два внешних бинарных compile-check,8 isolated metadata/XML tests passed. **24 принят координатором; локальный commit manifest24 разрешён, hash — в git log и итоговом ответе.25 этому исполнителю не поручен.** OpenSpec CLI отсутствует, validation не выполнена, changes не архивированы.
 
-Статус: **00–22 приняты и закоммичены;23 реализован, проверен и принят, локальный commit разрешён;24–25 не начаты**. Платформа: **.NET 10**, подключение **DLL**. Evidence23:32 actual DB (28 новых cross-component +4 existing rollback/start acknowledgement),25 isolated metadata/DI/design-time;0 failed/0 skipped. Два новых DB cases включают actual backup/restore journal/settings/snapshot/provenance. Production/schema/root csproj/slnx не менялись; HTTP — fake handler через actual adapter/HttpClientLibrary. Historical39maintenance,21:265/171/43/46 и22:79/61/16 не выдаются за повторённые23 и не суммируются с ним.
+Статус: **00–23 приняты и закоммичены;24 реализован, проверен в пределах compile/metadata и принят координатором;25 передаётся отдельному исполнителю**. Платформа: **.NET 10**, подключение **DLL**. Evidence23:32 actual DB (28 новых cross-component +4 existing rollback/start acknowledgement),25 isolated metadata/DI/design-time;0 failed/0 skipped. Эти наборы в24 не повторялись и с8 новыми metadata cases не суммируются. Runtime/native загрузка поставки24 не выполнялась. Production/schema/root csproj не менялись; в slnx24 добавлен только новый документ в solution items.
 
 План описывает реализацию согласованной библиотеки агента небольшими этапами. Создание плана не разрешает писать код. Спорные контракты библиотек обсуждаются с пользователем до выбора обходного решения или изменения соседней библиотеки.
 
@@ -61,8 +61,8 @@ dotnet test tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.E
 | [20 — Координация обращения к агенту](20-agent-turn-orchestration.md) | Принят и закоммичен 95c28fae3773efa9e8e4d0281282340f5ac9e6c0 | 10, 15, 18, 19 |
 | [21 — Настройки и состояние диалога](21-settings-and-dialog-status.md) | Реализован, принят и закоммичен6482d595: per-dialog CAS, pinned snapshot, safe status, opaque compatibility | 13, 17, 20 |
 | [22 — Очистка истёкших диалогов](22-expired-dialog-cleanup.md) | Принят и закоммичен89c28e8: bounded app вызов, separate scopes, honest partial/cancel/unknown, cascade без revival | 10, 20, 21 |
-| [23 — Проверка взаимодействия компонентов](23-cross-component-verification.md) | Реализован, проверен и принят;32 DB/25 isolated, локальный commit manifest15 разрешён; после23 STOP | 12, 20, 21, 22 |
-| [24 — Поставка DLL](24-dll-delivery.md) | НЕ НАЧАТ; полный состав зависимостей времени выполнения | 23 |
+| [23 — Проверка взаимодействия компонентов](23-cross-component-verification.md) | Принят и закоммичен7e9d533;32 DB/25 isolated, пауза снята только для24 | 12, 20, 21, 22 |
+| [24 — Поставка DLL](24-dll-delivery.md) | Подготовлен и проверен: два комплекта/compile-only потребителя,8 metadata tests; принят координатором, локальный commit разрешён | 23 |
 | [25 — Руководство и завершение плана](25-usage-guide-and-closure.md) | НЕ НАЧАТ; проверенные примеры README и итоговая документация | 24 |
 
 ## Правила работы

@@ -63,6 +63,7 @@
     <File Path="Documentation/Technical documentation/20-agent-turn-orchestration.md" />
     <File Path="Documentation/Technical documentation/21-settings-and-dialog-status.md" />
     <File Path="Documentation/Technical documentation/22-expired-dialog-cleanup.md" />
+    <File Path="Documentation/Technical documentation/24-dll-delivery.md" />
     <File Path="Documentation/Technical documentation/README.md" />
   </Folder>
   <Project Path="agent-bridge.csproj" />

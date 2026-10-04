@@ -28,6 +28,7 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 - Оба адаптера ссылаются на ядро и используют общие Microsoft.Extensions options/DI. EF-адаптер подключает локальный EFCoreLibrary и SQLite/PostgreSQL; codex-lb адаптер подключает локальный HttpClientLibrary для каталога этапа 13 и JSON/SSE Responses этапов 14–15. Compact реализован на этапе18; прикладная граница — ContextCompactor и existing IDialogContextWriter. Read/write ports разделены; сценарные UoW используют общий scope. Generated миграции SQLite/PostgreSQL созданы. Явное maintenance подключение этапа 12 находится в Configuration EF-адаптера; регистрация не запускает операции, host отсутствует.
 - `adapters/AgentBridge.Persistence.Migrations.Sqlite/` и `adapters/AgentBridge.Persistence.Migrations.PostgreSql/` — отдельные library target/startup проекты со своими design-time factories общего DbContext. Локальные AGENTS определяют tooling; обратных ссылок из общего адаптера нет. Генерация требует отдельного согласования точных команд этапа 11.
 - `tests/` — три отдельных проекта изолированных проверок ядра и адаптеров; карта и ограничения в `tests/AGENTS.md`.
+- `tests/Delivery/` — подготовка автономных win-x64 DLL-комплектов, compile-only потребитель и PE/XML-проверки; отдельные правила в `tests/Delivery/AGENTS.md`. Комплект хранится только в игнорируемых artifacts, не заменяет runtime-проверку.
 - Корневой compile glob исключает `adapters`, `tests`, `test`, а также все вложенные `bin`, `obj`, `artifacts`. Новые самостоятельные проекты не должны попадать в компиляцию ядра.
 
 ## Правила ядра
