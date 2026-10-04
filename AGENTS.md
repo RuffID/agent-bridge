@@ -29,6 +29,7 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 - `adapters/AgentBridge.Persistence.Migrations.Sqlite/` и `adapters/AgentBridge.Persistence.Migrations.PostgreSql/` — отдельные library target/startup проекты со своими design-time factories общего DbContext. Локальные AGENTS определяют tooling; обратных ссылок из общего адаптера нет. Генерация требует отдельного согласования точных команд этапа 11.
 - `tests/` — три отдельных проекта изолированных проверок ядра и адаптеров; карта и ограничения в `tests/AGENTS.md`.
 - `tests/Delivery/` — подготовка автономных win-x64 DLL-комплектов, compile-only потребитель и PE/XML-проверки; отдельные правила в `tests/Delivery/AGENTS.md`. Комплект хранится только в игнорируемых artifacts, не заменяет runtime-проверку.
+- `Documentation/Technical documentation/25-usage-guide.md` — руководство с проверяемыми исходниками в `tests/Delivery/Consumer/`; примеры собираются вне репозитория с обоими provider kits, их методы не исполняются. App factories/authorization/business ports не являются API AgentBridge. Evidence00–25 хранится в плане, не в корневом README.
 - Корневой compile glob исключает `adapters`, `tests`, `test`, а также все вложенные `bin`, `obj`, `artifacts`. Новые самостоятельные проекты не должны попадать в компиляцию ядра.
 
 ## Правила ядра

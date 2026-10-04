@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–23 приняты и закоммичены; HEAD23 `7e9d533d80393bd85b08e1b17567038e12ec8a16`. [Этап23](<Plans/AgentBridge Initial Implementation/23-cross-component-verification.md>) содержит историческое evidence32 DB/25 isolated с fake HTTP. [Поставка24](<Technical documentation/24-dll-delivery.md>) подготовлена для .NET10/win-x64, SQLite/PostgreSQL: два внешних compile-only потребителя и8 isolated metadata/XML checks. Этап24 принят координатором, локальный commit manifest24 разрешён; продолжение25 передаётся отдельному исполнителю. Runtime/native, real HTTP/upstream и SQL Server/MySQL в24 не проверялись; OpenSpec CLI отсутствует.
+AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Начните с [руководства потребителя](<Technical documentation/25-usage-guide.md>): бинарные ссылки, DI/options и проверенные C# сценарии. [Карта evidence00–25](<Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>) содержит результаты принятой реализации и явно отмечает непроверенные окружения. OpenSpec CLI отсутствует, validation не выполнена, changes не архивированы.
 
 ## Бизнес-логика
 
@@ -38,6 +38,7 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 19. [Настройки и статус диалога](<Technical documentation/21-settings-and-dialog-status.md>)
 20. [Очистка истёкших диалогов](<Technical documentation/22-expired-dialog-cleanup.md>)
 21. [Автономная поставка DLL](<Technical documentation/24-dll-delivery.md>)
+22. [Подключение и использование](<Technical documentation/25-usage-guide.md>)
 
 ## Требования
 

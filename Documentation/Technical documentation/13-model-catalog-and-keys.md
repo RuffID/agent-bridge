@@ -1,6 +1,6 @@
 # Каталог моделей и ключ доступа
 
-Статус: **Реализован и принят; запрещённые проверки пропущены**. Цепочка приостановлена по указанию пользователя после 13; этапы 14–25 не начаты. Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). [Отчёт и команды этапа 13](<../Plans/AgentBridge Initial Implementation/13-model-catalog-and-keys.md>).
+Статус: **Реализован и принят; запрещённые проверки пропущены**. Пауза после13 — исторический checkpoint; реализация14–25 завершена в документированных границах. [Актуальный checkpoint и evidence](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>). Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). [Отчёт и команды этапа 13](<../Plans/AgentBridge Initial Implementation/13-model-catalog-and-keys.md>).
 
 ## Фактические контракты
 

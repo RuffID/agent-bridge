@@ -174,6 +174,6 @@ observation.Complete();
 
 За свои ambient scopes, enrichers и журналы других компонентов отвечает приложение: события AgentBridge не очищают сторонний pipeline. Здесь нет режима вывода содержимого и фиктивных интеграций агента. AgentRunner, HTTP, хранилище и тестирование их реальных операций не реализованы на этапе 03.
 
-По умолчанию журнал содержит безопасные идентификаторы корреляции, operation, status/code и длительность. На этапе 04 в HttpClientLibrary реализован согласованный None/opt-in JsonStructure: только структура HTTP-ошибки без исходных имён и значений. Текст содержимого и sanitizer не поддерживаются. Raw error details не логируются. Библиотека проверена отдельно; интеграция транспорта AgentBridge ещё не выполнена. Фактические события и transport error contract: [HTTP-контракт](03-http-and-codex-lb.md).
+По умолчанию журнал содержит безопасные идентификаторы корреляции, operation, status/code и длительность. На этапе 04 в HttpClientLibrary реализован согласованный None/opt-in JsonStructure: только структура HTTP-ошибки без исходных имён и значений. Текст содержимого и sanitizer не поддерживаются. Raw error details не логируются. Библиотека проверена отдельно; транспорт AgentBridge реализован13–15/18 и проверен через actual HttpClientLibrary/fake handler; live HTTP не подтверждён. Фактические события и transport error contract: [HTTP-контракт](03-http-and-codex-lb.md).
 
 Связанные документы: [настройки приложения](<../Business logic/05-application-configuration.md>), [модели и состояние](<../Business logic/06-models-and-status.md>).

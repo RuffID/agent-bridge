@@ -1,12 +1,20 @@
 # Контекст проекта AgentBridge
 
+## Руководство потребителя и завершение00–25
+
+Вход для внедрения — [руководство25](../../../Documentation/Technical%20documentation/25-usage-guide.md), проверяемые исходники — tests/Delivery/Consumer. Примеры DI/options, keys, tools, создания/run, model selection, status и bounded cleanup скомпилированы вне репозиториев с обоими DLL-комплектами24, без project/package references; методы не исполнялись. Приложение предоставляет авторизацию owner/agent, secret store, ordered providers, scoped бизнес-данные, logging и управляемый HttpClient без retry/смены ключа.
+
+Например: авторизованный owner создаёт диалог с fixed expiry → выбирает exact model/effort по каталогу своего доступа → отправляет только новый canonical input в новый turn → UI проверяет Status/TerminalSaved и показывает ExpiresAtUtc → отдельное расписание вызывает один bounded cleanup. Ожидаемые ошибки остаются typed; unknown acknowledgement и existing turn не разрешают replay. Opaque compatibility требует доказательного порта приложения, nullable full budget не заменяется known count.
+
+[Карта evidence00–25](../../../Documentation/Plans/AgentBridge%20Initial%20Implementation/25-usage-guide-and-closure.md) сохраняет датированные проверки и первоначальные ошибки, не суммирует пересекающиеся suites. Реализация первоначального плана завершена в этих границах; этап25 принят координатором, локальная фиксация manifest36 разрешена. Full hash итогового коммита сообщается отдельно и доступен в Git history. Runtime/native loading kit, IDE presentation, другие RID/Release/AOT и live upstream не подтверждены. OpenSpec CLI отсутствует, validation невыполнена; changes остаются неархивированными. Это ограничение закрытия workflow, а не новая возможность продукта.
+
 ## Автономная поставка этапа24
 
 После принятого commit23 `7e9d533d80393bd85b08e1b17567038e12ec8a16` пользователь снял паузу для24, а в чате координатора поручил проверить24 и продолжить25; координатор независимо принял24. [Change24](../../changes/dll-delivery/context.md) и [технический состав](<../../../Documentation/Technical documentation/24-dll-delivery.md>) описывают .NET10/win-x64 комплекты SQLite/PostgreSQL. Общая EF assembly статически зависит от обоих providers/maintenance: например, SQLite-комплект содержит Npgsql, но только SQLite migrations. Удалять невыбранные статические зависимости вручную нельзя.
 
 Комплект содержит39 managed DLL,35 XML и native SQLite x64; стандартный SDK разрешает единую dependency closure, служебная aggregation DLL не поставляется. Binary consumer скопирован за пределы репозиториев: ссылки только на комплект и .NET reference pack, без ProjectReference/PackageReference. XML остаётся generated: inheritdoc связан с интерфейсом через metadata, но не развёрнут в текст для произвольной IDE. Внешние pg_dump/pg_restore и .NET runtime предоставляет приложение; подключение DLL не обслуживает БД.
 
-Два compile-check и8 isolated PE/XML cases успешны. Эти проверки не исполняют DI, HTTP, EF, BPE, native engine или dump и не заменяют runtime evidence23. Этап24 принят координатором; локальный commit manifest24 разрешён, hash — в git log и итоговом ответе.25 этому исполнителю не поручен. CLI OpenSpec отсутствует; static main/delta review не является CLI validation, change не архивирован.
+Два compile-check и8 isolated PE/XML cases успешны. Эти проверки не исполняют DI, HTTP, EF, BPE, native engine или dump и не заменяют runtime evidence23. На историческом checkpoint24 локальный commit manifest24 был разрешён; он выполнен как495e2b857bc36171ce97b82eb0fef77eeac593ea. На тот момент25 ещё не был поручен; актуальный checkpoint принятого25 приведён выше. CLI OpenSpec отсутствует; static main/delta review не является CLI validation, change не архивирован.
 
 ## Сквозная проверка этапа23
 

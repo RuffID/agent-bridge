@@ -59,6 +59,6 @@ Reader извлекает только закрытые известные зн�
 
 ## Нереализованные методы и доказательства
 
-На checkpoint14 onUpdate callback и CompactAsync возвращали Unsupported. Этап15 реализовал [SSE callback](15-responses-sse-adapter.md); onUpdate=null сохраняет описанный JSON путь. Composition16 и tokenizer17 приняты/закоммичены. Этап18 реализует [отдельный compact transport и сценарий](18-context-compaction.md) и принят координатором. Executor tools19 и AgentRunner20 не начаты.
+На checkpoint14 onUpdate callback и CompactAsync возвращали Unsupported. Этап15 реализовал [SSE callback](15-responses-sse-adapter.md); onUpdate=null сохраняет описанный JSON путь. Composition16 и tokenizer17 приняты/закоммичены. Этап18 реализует [отдельный compact transport и сценарий](18-context-compaction.md) и принят координатором. [Tools19](19-application-tools.md) и [AgentRunner20](20-agent-turn-orchestration.md) реализованы; исходное evidence14 остаётся изолированной transport проверкой.
 
 Тесты ResponsesJsonTests проходят public DI/resolver/gateway через actual HttpClientLibrary 0.0.0.5 с fake handler/local streams. Они подтверждают snapshot/order/lifecycle/errors/disposal/cancellation/binding/safe logger/no retries в этом pipeline. Live codex-lb/OpenAI/account ownership/upstream compatibility и app handlers не проверены. Domain/persistence, соседние библиотеки и generated migrations не менялись; прежние DB integration results не повторены и не выдаются за проверку этого транспорта.

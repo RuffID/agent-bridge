@@ -1,6 +1,6 @@
 # Поставка DLL для .NET10
 
-Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Статус24: реализован, compile/metadata проверены, принят координатором; локальный commit manifest24 разрешён. [Команды, результаты, ошибки и manifest изменений](<../Plans/AgentBridge Initial Implementation/24-dll-delivery.md>). Этап25 этому исполнителю не поручен; продолжение ведёт координатор.
+Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Статус24: принят и закоммичен495e2b857bc36171ce97b82eb0fef77eeac593ea, compile/metadata проверены. [Команды, результаты, ошибки и manifest изменений](<../Plans/AgentBridge Initial Implementation/24-dll-delivery.md>). [Руководство25](25-usage-guide.md) реализовано и адресно проверено, этап25 принят координатором, full hash итоговой локальной фиксации сообщается отдельно.
 
 ## Граница комплекта
 
@@ -89,7 +89,7 @@ MSBuild разрешил общие Microsoft.Extensions зависимости 
 
 Props использует только свой `MSBuildThisFileDirectory`: managed DLL становятся `Reference` с `Private=true`, XML копируются в output, native файл попадает в корень output как `e_sqlite3.dll`. Никакие пути к AgentBridge/EFCoreLibrary/HttpClientLibrary source tree и packages cache потребителю не нужны. `HintPath` на исходные проекты не используется. Не копировать только четыре AgentBridge DLL: у binary Reference нет NuGet-механизма восстановления транзитивных пакетов.
 
-Проверяемый [compile-only проект](../../tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj) принимает абсолютный `AgentBridgeDeliveryRoot` как параметр Build. Его [BinaryContractProbe](../../tests/Delivery/Consumer/BinaryContractProbe.cs) компилирует реальные DI/options/maintenance и публичные типы. Это библиотека без entry point, не полный composition root и не пример диалога этапа25. Методы не исполнялись. В приложении остаются logging, HttpClient lifecycle, IIndividualModelKeySource, ordered context providers, validators/handlers и права пользователя.
+Проверяемый [compile-only проект](../../tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj) принимает абсолютный `AgentBridgeDeliveryRoot` как параметр Build. Его [BinaryContractProbe](../../tests/Delivery/Consumer/BinaryContractProbe.cs) компилирует реальные DI/options/maintenance и публичные типы. Этап25 расширил consumer [регистрацией и public сценариями](25-usage-guide.md), проверенными с обоими комплектами. Это библиотека без entry point; методы не исполнялись. В приложении остаются logging, HttpClient lifecycle, IIndividualModelKeySource, ordered context providers, business source и права пользователя.
 
 ## Конфигурация и внешние требования
 

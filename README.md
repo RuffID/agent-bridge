@@ -1,84 +1,34 @@
 # agent-bridge
 
-AgentBridge — C#-библиотека ИИ-агентов для .NET 10: сайты, ASP.NET Core, WPF и Telegram-боты. Подключается обычными DLL.
-
-Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
-
-Ядро .NET10 остаётся в корне, адаптеры транспорта/хранения и provider migrations — отдельно. Этапы00–23 приняты и закоммичены; HEAD23 — `7e9d533d80393bd85b08e1b17567038e12ec8a16`. Доступны canonical JSON/SSE, ContextBuilder, offline BPE/guard, compact, tools, [AgentRunner20](<Documentation/Technical documentation/20-agent-turn-orchestration.md>), [настройки/статус21](<Documentation/Technical documentation/21-settings-and-dialog-status.md>) и [очистка22](<Documentation/Technical documentation/22-expired-dialog-cleanup.md>). Исторические проверки23:32 actual DB и25 isolated, HTTP — fake handler. [Поставка24](<Documentation/Technical documentation/24-dll-delivery.md>) подготовлена для SQLite/PostgreSQL, .NET10/win-x64: два внешних бинарных потребителя собраны,8 metadata/XML tests passed. Это не runtime/native проверка. Этап24 принят координатором; локальный commit разрешён по manifest24, hash — в git log и итоговом ответе. Продолжение25 ведёт координатор; этот исполнитель25 не начинает. OpenSpec CLI недоступен, changes не архивированы.
-
-| Проект | Сборка / назначение | Текущие production-ссылки |
-| --- | --- | --- |
-| [agent-bridge.csproj](agent-bridge.csproj) | `AgentBridge.dll`, ядро/Application/tokenizer | Microsoft.ML.Tokenizers2.0.0 и embedded O200kBase/Cl100kBase2.0.0, Bcl.Memory10.0.4, Microsoft.Extensions10.0.3 |
-| [AgentBridge.CodexLb](adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj) | `AgentBridge.CodexLb.dll`, транспортный адаптер | Ядро, HttpClientLibrary |
-| [AgentBridge.Persistence.EfCore](adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj) | `AgentBridge.Persistence.EfCore.dll`, общее хранилище | Ядро, EFCoreLibrary |
-| [AgentBridge.Persistence.Migrations.Sqlite](adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj) | SQLite design-time factory; InitialAgentBridgeSchema сгенерирована | EF-хранилище |
-| [AgentBridge.Persistence.Migrations.PostgreSql](adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj) | PostgreSQL design-time factory; InitialAgentBridgeSchema сгенерирована | EF-хранилище |
-| [AgentBridge.Tests](tests/AgentBridge.Tests/AgentBridge.Tests.csproj) | Изолированные проверки ядра | Ядро |
-| [AgentBridge.CodexLb.Tests](tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj) | Изолированные проверки транспорта | Адаптер codex-lb |
-| [AgentBridge.Persistence.EfCore.Tests](tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj) | Изолированные проверки хранения/design-time и opt-in cross-component DB tests | EF-хранилище, оба migrations проекта, CodexLb (test-only) |
-
-Тестовая инфраструктура — xUnit. На этапе 02 прошли 47 изолированных проверок настроек; на этапе 03 — 36 тестов ядра, включая 18 новых проверок диагностики. Ядро использует Microsoft.Extensions.Options.ConfigurationExtensions и Microsoft.Extensions.Logging `10.0.3`; адаптеры получают общие зависимости транзитивно. Serilog `4.3.0` и Serilog.Extensions.Logging `10.0.0` подключены только в тестах ядра для проверки pipeline приложения. На этапе 04 HttpClientLibrary 0.0.0.5 получила default-safe/opt-in JsonStructure и ограниченный error contract; по 44 теста прошли на net8/net10, проверено происхождение DLL. EF-адаптер подключает EFCoreLibrary с этапа 08; HTTP-ссылка остаётся этапу транспорта. Команды и результаты: [этап 02](<Documentation/Plans/AgentBridge Initial Implementation/02-configuration-and-defaults.md>), [этап 03](<Documentation/Plans/AgentBridge Initial Implementation/03-serilog-integration.md>), [этап 04](<Documentation/Plans/AgentBridge Initial Implementation/04-httpclientlibrary-logging.md>).
+AgentBridge — C#-библиотека ИИ-агентов для .NET10-приложений, подключаемая обычными DLL. Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. Библиотека собирает разрешённый контекст, выполняет инструменты приложения и сохраняет диалог в SQLite или PostgreSQL.
 
 ## Подключение
 
-Готовые локальные комплекты: `artifacts/delivery/stage24-win-x64/Sqlite` и `PostgreSql`. Каждый содержит39 managed DLL,35 XML, native SQLite x64, файл бинарных ссылок и manifest SHA256. Поставляется одна выбранная migrations DLL, но оба статически подключённых EF provider/maintenance-модуля. [Полный состав, импорт в проект, внешние требования и воспроизведение](<Documentation/Technical documentation/24-dll-delivery.md>).
+1. Выберите полный локальный комплект `artifacts/delivery/stage24-win-x64/Sqlite` либо `PostgreSql`: .NET10/win-x64/Debug,39 managed DLL,35 XML и native SQLite. Перенесите комплект целиком; [состав и внешние требования](<Documentation/Technical documentation/24-dll-delivery.md>).
+2. Импортируйте `AgentBridge.Delivery.props` в .NET10 SDK-style проект. [Проверенный бинарный consumer](tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj) не содержит ProjectReference/PackageReference:
 
-Для работы с исходниками открыть [agent-bridge.slnx](agent-bridge.slnx) в IDE с поддержкой .NET 10. Production-проекты собираются в пять DLL из таблицы; каталог и JSON Responses используют HttpClientLibrary. EF-хранилище имеет read/write ports, выбирает provider migrations assembly и предоставляет явный maintenance API. Приложение поставляет выбранную migrations DLL и зависимости EFCoreLibrary maintenance, SQLite native runtime либо PostgreSQL pg_dump. [Фабрики и схема](<Documentation/Technical documentation/11-provider-migrations.md>), [подключение обслуживания](<Documentation/Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>).
+```xml
+<PropertyGroup>
+  <AgentBridgeDeliveryRoot>C:\MyApplication\vendor\AgentBridge\Sqlite</AgentBridgeDeliveryRoot>
+</PropertyGroup>
+<Import Project="$(AgentBridgeDeliveryRoot)/AgentBridge.Delivery.props" />
+```
 
-1. Добавить в .NET 10-приложение ссылки на DLL ядра, адаптера codex-lb и выбранной инфраструктуры хранения вместе с зависимостями времени выполнения. AgentBridge не распространяется NuGet-пакетом.
-2. Подключить совместимые DLL EFCoreLibrary и HttpClientLibrary. Выбрать SQLite или PostgreSQL и соответствующий EF Core provider.
-3. В конфигурации приложения задать адрес codex-lb, модель, общий ключ, провайдер БД и подключение. При необходимости предоставить индивидуальные ключи пользователей.
-4. Настроить лимиты, срок хранения и reasoning effort. Срок хранения задаётся конфигурацией, а не константой в логике удаления.
-5. Подключить Serilog и зарегистрировать зависимости AgentBridge, источники контекста и инструменты в composition root приложения.
-6. После `AddDatabaseConfiguration`/`AddAgentBridgePersistence` отдельно вызвать `AddAgentBridgeDatabaseMaintenance` с backup options и явным `SingleInitializer`. Задать абсолютный backup directory и собственный положительный `BackupRetentionPeriod` без default; PostgreSQL также требует pg_dump path, major и cleanup timeout. Приложение останавливает другие экземпляры/writes/DDL, выделяет scope и явно вызывает `IDatabaseMaintenance<AgentBridgeContextKey>.InspectAsync`, `UpdateExistingAsync` либо `InitializeNewAsync` с timeout/отменой. Регистрация не запускает операции. Retention backup и расписание очистки диалогов исполняет приложение.
+3. Настройте options ядра, codex-lb и выбранного provider; ключи/подключения храните в secret configuration приложения. [UsageRegistration](tests/Delivery/Consumer/UsageRegistration.cs) явно регистрирует scoped ключи, ordered `ContextBuilder` providers, tools, persistence, tokenizer, runner, settings и cleanup. Фабрики приложения и logging provider нужно предоставить самостоятельно.
+4. Отдельно подготовьте БД через [явный maintenance API](<Documentation/Technical documentation/06-database-maintenance.md#подключение-agentbridge-этапа-12>) с SingleInitializer/backup options. DI-регистрация не создаёт БД и не запускает операции.
 
-7. Для истёкших диалогов отдельно зарегистрировать `AddAgentBridgeDialogCleanup()`, выделить caller scope и вызвать `ExpiredDialogCleanup.CleanupAsync(limit, cancellationToken)`. Приложение задаёт положительный limit и расписание. Один вызов обрабатывает один пакет в отдельных read/delete scopes; проверять batch Status и Candidates, Partial/Canceled не считать успехом. Unexpected exceptions распространяются с безопасным LastResult. [API/пример22](<Documentation/Technical documentation/22-expired-dialog-cleanup.md>).
+## Использование
 
-| Пробная настройка | Значение, переопределяемое конфигурацией |
-| --- | --- |
-| Срок хранения от создания диалога | 7 дней |
-| Мягкий порог содержимого на диалог | 10 МиБ |
-| Порог сжатия контекста | 32 000 токенов |
-| Reasoning effort | `medium`, если поддержан моделью и доступен ключу |
-| Время ожидания генерации/compact | 180 секунд |
+Проверенные C# методы находятся в [UsageFlow](tests/Delivery/Consumer/UsageFlow.cs); последовательность и обработка результатов — в [руководстве](<Documentation/Technical documentation/25-usage-guide.md>).
 
-Все настройки и правила выбора ключей: [конфигурация приложения](<Documentation/Business logic/05-application-configuration.md>).
+1. Авторизуйте owner и agent, создайте новый DialogId через `CreateAsync`; expiry фиксируется от создания по `DialogRetentionOptions`.
+2. Получите динамический каталог через `ReadModelsAsync`; `ReadSettingsAsync` → `SelectAsync` сохраняет exact model/effort с обеими исходными версиями. Override запроса имеет приоритет над saved выбором и defaults, не сохраняется. Individual key приоритетен; shared используется только при null, без fallback при ошибке.
+3. Создайте новый `ApplicationCallContext`/TurnId и вызовите `RunAsync` только с новым input. Callback null выбирает JSON, non-null SSE. Проверяйте итоговый `Status` и `TerminalSaved`: stream delta и `LastResponse` не подтверждают сохранение. Existing turn/Unknown tool не разрешают replay.
+4. Инструменты регистрируйте через `AddAgentBridgeTool<THandler,TValidator>`; [read-only пример](tests/Delivery/Consumer/AccountSummaryTool.cs) показывает полную простую schema и порт бизнес-данных/прав приложения. Selected names не заменяют авторизацию.
+5. `ReadStatusAsync` даёт expiry, bytes, selected/server model и nullable оценку контекста. `CleanupAsync` обрабатывает один bounded пакет; limit/расписание у приложения. Partial/Canceled/Unknown не считаются успехом.
 
-## Работа с библиотекой
+Срок7 дней, soft bytes10 МиБ, compact threshold32 000, reserve4096 и3 passes — переопределяемые начальные значения. Soft bytes не вызывает удаление, compact не продлевает expiry; неизвестный полный token budget не подменяется known count. [Конфигурация и ограничения](<Documentation/Technical documentation/25-usage-guide.md#2-настроить-options-и-зависимости-приложения>).
 
-Существующий write API и правила DI scope: [сценарные Unit of Work](<Documentation/Technical documentation/10-scenario-unit-of-work.md>). Этап 10: **Реализован и принят; запрещённые проверки пропущены**.
+Примеры скомпилированы с обоими комплектами вне репозитория; методы не исполнялись. Runtime/native загрузка, конкретная IDE и live upstream не подтверждены. OpenSpec CLI отсутствует, validation не выполнена, changes не архивированы. Реализация первоначального плана00–25 завершена в документированных границах; этап25 принят координатором. Full hash итоговой локальной фиксации сообщается отдельно и доступен в Git history. [Отчёт25 и evidence всех этапов](<Documentation/Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>).
 
-В `AgentBridge.Application` доступны независимые порты шлюза модели, источника контекста, обработчика инструментов, tokenizer и коротких сценариев хранения. Полные канонические items/envelope/continuation сохраняются отдельными снимками; gateway получает выбранный ключ на вызов. ServiceResult описывает ожидаемый отказ, ModelResponse отдельно различает lifecycle. Storage token выражает сохраняемые incarnation/revision; этап 09 реализует чтение и staging, этап 10 — сохранение/write ports/UoW и валидирующее восстановление Domain. Проверки: 107 core/108 persistence tests; реальная БД не проверялась. [Фактические контракты и ограничения](<Documentation/Technical documentation/09-application-ports.md>), [этап 07](<Documentation/Plans/AgentBridge Initial Implementation/07-application-ports.md>): 93 теста ядра, 27 новых; реализован и принят; запрещённые проверки пропущены.
-
-В `AgentBridge.Persistence.EfCore.Configuration` доступен `AddAgentBridgePersistence`, вызываемый после `AddDatabaseConfiguration`. Он использует общий scoped `AgentBridgeDbContext`, актуальные context-key/base repositories EFCoreLibrary и выбранный SQLite/PostgreSQL; соединение не открывает. Модели и payload-сериализация проверены без БД: 34 теста, включая 25 новых; этап 08 реализован и принят; запрещённые проверки пропущены. [Формат, пример регистрации и ограничения](<Documentation/Technical documentation/02-efcorelibrary.md#реализация-этапа-08>).
-
-Этап 09 добавляет к этой регистрации `IDialogReader` и `IExpiredDialogReader`: полная упорядоченная история, активный compact по максимальной версии и ограниченные кандидаты очистки. Повторная проверка root отклоняет изменившийся диалог без выдачи смешанного снимка. Base CRUD делегируется как staging без сохранения; на этапе 09 write ports не регистрировались; этап 10 добавляет их в ту же регистрацию. **71 persistence-тест, 37 новых**, без БД; реализован и принят; запрещённые проверки пропущены. [Фактические адаптеры и ограничения](<Documentation/Technical documentation/02-efcorelibrary.md#адаптеры-этапа-09>).
-
-Чистый доменный API `AgentBridge.Domain.Dialogs` уже доступен: `Dialog.Create`, владение, фиксированные даты, упорядоченные обращения, конечные статусы, версии контекста и отклонение устаревших результатов. На границе истечения продолжение запрещено. Покрытие контекста — только префикс обращений с конечным статусом, включая 0. Этап10 добавил Restore и атомарные write ports; этап20 проверил restart и запрет replay на SQLite/PostgreSQL. [Фактический API и ограничения](<Documentation/Technical documentation/08-dialog-domain-state.md>), [проверки этапа 06](<Documentation/Plans/AgentBridge Initial Implementation/06-dialog-domain-state.md>): 66 тестов ядра, включая 30 новых доменных. Settings/status доступны21; orchestration очистки остаётся этапу22.
-
-1. Определить пользователя и создать или открыть доступный ему диалог.
-2. Передать сообщение, идентификатор диалога и выбранного агента. Приложение определяет права пользователя и доступные бизнес-данные.
-3. При необходимости получить безопасные текущие настройки, выбрать другую модель или effort. Effort можно переопределить для конкретного запроса; выполняющееся обращение сохраняет свой снимок настроек.
-4. Получить ответ либо поток событий. Вызовы инструментов выполняются зарегистрированными обработчиками приложения, а результат возвращается модели.
-5. Для следующего сообщения использовать тот же диалог. Контекст сохраняется в БД; при достижении токенного порога он сжимается. Мягкий порог байтов не удаляет историю.
-6. Получить состояние диалога для интерфейса: `ExpiresAtUtc`, текущий объём, сведения о контексте и выбранную модель. По истечении настроенного срока диалог недоступен для продолжения и удаляется обслуживанием БД.
-7. По желанию пользователя создать новый диалог или явно удалить старый. После обычного создания нового старый сохраняется до своего срока истечения.
-
-Если индивидуальный ключ пользователя отсутствует, используется общий. Ошибка заданного ключа не переключает запрос скрыто на другой ключ. Чтение настроек не раскрывает ключи и строки подключения.
-
-Уже доступны `AddAgentBridgeConfiguration`, `AddCodexLbConfiguration` и `AddDatabaseConfiguration` с binding из раздела приложения либо программными callbacks. Фактические свойства, пространства имён, правила валидации и примеры: [конфигурация и жизненный цикл](<Documentation/Technical documentation/05-configuration-and-lifecycle.md>). Расширения не запускают host, HTTP или БД. `AddCodexLbModelCatalog` из `AgentBridge.CodexLb.Configuration` отдельно подключает `IModelAccessResolver`, `IModelCatalog` и `IModelSettingsReader`; приложение регистрирует `IIndividualModelKeySource` и предоставляет свой HttpClient. `ReadAsync(ownerId, model, effort, ct)` проверяет выбор и threshold+reserve по текущему каталогу без сохранения. `AddAgentBridgeSettings` предоставляет `AgentSettingsService.ReadAsync/SelectAsync/GetStatusAsync`; выбор сохраняется отдельно для диалога, активный runner использует свой снимок. [Фактический API21](<Documentation/Technical documentation/21-settings-and-dialog-status.md>), [каталог13](<Documentation/Technical documentation/13-model-catalog-and-keys.md>).
-
-Для диагностики доступен `AddAgentBridgeDiagnostics` из `AgentBridge.Diagnostics`. Приложение передаёт свой Serilog logger стандартному `AddLogging(logging => logging.AddSerilog(applicationLogger, dispose: false))`, затем регистрирует диагностику. Приложение владеет logger, sinks и их освобождением; AgentBridge не заменяет `Log.Logger`. `BeginOperation` измеряет длительность и принимает только enum операции, GUID корреляции и раздельные caller/deadline-токены. Владелец явно завершает наблюдение через `Complete` или `Fail`; автоматической интеграции ещё не реализованных сценариев нет. Пример реальной проверки options, поля событий и контракт отмены: [Serilog и диагностика](<Documentation/Technical documentation/07-tokenizer-and-settings.md#serilog>).
-
-## Документация
-
-Инструменты подключаются через `AddAgentBridgeTool<THandler,TValidator>(definition)`: validator приложения проверяет всю schema и права до действия. Для полного сценария использовать `AddAgentBridgeRunner` и `AgentRunner.RunAsync(AgentRunRequest, onUpdate, ct)`: runner сохраняет step/calls, durable Started до handler и outcomes+outputs атомарно через `IDialogToolAttemptWriter`. Existing TurnId, в том числе legacy без журнала, автоматически не повторяется. `AgentRunResult` отличает итог run и `TerminalSaved`; partial/Unknown не становятся успехом. Standalone executor/null checkpoint остаётся session-memory границей. [Run API и ограничения](<Documentation/Technical documentation/20-agent-turn-orchestration.md>), [tools API](<Documentation/Technical documentation/19-application-tools.md>).
-
-Для JSON/SSE генерации использовать `AddCodexLbResponses` вместо отдельного `AddCodexLbModelCatalog`; приложение предоставляет свои logging/options/IIndividualModelKeySource/HttpClient, выбирает ModelAccess resolver и вызывает IModelGateway.GenerateAsync вне write UoW. Null callback выбирает JSON, callback выбирает SSE с последовательными awaited updates; output/envelope/continuation сохраняются. CompactAsync реализован отдельным JSON transport этапа18. [JSON API](<Documentation/Technical documentation/14-responses-json-adapter.md>), [SSE API, lifecycle/отмена/disposal и ограничения](<Documentation/Technical documentation/15-responses-sse-adapter.md>).
-
-Вход в документацию: [Documentation/README.md](Documentation/README.md).
-
-- [Бизнес-логика](<Documentation/Business logic/README.md>) — назначение, сценарии, контекст, хранение и настройки.
-- [Техническая документация](<Documentation/Technical documentation/README.md>) — архитектура, зависимости и решения реализации.
-- [OpenSpec](openspec/specs/agent-runtime/spec.md) — проверяемые требования.
-- [План реализации](<Documentation/Plans/AgentBridge Initial Implementation/README.md>) — небольшие этапы на русском языке с английскими именами файлов и папок.
+[Документация](Documentation/README.md) · [Нормативный OpenSpec](openspec/specs/agent-runtime/spec.md) · [План](<Documentation/Plans/AgentBridge Initial Implementation/README.md>) · [Решение для работы с исходниками](agent-bridge.slnx)

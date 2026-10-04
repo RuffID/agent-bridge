@@ -1,6 +1,6 @@
 # Техническая документация AgentBridge
 
-Документы описывают фактические API ядра, хранения, транспорта, AgentRunner20, settings/status21, очистки22 и поставку24. Этапы00–23 приняты и закоммичены. Этап24 реализован, проверен в пределах compile/metadata и принят координатором; локальный commit manifest24 разрешён,25 передаётся отдельному исполнителю. Проверки и ограничения находятся в соответствующих планах.
+Документы описывают фактические API ядра, хранения, транспорта, AgentRunner20, settings/status21, очистки22 и поставку24. Вход для потребителя — [руководство25](25-usage-guide.md) с бинарно проверенными C# примерами. Реализация00–25 завершена в документированных границах; этап25 принят координатором; full hash итоговой локальной фиксации сообщается отдельно. Проверки и ограничения находятся в [карте evidence](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>).
 
 | Раздел | Содержание |
 | --- | --- |
@@ -25,5 +25,6 @@
 | [Настройки и статус диалога](21-settings-and-dialog-status.md) | Safe read/select/status, per-dialog independent version, atomic run snapshot, expiry/bytes/context и opaque compatibility |
 | [Очистка истёкших диалогов](22-expired-dialog-cleanup.md) | Явный bounded пакет, отдельные scopes/fresh UTC, partial/canceled/unknown и existing guards/cascade |
 | [Поставка DLL](24-dll-delivery.md) | .NET10/win-x64, полный состав SQLite/PostgreSQL, XML/inheritdoc, бинарные ссылки и внешние требования |
+| [Подключение и использование](25-usage-guide.md) | Проверяемые C# примеры DI/config/dialog/tools, ключи/модели, status/expiry/cleanup и обязанности приложения |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).
