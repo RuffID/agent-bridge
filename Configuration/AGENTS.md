@@ -6,3 +6,4 @@
 - Источники контекста и обработчики инструментов регистрируются программно на соответствующих этапах; их имена не являются списком прав в options.
 - Options — входные настройки приложения, не безопасный снимок для UI и не данные для журнала. Сервис безопасных settings реализуется отдельно.
 - Публичная граница проверки — DI-регистрация и получение `IOptions<T>`, `IOptionsSnapshot<T>`, `IOptionsMonitor<T>` в `tests/AgentBridge.Tests`, без hosting и интеграций.
+- AddAgentBridgeTokenization явно регистрирует singleton IContextTokenCounter и transient ContextBudgetGuard через TryAdd, сохраняя выбор приложения. DI не токенизирует запрос и не выполняет I/O; новые options не вводятся, guard принимает ModelSettingsSnapshot с проверенными threshold/reserve из существующего каталога.

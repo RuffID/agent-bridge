@@ -6,6 +6,8 @@
 
 ## Фактические проекты
 
+Этап17 добавляет `Tokenization/` в существующее ядро: offline Microsoft.ML.Tokenizers2.0.0 с двумя embedded dictionaries, direct Bcl.Memory10.0.4, IContextTokenCounter, explicit DI и Application.ContextBudgetGuard. Новый проект/host/адаптер не создаётся; DB/HTTP границы не меняются. [Точные mapping/источники/границы](07-tokenizer-and-settings.md#проверенный-exact-mapping-и-источники).
+
 | Путь от корня | Сборка / назначение | ProjectReference |
 | --- | --- | --- |
 | `agent-bridge.csproj` | `AgentBridge.dll`, ядро/Application | Нет |

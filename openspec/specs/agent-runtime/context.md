@@ -1,8 +1,18 @@
 # Контекст проекта AgentBridge
 
+## Offline tokenizer этапа17
+
+Этап16 принят/закоммичен085779a15c4126ac567a6d1307f497dcae8dc9c5. Этап17 реализован, адресно проверен и принят координатором; локальный коммит31 утверждённого файла разрешён. Этапы18–25 не начаты, checkpoint18 не достигнут. [Change](../../changes/model-tokenizer/proposal.md), [решение](../../changes/model-tokenizer/context.md), [точный API, pinned источники/дата/hashes и ограничения](<../../../Documentation/Technical documentation/07-tokenizer-and-settings.md#проверенный-exact-mapping-и-источники>). CLI отсутствует, validation не выполнена, changes не архивированы.
+
+Microsoft.ML.Tokenizers2.0.0 с embedded O200kBase/Cl100kBase2.0.0 даёт offline BPE. Direct Bcl.Memory10.0.4 устраняет NU1903 transitive9.0.4. Finite exact mappings из OpenAI tiktoken0.12.0 не являются dynamic catalog: gpt-5/gpt-4.1/gpt-4o/o1/o3/o4-mini→o200k_base, gpt-4/gpt-3.5-turbo→cl100k_base; все другие ID/регистр/suffix Unsupported. Дополнительных обязательных моделей пользователь не задал; координатор подтвердил scope. Resource layout и regex pinned к package nuspec commit; ordinary markers не становятся protocol special tokens. Восстановление header/ranks embedded словарей даёт canonical OpenAI hashes, shared LRU cache защищён lock, рабочее состояние на вызов.
+
+Например, новое сообщение «Привет» не заменяет длинные Instructions/provider/history/schema/results: actual builder→counter проверяет весь подготовленный ModelRequest. KnownTokens — сумма обычных BPE counts payload и schema JSON; framing всей известной структуры только локальная оценка, без обещания upper bound/server/billing count. Reserve отдельно, model/effort/transport controls не input text. Opaque/multimodal/unknown fields/controls и continuation со скрытым upstream state оставляют known текст, estimate=null. ID continuation не tokenized input; прошлый usage не бюджет нового запроса.
+
+Public ContextBudgetGuard принимает prepared request+ModelSettingsSnapshot, повторно проверяет settings/exact selection, использует только InputContextWindow, проверяет estimate<=window-reserve без overflow и возвращает ThresholdReached при estimate>=threshold. Null estimate Unsupported; excess Rejected; равенство допустимо по локальной оценке. Это явный вызов приложения, не встроенный send gate14–15. Например, изображение рядом с известным текстом возвращает KnownTokens текста, но guard отказывает даже при большом резерве. Compact18, выполнение tools19, orchestration20 и settings persistence21 остаются последующим этапам; история/expiry не изменяются.
+
 ## SSE Responses этапа 15
 
-Этап15 принят и закоммичен `1d99721c4c4689cb06f9d71be2ba02380cdd0458`. Этап16 реализован и адресно проверен, принят координатором; локальный коммит разрешён. Этапы17–25 не начаты, checkpoint18 не достигнут. [SSE change](../../changes/responses-sse-adapter/proposal.md), [SSE API](<../../../Documentation/Technical documentation/15-responses-sse-adapter.md>). CLI отсутствует, validation не выполнена, changes не архивированы.
+Этап15 принят и закоммичен `1d99721c4c4689cb06f9d71be2ba02380cdd0458`. Этап16 принят и закоммичен; актуальный статус17 выше. Этапы18–25 не начаты, checkpoint18 не достигнут. [SSE change](../../changes/responses-sse-adapter/proposal.md), [SSE API](<../../../Documentation/Technical documentation/15-responses-sse-adapter.md>). CLI отсутствует, validation не выполнена, changes не архивированы.
 
 ## Композиция этапа 16
 
@@ -12,7 +22,7 @@ ContextBuilder получает прочитанный DialogSnapshot, actual Ap
 
 Owner/dialog/expiry/prefix проверяются до provider I/O. now==expiry запрещает подготовку, prefix0 сохраняет всю историю, InProgress не покрывается; terminal Incomplete/Failed/Canceled не объявляются успешными, но являются конечными статусами prefix. Нет persisted agent ownership: snapshot не содержит AgentId; actual AgentId передаётся выбранным приложением провайдерам, transport проверяет continuation binding. DTO/token не разрешают позднюю запись, её guards остаются в write UoW, без внешнего I/O.
 
-59 composition cases и 27 затронутых contract cases прошли, 0 failed/0 skipped; test project и ядро собраны без предупреждений/ошибок. Tokenizer/budget/compact/tools execution/orchestration/поиск отсутствуют. [Change](../../changes/context-composition/proposal.md), [API](<../../../Documentation/Technical documentation/16-context-composition.md>), [точные проверки и manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/16-context-composition.md>). CLI validation не выполнена, change не архивирован.
+59 composition cases и 27 затронутых contract cases этапа16 прошли, 0 failed/0 skipped; test project и ядро собраны без предупреждений/ошибок. На16 tokenizer/budget не реализовывались; актуальная реализация17 описана выше. Compact/tools execution/orchestration/поиск отсутствуют. [Change](../../changes/context-composition/proposal.md), [API](<../../../Documentation/Technical documentation/16-context-composition.md>), [точные проверки и manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/16-context-composition.md>). CLI validation не выполнена, change не архивирован.
 
 Существующий callback выбирает SSE stream=true, null сохраняет JSON этапа14. Actual HttpClientLibrary возвращает wrapper; gateway owns его disposal и deadline CTS. SSE framing читает строгий UTF-8 (начальный BOM допустим) независимо от fragment boundaries; multiline data объединяется LF. EOF/DONE не completion. Непустой terminal output авторитетен; empty/absent допускает собранные indexed items. Raw envelope остаётся исходным, backfill не переписывает его. Unknown/opaque item fields сохраняются, tools не выполняются.
 

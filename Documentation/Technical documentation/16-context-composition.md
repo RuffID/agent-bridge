@@ -1,6 +1,6 @@
 # Композиция контекста
 
-Этап16 реализован и адресно проверен; принят координатором; локальный коммит разрешён. Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [context](../../openspec/specs/agent-runtime/context.md). Tokenizer, бюджет, compact, выполнение инструментов и оркестрация остаются последующим этапам.
+Этап16 принят и закоммичен085779a15c4126ac567a6d1307f497dcae8dc9c5. Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [context](../../openspec/specs/agent-runtime/context.md). [Offline tokenizer и budget guard17](07-tokenizer-and-settings.md#public-guard-и-подключение) реализованы и приняты координатором; локальный коммит17 разрешён; compact/tools/orchestration остаются последующим этапам.
 
 ## Публичный API
 

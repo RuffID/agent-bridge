@@ -2,7 +2,7 @@
 
 ## Назначение и границы
 
-- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения; ContextBuilder готовит ModelRequest по уже прочитанному snapshot. Реализации адаптеров/UoW находятся в Infrastructure, оркестрация и токенизация ещё отсутствуют.
+- Чистые порты модели, контекста приложения, инструментов, tokenizer и коротких сценариев хранения; ContextBuilder готовит ModelRequest по уже прочитанному snapshot. Реализации адаптеров/UoW находятся в Infrastructure, offline tokenizer — в Tokenization; оркестрация отсутствует.
 - Допустимы Domain, BCL и независимые прикладные модели. EF/DbContext/IQueryable/Expression, HTTP-библиотеки, wire DTO и Web/MVC остаются за границей.
 - `ServiceResult` описывает ожидаемый отказ без данных. `ModelResponse` — отчёт о lifecycle с сохранённым выходом; успех получения отчёта не означает Completed. Неожиданные исключения не маскировать.
 - Канонические элементы и аргументы сохраняются независимыми снимками JsonElement, включая неизвестные поля и opaque data. Это контейнер данных, не реализация Responses mapping или JSON/SSE транспорта.
@@ -17,3 +17,4 @@
 - Composition порядок: provider items → active context items → полный tail turns после terminal prefix → ещё не сохранённый newRequest.Input. Instructions остаются отдельным системным полем. Envelope/continuation не input, StoredModelStep не дублирует Items; continuation передаётся только явно. Prefix0 сохраняет всю историю, InProgress не покрывается.
 - Known function pairs проверяются по call_id через всю композицию; каждый output закрывает один предшествующий незакрытый call, повторные ID разных пар допустимы. Незакрытый call, включая partial arguments, даёт safe Conflict без запроса, malformed pair — Validation. Не проверять скрытые вызовы opaque/unknown state, не исправлять arguments/output и не удалять историю. DTO/token не write authorization, builder не читает часы и не продлевает срок.
 - Изолированные contract-тесты — `tests/AgentBridge.Tests/ApplicationPortsTests.cs`; без адаптеров, хоста, HTTP и БД.
+- ContextBudgetGuard проверяет exact prepared model/effort, повторно валидирует catalog settings и использует только InputContextWindow. Unknown full estimate => Unsupported, превышение => Rejected; reserve проверяется subtraction без overflow, равенство допустимо по локальной оценке, thresholdReached при estimate >= threshold. Typed failure сохраняет identity перед поздней отменой; после success проверяется caller cancellation. Guard не запускает compact/отправку и не объявляет JSON framing server count.

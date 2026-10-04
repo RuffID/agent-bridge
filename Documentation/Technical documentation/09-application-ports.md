@@ -4,6 +4,8 @@
 
 Реализации существующих read/write ports, короткая transaction и правила внешнего ожидания: [этап 10](10-scenario-unit-of-work.md). Application не получил EF-зависимостей или публичного transaction callback.
 
+Этап17 реализует IContextTokenCounter в Tokenization, Application.ContextBudgetGuard и Models.ContextBudgetAssessment. AddAgentBridgeTokenization регистрирует counter/guard явно; CountAsync получает весь prepared request, CheckAsync — тот же request и validated settings. KnownTokens/nullable estimate/opaque разделены, reserve применяется отдельно; неизвестный бюджет не разрешается. [Зависимость, exact mapping, public API и ограничения](07-tokenizer-and-settings.md#public-guard-и-подключение). Compact/AgentRunner не реализованы.
+
 ## Фактический API этапа 07
 
 Этап 07 реализован и принят; запрещённые проверки пропущены. Порты находятся в `AgentBridge.Application.Ports`, неизменяемые DTO — в `AgentBridge.Application.Models`, результаты — в `AgentBridge.Application.Results`. Production-зависимости не добавлены. Источник требований: [agent-runtime](../../openspec/specs/agent-runtime/spec.md); [контекст и ограничения](../../openspec/specs/agent-runtime/context.md).

@@ -3,6 +3,7 @@
 ## Карта и зависимости
 
 - `AgentBridge.Tests` проверяет ядро/Application и ссылается только на корневой production-проект.
+- ContextTokenCounterTests/ContextBudgetGuardTests проверяют actual offline Microsoft.ML.Tokenizers2.0.0 с embedded словарями, fixed BPE vectors, SHA256 словарей из OpenAI0.12.0, конкурентный singleton cache, actual builder→counter, whole payload/schema/results/controls, exact unsupported mapping, known/null estimate, reserve/threshold/equality/overflow и отмену. BPE не заглушён; boundary fake counter нужен только для long.MaxValue и failure/cancellation. Нет server count/HTTP/DB/hosting. Созданные конкурентные задачи bounded и все await через WhenAll.
 - `AgentBridge.CodexLb.Tests` проверяет транспортный адаптер и ссылается на `AgentBridge.CodexLb`.
 - `AgentBridge.Persistence.EfCore.Tests` проверяет адаптацию хранения и ссылается на `AgentBridge.Persistence.EfCore`.
 - Тестовые зависимости: xUnit, Microsoft.NET.Test.Sdk и runner Visual Studio. Production-проекты не ссылаются на тесты, а корневой compile glob исключает весь каталог `tests`.
