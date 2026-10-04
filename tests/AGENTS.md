@@ -1,5 +1,7 @@
 # Изолированные тесты
 
+- CrossComponentIntegrationTests23 соединяет actual AgentRunner/CodexLb/HttpClientLibrary/offline BPE с реальными SQLite/PostgreSQL через existing Integration fixtures. Persistence test project имеет дополнительный test-only ProjectReference на CodexLb; production зависимости не меняются. Эти проверки имеют Dependency=Database и не входят в isolated filter. Матрица/границы/команды — в отчёте23; HTTP всегда local handler/streams, без hosting.
+
 - ExpiredDialogCleanupTests22 проверяет public DI/one batch/fresh UTC/independent awaited scopes, expected partial/unknown/cancel, no retry, immutable report, read failure, concurrent rejection и primary+Dispose failures. OCE disposal не маскируется caller cancellation. Порты — doubles, relational atomicity/cascade ими не подтверждается. Integration/ExpiredDialogCleanupIntegrationTests отдельно проверяет actual SQLite/PostgreSQL каскад шести таблиц, equality, stale/recreate, partial SQL rollback/cancel и actual runner late response без hosting/HTTP.
 
 - AgentSettingsTests21 проверяет public settings/status, actual BPE/model-independent shape, independent versions, changed options/new scopes, exact selection, legacy/opaque provenance, selected/server различие и отсутствие secrets. AgentRunnerTests добавляет pinned saved selection/request override и Unsupported legacy writer. ModelCatalogTests проходит safe settings → actual HttpClientLibrary/fake handler без сети. Mapping/model/factory tests проверяют current six-table schema/versioned snapshots без БД.

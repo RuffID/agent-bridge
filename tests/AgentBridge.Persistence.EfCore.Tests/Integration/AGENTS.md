@@ -1,4 +1,7 @@
-# Интеграционные проверки этапов 00–13 и20
+# Интеграционные проверки завершённых сценариев
+
+- CrossComponentFixture/Tests23 использует actual runner, catalog/JSON/SSE/compact adapter, HttpClientLibrary, offline BPE и EFCoreLibrary CRUD/UoW. ScriptHandler не обращается к сети и падает на лишнем запросе. Scoped handler наблюдает committed Started отдельным parent-aware query до действия; собственный пустой DbContext наблюдателя не доказывает отсутствие чужой транзакции.
+- Сквозной backup/restore23 использует настоящие native SQLite/pg_dump/pg_restore через существующий fixture, сопоставляет всю схему и данные включая journal/settings/turn snapshot/compact provenance. Synthetic acknowledgement failure после actual outcome writer success не является реальным сетевым сбоем. Временные gates всегда освобождаются и tasks ожидаются в finally.
 
 - ExpiredDialogCleanupIntegrationTests22 проходит public app-invoked orchestration → actual base CRUD/deletion UoW, equality/bounded packages/cascade включая DialogSettings, partial failure/cancel после настоящего SQL SaveChanges до commit и cleanup-vs-active-run/recreate. Sources/gateway управляемые, HTTP/hosting нет; actual offline BPE используется runner. Stale revision моделируется исторической pre-expiry записью между read/delete: не доказательство late write. Таблицы Dialogs и DialogSettings используют колонку Id, остальные — DialogId. Старые maintenance/backup/restore не повторять без нового риска.
 

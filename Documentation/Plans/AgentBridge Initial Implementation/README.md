@@ -1,10 +1,10 @@
 # Первоначальная реализация AgentBridge
 
-## Checkpoint22
+## Checkpoint23 — STOP после проверки
 
-Этап21 принят и закоммичен 6482d595cb1f89eeb30ec33696026aa6c1bde1cc (parent20=95c28fae3773efa9e8e4d0281282340f5ac9e6c0). Пауза после20 снята пользователем. Этому исполнителю поручен только22: один app-invoked bounded пакет existing read/deletion ports с honest partial/cancel/unknown, fresh UTC и отдельными scopes. [Отчёт22 и полный manifest](22-expired-dialog-cleanup.md); реализация и проверки приняты координатором, локальный коммит ровно30 файлов manifest разрешён отдельным поручением. До приёмки add/commit не выполнялись. Этапы23–25 не начаты. OpenSpec CLI отсутствует, validation не выполнена, change не архивирован.
+Блок19–23 реализован, проверен и принят;19–22 локально закоммичены. HEAD22=89c28e839bf12584027b81494c31557c91279935, parent21=6482d595cb1f89eeb30ec33696026aa6c1bde1cc,20=95c28fae3773efa9e8e4d0281282340f5ac9e6c0,19=de58342f5c80e46279e1d7b59fe0665c893c5d4b. [Отчёт23, полный manifest15 и передача следующему координатору](23-cross-component-verification.md). Координатор принял23 и разрешил локальный commit ровно15 файлов; hash — в git log и итоговом ответе. **После23 STOP;24–25 НЕ НАЧАТЫ.** OpenSpec CLI отсутствует, validation не выполнена, changes не архивированы.
 
-Статус: **00–21 приняты и закоммичены;22 реализован, проверен и принят координатором, локальный коммит разрешён;23–25 не начаты**. Платформа: **.NET 10**, подключение **DLL**. Evidence22: 79 core (19 новых cleanup),61 адресных isolated persistence,16 actual SQLite/PostgreSQL;0 failed/0 skipped. Исторические отчёты сохранены ниже и не выдаются за повторённые проверки22.
+Статус: **00–22 приняты и закоммичены;23 реализован, проверен и принят, локальный commit разрешён;24–25 не начаты**. Платформа: **.NET 10**, подключение **DLL**. Evidence23:32 actual DB (28 новых cross-component +4 existing rollback/start acknowledgement),25 isolated metadata/DI/design-time;0 failed/0 skipped. Два новых DB cases включают actual backup/restore journal/settings/snapshot/provenance. Production/schema/root csproj/slnx не менялись; HTTP — fake handler через actual adapter/HttpClientLibrary. Historical39maintenance,21:265/171/43/46 и22:79/61/16 не выдаются за повторённые23 и не суммируются с ним.
 
 План описывает реализацию согласованной библиотеки агента небольшими этапами. Создание плана не разрешает писать код. Спорные контракты библиотек обсуждаются с пользователем до выбора обходного решения или изменения соседней библиотеки.
 
@@ -60,10 +60,10 @@ dotnet test tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.E
 | [19 — Инструменты приложения](19-application-tools.md) | Принят и закоммичен de58342f5c80e46279e1d7b59fe0665c893c5d4b; durable recovery реализуется20 | 07, 14, 16 |
 | [20 — Координация обращения к агенту](20-agent-turn-orchestration.md) | Принят и закоммичен 95c28fae3773efa9e8e4d0281282340f5ac9e6c0 | 10, 15, 18, 19 |
 | [21 — Настройки и состояние диалога](21-settings-and-dialog-status.md) | Реализован, принят и закоммичен6482d595: per-dialog CAS, pinned snapshot, safe status, opaque compatibility | 13, 17, 20 |
-| [22 — Очистка истёкших диалогов](22-expired-dialog-cleanup.md) | Реализован, проверен и принят координатором; локальный коммит разрешён: bounded app вызов, separate scopes, honest partial/cancel/unknown, cascade без revival | 10, 20, 21 |
-| [23 — Проверка взаимодействия компонентов](23-cross-component-verification.md) | Регрессионные проверки и отдельно разрешённые интеграционные проверки | 12, 20, 21, 22 |
-| [24 — Поставка DLL](24-dll-delivery.md) | Полный состав зависимостей времени выполнения | 23 |
-| [25 — Руководство и завершение плана](25-usage-guide-and-closure.md) | Проверенные примеры README и итоговая документация | 24 |
+| [22 — Очистка истёкших диалогов](22-expired-dialog-cleanup.md) | Принят и закоммичен89c28e8: bounded app вызов, separate scopes, honest partial/cancel/unknown, cascade без revival | 10, 20, 21 |
+| [23 — Проверка взаимодействия компонентов](23-cross-component-verification.md) | Реализован, проверен и принят;32 DB/25 isolated, локальный commit manifest15 разрешён; после23 STOP | 12, 20, 21, 22 |
+| [24 — Поставка DLL](24-dll-delivery.md) | НЕ НАЧАТ; полный состав зависимостей времени выполнения | 23 |
+| [25 — Руководство и завершение плана](25-usage-guide-and-closure.md) | НЕ НАЧАТ; проверенные примеры README и итоговая документация | 24 |
 
 ## Правила работы
 

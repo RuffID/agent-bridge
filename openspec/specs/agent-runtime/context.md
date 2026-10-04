@@ -1,8 +1,14 @@
 # Контекст проекта AgentBridge
 
+## Сквозная проверка этапа23
+
+[Change23](../../changes/cross-component-verification/context.md) соединяет существующие public runner/transport/BPE/storage без изменения production-контрактов. Например, два завершённых шага с одинаковым call_id остаются двумя попытками, а повтор TurnId новым root не повторяет действие даже после потери acknowledgement. Compact сохраняет только terminal prefix; opaque окно принимается, но unknown full estimate блокирует generation.
+
+Матрица, текущие версии, точные команды, DB/backup evidence и передача следующему координатору — [отчёт23](<../../../Documentation/Plans/AgentBridge Initial Implementation/23-cross-component-verification.md>). Этап23 принят координатором; локальный commit manifest15 разрешён, hash — в git log и итоговом ответе. SQLite/PostgreSQL выполняются на собственных разрешённых ресурсах; HTTP остаётся scripted handler через actual HttpClientLibrary. Это не live compatibility, не реальный network fault и не подтверждение SQL Server/MySQL. После23 STOP;24–25 не начаты. OpenSpec CLI отсутствует, change не архивируется.
+
 ## Полный ход агента этапа20
 
-Baseline19 принят/закоммичен de58342f5c80e46279e1d7b59fe0665c893c5d4b. Реализован public AgentRunner20: fixed owner/version/settings/access, providers один раз, compact/full guard/model/tools и короткие scopes. [API](<../../../Documentation/Technical documentation/20-agent-turn-orchestration.md>), [change rationale](../../changes/agent-turn-orchestration/context.md), [команды/evidence/manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/20-agent-turn-orchestration.md>). Приёмка ожидается, add/commit не выполнялись. После завершения20 пользователь поручил паузу;21–25 не начинать.
+Baseline19 принят/закоммичен de58342f5c80e46279e1d7b59fe0665c893c5d4b. Реализован public AgentRunner20: fixed owner/version/settings/access, providers один раз, compact/full guard/model/tools и короткие scopes. [API](<../../../Documentation/Technical documentation/20-agent-turn-orchestration.md>), [change rationale](../../changes/agent-turn-orchestration/context.md), [команды/evidence/manifest](<../../../Documentation/Plans/AgentBridge Initial Implementation/20-agent-turn-orchestration.md>). Этап20 принят и закоммичен95c28fae3773efa9e8e4d0281282340f5ac9e6c0. Историческая пауза после20 снята пользователем; этапы21–23 затем выполнены и приняты. Актуальная остановка после23 описана выше;24–25 не начаты.
 
 Durable попытки сохраняются отдельной versioned nullable text-колонкой ModelSteps.ToolAttemptsJson, а не в canonical payload/envelope. Исторический null означает отсутствие журнала, но existing TurnId никогда автоматически не replay. Например, Started stepA/position2/call(x) после crash запрещает повтор handler; completed новая пара call(x) в stepB/position1 допустима. Root guards и parent-aware keys сохраняют owner/dialog/incarnation/turn/step, AgentId/position записываются явно. Start transaction завершается до handler, outcomes и confirmed outputs принимаются атомарно. Unknown остаётся без output и блокирует known pair context.
 
