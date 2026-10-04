@@ -1,5 +1,7 @@
 # Изолированные тесты
 
+- ExpiredDialogCleanupTests22 проверяет public DI/one batch/fresh UTC/independent awaited scopes, expected partial/unknown/cancel, no retry, immutable report, read failure, concurrent rejection и primary+Dispose failures. OCE disposal не маскируется caller cancellation. Порты — doubles, relational atomicity/cascade ими не подтверждается. Integration/ExpiredDialogCleanupIntegrationTests отдельно проверяет actual SQLite/PostgreSQL каскад шести таблиц, equality, stale/recreate, partial SQL rollback/cancel и actual runner late response без hosting/HTTP.
+
 - AgentSettingsTests21 проверяет public settings/status, actual BPE/model-independent shape, independent versions, changed options/new scopes, exact selection, legacy/opaque provenance, selected/server различие и отсутствие secrets. AgentRunnerTests добавляет pinned saved selection/request override и Unsupported legacy writer. ModelCatalogTests проходит safe settings → actual HttpClientLibrary/fake handler без сети. Mapping/model/factory tests проверяют current six-table schema/versioned snapshots без БД.
 - Integration/DialogSettingsIntegrationTests21 отдельно проверяет SQLite/PostgreSQL restart, atomic snapshot, active run при независимой смене settings, rollback после настоящего SQL SaveChanges, root guards/cascade, first-insert/update races и historical Down/Up. Busy/serialization exception не называется typed Conflict. Historical maintenance cases не повторяются без нового риска.
 

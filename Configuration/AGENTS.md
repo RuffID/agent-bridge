@@ -1,5 +1,7 @@
 # Конфигурация ядра
 
+- AddAgentBridgeDialogCleanup22 явно регистрирует scoped ExpiredDialogCleanup и TryAdd TimeProvider.System без I/O. Persistence read/deletion ports, системную авторизацию, caller scope и расписание предоставляет приложение. Новых options/default limit или фонового сервиса нет.
+
 - AddAgentBridgeSettings21 явно регистрирует scoped AgentSettingsService/ContextModelGuard и default model-independent IContextContentInspector (TryAdd). AddAgentBridgeRunner также подключает guard/inspector без I/O. Custom IContextTokenCounter сохраняется; при custom shape policy приложение отдельно предоставляет IContextContentInspector. Compatibility port опционален: без подтверждения opaque model switch даёт Unsupported. DB/settings ports регистрирует persistence adapter.
 
 - AddAgentBridgeRunner регистрирует scoped AgentRunner через TryAdd без операций. Приложение авторизует AgentId и предоставляет ContextBuilder/ordered providers, model access/settings/gateway/counter и persistence ports. Run фиксирует existing options/selection/limits, не вводит новых defaults. ReadWithAccessAsync обязателен для pinned доступа run; старый user settings reader даёт Unsupported без fallback.

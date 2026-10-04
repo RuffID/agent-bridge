@@ -1,5 +1,7 @@
 # Интеграционные проверки этапов 00–13 и20
 
+- ExpiredDialogCleanupIntegrationTests22 проходит public app-invoked orchestration → actual base CRUD/deletion UoW, equality/bounded packages/cascade включая DialogSettings, partial failure/cancel после настоящего SQL SaveChanges до commit и cleanup-vs-active-run/recreate. Sources/gateway управляемые, HTTP/hosting нет; actual offline BPE используется runner. Stale revision моделируется исторической pre-expiry записью между read/delete: не доказательство late write. Таблицы Dialogs и DialogSettings используют колонку Id, остальные — DialogId. Старые maintenance/backup/restore не повторять без нового риска.
+
 - DialogSettingsIntegrationTests21 добавляет адресные actual settings/provenance риски на EFCoreLibrary0.0.5: independent version не ломает активный runner token, новый run/override, restart, atomic rollback, cascade/guards, first insert и update concurrency. Typed stale/CAS Conflict отличать от busy/serialization driver errors без retry. Down/Up21 сохраняет canonical history и ContentBytes содержимого, но settings/provenance намеренно теряются и возвращаются null.
 
 - Запуск только с явным разрешением пользователя на реальные тестовые БД и процессы. Исторический набор00–13 не выдавать за evidence EFCoreLibrary0.0.5. AgentRunnerIntegrationTests20 проверяет адресные новые durable risks через actual runner/write ports; весь maintenance без новых рисков не повторять.

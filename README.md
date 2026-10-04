@@ -4,7 +4,7 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 
 Приложение → AgentBridge → [codex-lb](https://github.com/Soju06/codex-lb) → модель. AgentBridge собирает бизнес-контекст, вызывает разрешённые инструменты и сохраняет диалог в выбранной БД.
 
-Ядро .NET10 остаётся в корне, адаптеры транспорта/хранения и provider migrations — отдельно. Этапы00–20 приняты и закоммичены; baseline20 — 95c28fae3773efa9e8e4d0281282340f5ac9e6c0. Доступны canonical JSON/SSE, ContextBuilder, offline BPE/guard, compact, tools и [AgentRunner20](<Documentation/Technical documentation/20-agent-turn-orchestration.md>). Этап21 реализует [настройки и статус конкретного диалога](<Documentation/Technical documentation/21-settings-and-dialog-status.md>); принят координатором, локальный коммит разрешён. Этапы22–25 не начаты. OpenSpec CLI недоступен, changes не архивированы.
+Ядро .NET10 остаётся в корне, адаптеры транспорта/хранения и provider migrations — отдельно. Этапы00–21 приняты и закоммичены; baseline21 — 6482d595cb1f89eeb30ec33696026aa6c1bde1cc. Доступны canonical JSON/SSE, ContextBuilder, offline BPE/guard, compact, tools, [AgentRunner20](<Documentation/Technical documentation/20-agent-turn-orchestration.md>) и [настройки/статус конкретного диалога21](<Documentation/Technical documentation/21-settings-and-dialog-status.md>). [Очистка22](<Documentation/Technical documentation/22-expired-dialog-cleanup.md>) реализована, проверена и принята координатором; локальный коммит ровно30 файлов manifest разрешён. До приёмки add/commit не выполнялись. Этапы23–25 не начаты. OpenSpec CLI недоступен, changes не архивированы.
 
 | Проект | Сборка / назначение | Текущие production-ссылки |
 | --- | --- | --- |
@@ -29,6 +29,8 @@ AgentBridge — C#-библиотека ИИ-агентов для .NET 10: са
 4. Настроить лимиты, срок хранения и reasoning effort. Срок хранения задаётся конфигурацией, а не константой в логике удаления.
 5. Подключить Serilog и зарегистрировать зависимости AgentBridge, источники контекста и инструменты в composition root приложения.
 6. После `AddDatabaseConfiguration`/`AddAgentBridgePersistence` отдельно вызвать `AddAgentBridgeDatabaseMaintenance` с backup options и явным `SingleInitializer`. Задать абсолютный backup directory и собственный положительный `BackupRetentionPeriod` без default; PostgreSQL также требует pg_dump path, major и cleanup timeout. Приложение останавливает другие экземпляры/writes/DDL, выделяет scope и явно вызывает `IDatabaseMaintenance<AgentBridgeContextKey>.InspectAsync`, `UpdateExistingAsync` либо `InitializeNewAsync` с timeout/отменой. Регистрация не запускает операции. Retention backup и расписание очистки диалогов исполняет приложение.
+
+7. Для истёкших диалогов отдельно зарегистрировать `AddAgentBridgeDialogCleanup()`, выделить caller scope и вызвать `ExpiredDialogCleanup.CleanupAsync(limit, cancellationToken)`. Приложение задаёт положительный limit и расписание. Один вызов обрабатывает один пакет в отдельных read/delete scopes; проверять batch Status и Candidates, Partial/Canceled не считать успехом. Unexpected exceptions распространяются с безопасным LastResult. [API/пример22](<Documentation/Technical documentation/22-expired-dialog-cleanup.md>).
 
 | Пробная настройка | Значение, переопределяемое конфигурацией |
 | --- | --- |

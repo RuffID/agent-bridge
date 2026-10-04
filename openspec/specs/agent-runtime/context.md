@@ -225,3 +225,11 @@ Safe status сохраняет сроки и байты даже после expi
 
 Схема21 создана штатным tooling по отдельному разрешению; actual SQLite/PostgreSQL checks подтверждают restart/CAS/races/rollback/running snapshot и Down/Up. HTTP проверен только actual HttpClientLibrary/fake handler. OpenSpec CLI отсутствует, static review не называется validation, change не архивирован. [Нормативные требования](spec.md), [API и ограничения21](<../../../Documentation/Technical documentation/21-settings-and-dialog-status.md>), [команды, manifest и результаты](<../../../Documentation/Plans/AgentBridge Initial Implementation/21-settings-and-dialog-status.md>).
 
+## Очистка диалогов — этап22
+
+`AddAgentBridgeDialogCleanup` регистрирует scoped `ExpiredDialogCleanup` без I/O; приложение явно вызывает `CleanupAsync(limit, cancellationToken)`. Один пакет, один read scope, sequential отдельные deletion scopes и fresh UTC. `Completed` означает только обработанный snapshot, не опустошение очереди. Нет scheduler/drain-loop/retry, новых options или зависимости от SoftContentLimitBytes.
+
+Индивидуальные Deleted/Failed/Unknown/NotAttempted сохраняются в immutable отчёте. Expected refusal даёт Partial и не мешает соседям. Caller cancellation возвращает Canceled; неожиданные exceptions, включая отдельную OCE из DisposeAsync, распространяются, LastResult сохраняет Interrupted и уже принятые исходы. Aggregate primary+cleanup сохраняется. Unknown не подтверждает commit/rollback, success порта сохраняется до освобождения scope.
+
+Actual SQLite/PostgreSQL проверки22 подтвердили equality/cascade шести таблиц включая settings, partial SQL rollback второго delete, stale/recreate candidates и поздние response/compact/settings active runner. Stale revision — управляемый interleaving с историческим pre-expiry временем, не разрешение late write. Изолированные scopes/doubles не заменяют relational evidence. Подробности: [API22](../../../Documentation/Technical%20documentation/22-expired-dialog-cleanup.md), [отчёт22](../../../Documentation/Plans/AgentBridge%20Initial%20Implementation/22-expired-dialog-cleanup.md).
+

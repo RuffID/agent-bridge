@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–20 приняты и закоммичены. [AgentRunner20](<Technical documentation/20-agent-turn-orchestration.md>) объединяет context/guard/compact/model/tools и durable journal с короткими UoW. Этап21 добавляет [настройки и статус диалога](<Technical documentation/21-settings-and-dialog-status.md>), принят координатором, локальный коммит разрешён. SQLite/PostgreSQL проверки относятся к actual EFCoreLibrary0.0.5; real HTTP/upstream и SQL Server/MySQL не проверены. Этапы22–25 не начаты. OpenSpec CLI отсутствует.
+AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Этапы00–21 приняты и закоммичены. [AgentRunner20](<Technical documentation/20-agent-turn-orchestration.md>) объединяет context/guard/compact/model/tools и durable journal с короткими UoW. Этап21 добавляет [настройки и статус диалога](<Technical documentation/21-settings-and-dialog-status.md>). Этап22 реализует [явную bounded очистку истёкших диалогов](<Technical documentation/22-expired-dialog-cleanup.md>), проверен и принят координатором; локальный коммит разрешён. До приёмки add/commit не выполнялись. SQLite/PostgreSQL проверки относятся к actual EFCoreLibrary0.0.5; real HTTP/upstream и SQL Server/MySQL не проверены. Этапы23–25 не начаты. OpenSpec CLI отсутствует.
 
 ## Бизнес-логика
 
@@ -36,6 +36,7 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 17. [Инструменты приложения](<Technical documentation/19-application-tools.md>)
 18. [Полный ход агента](<Technical documentation/20-agent-turn-orchestration.md>)
 19. [Настройки и статус диалога](<Technical documentation/21-settings-and-dialog-status.md>)
+20. [Очистка истёкших диалогов](<Technical documentation/22-expired-dialog-cleanup.md>)
 
 ## Требования
 

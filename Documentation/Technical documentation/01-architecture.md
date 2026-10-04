@@ -2,7 +2,7 @@
 
 ## Статус
 
-Текущая оркестрация реализована этапом20: [AgentRunner](20-agent-turn-orchestration.md) объединяет existing transport/context/tools и короткие durable writes. Ниже датированные описания ранних этапов сохраняют исторические границы их проверки. Settings/status21 и cleanup orchestration22 отсутствуют.
+Текущая оркестрация реализована этапом20: [AgentRunner](20-agent-turn-orchestration.md) объединяет existing transport/context/tools и короткие durable writes. [Settings/status21](21-settings-and-dialog-status.md) хранит independent per-dialog выбор и safe status; [cleanup22](22-expired-dialog-cleanup.md) координирует один явный bounded пакет existing ports в отдельных scopes. Ниже датированные описания ранних этапов сохраняют исторические границы их проверки.
 
 Целевая платформа — `net10.0`, SDK-style .NET. Существующее ядро `agent-bridge.csproj` сохранено в корне рядом с `agent-bridge.slnx`. Добавлены отдельные проекты транспорта, хранения и тестов; все шесть проектов прошли адресный compile-check на этапе 02. Реализованы типизированные options и групповые расширения регистрации; их API описан в [конфигурации](05-configuration-and-lifecycle.md). Этап 03 добавляет основу диагностики операций через ILogger и её DI-регистрацию; [фактический API](07-tokenizer-and-settings.md#serilog) проверен отдельно от будущих сценариев. На этапе 07 определены прикладные интерфейсы; сценарии агента и транспорта остаются будущими, storage read/write ports реализованы этапами 09–10.
 

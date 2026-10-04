@@ -152,6 +152,8 @@ DatabaseMaintenanceResult updated = await maintenance.UpdateExistingAsync(timeou
 
 ## Источники
 
+Актуальная app-invoked оркестрация удаления диалогов: [этап22](22-expired-dialog-cleanup.md). Она использует existing read/deletion ports, не запускает maintenance/migrations/backup и не меняет схему. Расписание и бюджет вызовов задаёт приложение; отчёт ограничен одним snapshot кандидатов.
+
 - [Нормативный контракт](../../openspec/specs/agent-runtime/spec.md)
 - [Реализация maintenance](../../../work/EFCoreLibrary/maintenance/)
 - [Отчёт этапа 05](<../Plans/AgentBridge Initial Implementation/05-efcorelibrary-maintenance.md>)

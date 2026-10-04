@@ -57,6 +57,7 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 - EFCoreLibrary предоставляет общий relational check/backup/migrate и optional SQLite/PostgreSQL/SQL Server/MySQL модули (этап 05 принят, проверка изолированная; запрещённые интеграции пропущены). AgentBridge выбирает только SQLite/PostgreSQL; этап 08 подключает CRUD-библиотеку, модели и общий контекст, startup-интеграция относится к этапу 12. SingleInitializer, остановка writes/DDL/других экземпляров и retention backup принадлежат приложению; прямой SQL в обход библиотеки не добавлять.
 - Поиск по старым сообщениям не входит в текущий объём проекта.
 - Сжатие рабочего контекста и удаление данных по политике хранения — отдельные операции.
+- ExpiredDialogCleanup22 в Application явно обрабатывает один bounded пакет existing read/deletion ports с отдельными short scopes/fresh UTC; AddAgentBridgeDialogCleanup не запускает операции. Расписание/авторизация принадлежат приложению, partial/unknown/cancel не являются успехом. Границы отчёта и проверок — Application/AGENTS.md и техническая документация22.
 
 ## Работа с файлами
 
