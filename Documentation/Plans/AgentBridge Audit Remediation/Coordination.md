@@ -45,7 +45,7 @@
 | 15 | `01a11010-a2bc-7a81-b1a0-f618a3969b7d` / `local` | Принят в A/B | Five kits/resources/PE/ELF/XML/API,27/27; five external consumers; runtime18 открыт | AB `b0c81321b1a9cfe0b4c640a1413419088daae88d` |
 | 16 | `01a11040-5ad5-7d70-8347-cec38abd0ab2` / `local` | Принят в B | Fresh502/403/289;EF159;HTTP58 обеTFM;metadata27;fivekits/consumers | AB `b1e966445c70f30cad63cc5ba690808c75c7fd35` |
 | 17 | `01a11050-269b-7aa0-b7ff-858753f157d8` / `local` | Подготовка A/B принята; C отложен пользователем | Opt-in fixtures/same-row ordinal controls; final310/310, first309/1 сохранён | AB `9ba43d7ffb449099948a846824d53cd6c9fee171` |
-| 18 | — | Не начат | Runtime environments/разрешения не заданы | — |
+| 18 | `01a1105d-7671-7950-b7a9-4a060e70d30d` / `local` | Windows часть принята; Linux runtime открыт | Three Windows runtime64managed/3native each; five builds; negative guards | AB `801d9c2bfd694cc411747ed8003ca4cf5237e6b5` |
 | 19 | — | Не начат | Endpoint/бюджет/разрешения не заданы | — |
 | 20 | — | Не начат | Отчёт или блокер каждого00–19 | — |
 
@@ -58,6 +58,14 @@ Review15 выявил пропуск13 culture resource DLL Microsoft.Data.SqlCl
 Q-003–005 не открываются повторно без обнаруженного противоречия. Q-002: версии/редакция SQL Server, Ubuntu/runtime machines, permissions/TLS/server backup path, deployed endpoint/commit/exact models, бюджет и cleanup остаются ресурсами будущих17–19. Windows cross-build не доказывает Linux ARM64 runtime. Подозрение ABQA-002 не объявляется дефектом без различающего воспроизведения.
 
 ## Журнал действий
+
+- Review18 принят только в доступной Windows loader/DI/BPE границе: full source/helper/manifest guards/Results/AGENTS,17 exact command logs SHA,710output и7source hashes independently совпали; UTF8/diff check пройдены. Run1 native enumeration bug сохранён как probe ошибка; run3 final, пересечения не суммируются. Actual commit `801d9c2bfd694cc411747ed8003ca4cf5237e6b5` git show подтвердил exact9 manifest. Linux runtime/production app graph/IDE/provider exports и операции17 остаются открытыми.18 прекратил writes; следующий19 готовит независимую матрицу при отложенном endpoint.
+
+- Actual userMessage18 `01a11061-1471-7591-b23f-55dd5c2c3c89` independently прочитан: Ubuntu24.04.3/kernel6.8.0-1060-raspi/aarch64, SSH в локальной сети; оба dotnet вызова command not found. Это user-provided environment evidence, не наш runtime run. Установка/.NET и remote copy не выполнялись; ARM64 blocker отсутствующий .NET10, Linux x64 machine не задана.
+
+- В чате18 actual userMessage `01a1105f-0bb0-7a33-9954-7f26198be79f` сообщил Raspberry Pi5/Ubuntu Server и попросил команды получения деталей. Координатор independently прочитал ответ. Исполнитель запросил uname/os-release/dotnet info/runtimes и сведения доступа; ОС/архитектура/.NET10 пока не подтверждены. Windows scope продолжается; имеющийся Pi не считается исполненным ARM64 evidence.
+
+- Coordination17 сохранён `d22f322580dcecc18026bea3a297ef543609f89f`. list_projects повторно подтвердил exact local path AgentBridge; создан отдельный чат18. Model gpt-6.1-sol/thinking medium/local переданы явно; инструмент подтвердил ID/host, actual model/effort не вернул. Полное задание включает test commands/scripts/consumers permission без повторного запроса, hashes12–17, deferred C17 и проверку kit16 hashes перед runtime.18 единственный executor writer; журнал исключён.
 
 - Подготовка17 принята после независимого source/Results/manifest/UTF8/diff review и проверки fresh final310/310. Initial deadline failure и focused8/8 сохранены, пересекающиеся suites не суммируются. Actual commit `9ba43d7ffb449099948a846824d53cd6c9fee171` независимо подтверждён git show: exact7-file manifest, без production/соседей/журнала. Index пуст, AB только Coordination; EF/HTTP clean, LB foreign .vs/ сохранена. C и неподготовленные обязательные cases остаются открытыми; пользователь отложил прямые проверки.17 завершил writes. Следующий18 выполняет разрешённый test consumer в доступной Windows среде; неизвестные Linux ресурсы не подменяются cross-build.
 
