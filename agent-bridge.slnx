@@ -129,7 +129,7 @@
     <File Path="Documentation/Technical documentation/26-integration-registration.md" />
     <File Path="Documentation/Technical documentation/README.md" />
   </Folder>
-  <Project Path="agent-bridge.csproj" />
+  <Project Path="AgentBridge/agent-bridge.csproj" />
   <Folder Name="/Adapters/">
     <Project Path="adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
     <Project Path="adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />

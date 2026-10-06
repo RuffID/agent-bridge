@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
@@ -6,7 +7,11 @@ namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 public class SqlServerIntegrationFactAttribute : FactAttribute
 {
     /// <summary>Отсутствие opt-in пропускает C; включённая неверная конфигурация должна завершить тест ошибкой.</summary>
-    public SqlServerIntegrationFactAttribute()
+    /// <param name="sourceFilePath">Путь исходного файла теста для runner xUnit v3.</param>
+    /// <param name="sourceLineNumber">Номер строки объявления теста.</param>
+    public SqlServerIntegrationFactAttribute(
+        [CallerFilePath] string? sourceFilePath = null,
+        [CallerLineNumber] int sourceLineNumber = -1) : base(sourceFilePath, sourceLineNumber)
     {
         if (Environment.GetEnvironmentVariable("AGENTBRIDGE_SQLSERVER_INTEGRATION") != "1")
             Skip = "Требуются согласованные MSSQL ресурсы и AGENTBRIDGE_SQLSERVER_INTEGRATION=1.";

@@ -44,7 +44,7 @@ public class ExpiredDialogReaderTests
     {
         FakeBaseRepository<DialogRecord> repository = new();
         ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
-        Assert.Empty((await reader.ReadAsync(DateTimeOffset.UnixEpoch, 1)).Data!);
+        Assert.Empty((await reader.ReadAsync(DateTimeOffset.UnixEpoch, 1, cancellationToken: TestContext.Current.CancellationToken)).Data!);
     }
 
     /// <summary>Неположительный limit не превращается в неограниченное чтение base API.</summary>
@@ -55,7 +55,7 @@ public class ExpiredDialogReaderTests
     {
         FakeBaseRepository<DialogRecord> repository = new();
         ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch, limit));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch, limit, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, repository.ReadCalls);
     }
 
@@ -65,7 +65,7 @@ public class ExpiredDialogReaderTests
     {
         FakeBaseRepository<DialogRecord> repository = new();
         ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(repository), repository), new());
-        await Assert.ThrowsAsync<ArgumentException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch.ToOffset(TimeSpan.FromHours(1)), 1));
+        await Assert.ThrowsAsync<ArgumentException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch.ToOffset(TimeSpan.FromHours(1)), 1, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, repository.ReadCalls);
     }
 

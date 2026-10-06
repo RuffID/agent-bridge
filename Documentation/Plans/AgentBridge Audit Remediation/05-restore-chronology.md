@@ -4,7 +4,7 @@
 
 ## Цель и область
 
-Отклонять внешний snapshot, LastChangedAtUtc которого не может соответствовать принятой mutation при заданной revision/истории. Источник — [Findings](<../AgentBridge Quality Audit/Findings.md>), [Dialog](../../../Domain/Dialogs/Dialog.cs) и [OpenSpec](../../../openspec/specs/agent-runtime/spec.md), валидирующее восстановление и локальные инварианты.
+Отклонять внешний snapshot, LastChangedAtUtc которого не может соответствовать принятой mutation при заданной revision/истории. Источник — [Findings](<../AgentBridge Quality Audit/Findings.md>), [Dialog](../../../AgentBridge/Domain/Dialogs/Dialog.cs) и [OpenSpec](../../../openspec/specs/agent-runtime/spec.md), валидирующее восстановление и локальные инварианты.
 
 Работы в Domain и [DialogRestorationTests](../../../tests/AgentBridge.Tests/DialogRestorationTests.cs). Не вводить EF-зависимость в Domain, не лечить строки БД, не менять schema/migrations или обязательность timestamp полей.
 

@@ -66,7 +66,7 @@ public class ContextTokenCounterTests
     [InlineData("unknown-secret-model")]
     public async Task UnconfirmedExactIdIsSafeUnsupported(string model)
     {
-        ServiceResult<ContextTokenCount> result = await new ContextTokenCounter().CountAsync(new(model, null, "secret", [], []));
+        ServiceResult<ContextTokenCount> result = await new ContextTokenCounter().CountAsync(new(model, null, "secret", [], []), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Null(result.Data);
         Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
@@ -88,7 +88,7 @@ public class ContextTokenCounterTests
         ModelToolDefinition tool = new("name", "Hello World", Json("""{"a":1}"""), true);
         ModelRequest fresh = new("gpt-5", "medium", "Hello World", [Message("Привет"), call, output], [tool]);
         ServiceResult<ModelRequest> built = await new ContextBuilder([new Provider()]).BuildAsync(
-            new(id, owner, Guid.NewGuid(), "agent"), snapshot, fresh, now);
+            new(id, owner, Guid.NewGuid(), "agent"), snapshot, fresh, now, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(built.Success);
         ModelRequest prepared = built.Data!;
         string original = JsonSerializer.Serialize(prepared.Input.Select(item => item.Content));
@@ -201,7 +201,7 @@ public class ContextTokenCounterTests
         IContextTokenCounter counter = provider.GetRequiredService<IContextTokenCounter>();
         Assert.IsType<ContextTokenCounter>(counter);
         Assert.NotNull(provider.GetRequiredService<ContextBudgetGuard>());
-        Assert.Equal(2, (await counter.CountAsync(Request([Message("Привет")]))).Data!.KnownTokens);
+        Assert.Equal(2, (await counter.CountAsync(Request([Message("Привет")]), cancellationToken: TestContext.Current.CancellationToken)).Data!.KnownTokens);
     }
 
     /// <summary>Восстанавливает ranks, удалённые package build, и проверяет canonical OpenAI vocabulary hashes.</summary>

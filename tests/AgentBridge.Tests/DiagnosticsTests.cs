@@ -26,7 +26,7 @@ public class DiagnosticsTests
 
         Assert.Same(applicationFactory, provider.GetRequiredService<ILoggerFactory>());
         Assert.Single(provider.GetServices<AgentBridgeDiagnostics>());
-        provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid()).Complete();
+        provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken).Complete();
         LogEntry entry = Assert.Single(sink.Entries);
         Assert.Equal(typeof(AgentBridgeDiagnostics).FullName, entry.Category);
         Assert.Equal(LogLevel.Information, entry.Level);
@@ -53,8 +53,8 @@ public class DiagnosticsTests
 
         using ServiceProvider provider = services.BuildServiceProvider();
         AgentBridgeDiagnostics diagnostics = provider.GetRequiredService<AgentBridgeDiagnostics>();
-        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid()).Complete();
-        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid()).Fail(new Exception("synthetic-secret"));
+        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken).Complete();
+        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken).Fail(new Exception("synthetic-secret"));
         Assert.Equal(LogLevel.Error, Assert.Single(sink.Entries).Level);
     }
 
@@ -66,7 +66,7 @@ public class DiagnosticsTests
         services.AddAgentBridgeDiagnostics();
         using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         Assert.Empty(provider.GetServices<ILoggerProvider>());
-        provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid()).Complete();
+        provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken).Complete();
     }
 
     /// <summary>Длительность измерена, корреляция общая, идентификатор каждой операции отдельный.</summary>
@@ -78,8 +78,8 @@ public class DiagnosticsTests
         AgentBridgeDiagnostics diagnostics = provider.GetRequiredService<AgentBridgeDiagnostics>();
         Guid correlationId = Guid.NewGuid();
         Stopwatch elapsed = Stopwatch.StartNew();
-        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, correlationId).Complete();
-        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, correlationId).Complete();
+        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, correlationId, callerCancellation: TestContext.Current.CancellationToken).Complete();
+        diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, correlationId, callerCancellation: TestContext.Current.CancellationToken).Complete();
         elapsed.Stop();
 
         Assert.Equal(2, sink.Entries.Count);
@@ -140,7 +140,7 @@ public class DiagnosticsTests
         using ServiceProvider provider = CreateProvider(sink);
         using CancellationTokenSource unrelated = new();
         unrelated.Cancel();
-        provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid())
+        provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken)
             .Fail(new OperationCanceledException("synthetic-secret", unrelated.Token));
         LogEntry entry = Assert.Single(sink.Entries);
         Assert.Equal("Failed", entry.State["Status"]);
@@ -191,7 +191,7 @@ public class DiagnosticsTests
         error.Data["Url"] = "https://synthetic.invalid/path?api_key=synthetic-api-key";
         error.Data["Configuration"] = new SensitiveObject();
         AgentBridgeDiagnosticOperation operation = provider.GetRequiredService<AgentBridgeDiagnostics>()
-            .BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid());
+            .BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken);
 
         Action observeAndRethrow = () =>
         {
@@ -205,7 +205,16 @@ public class DiagnosticsTests
                 throw;
             }
         };
-        Exception rethrown = Assert.Throws<UnreadableException>(observeAndRethrow);
+        Exception? rethrown = null;
+        try
+        {
+            observeAndRethrow();
+        }
+        catch (Exception caught)
+        {
+            rethrown = caught;
+        }
+
         Assert.Same(error, rethrown);
         AssertSafe(Assert.Single(sink.Entries));
     }
@@ -216,7 +225,7 @@ public class DiagnosticsTests
     {
         CollectingProvider sink = new();
         using ServiceProvider provider = CreateProvider(sink);
-        _ = provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid());
+        _ = provider.GetRequiredService<AgentBridgeDiagnostics>().BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken);
         Assert.Empty(sink.Entries);
     }
 
@@ -227,7 +236,7 @@ public class DiagnosticsTests
         CollectingProvider sink = new();
         using ServiceProvider provider = CreateProvider(sink);
         AgentBridgeDiagnosticOperation operation = provider.GetRequiredService<AgentBridgeDiagnostics>()
-            .BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid());
+            .BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken);
         Assert.Throws<ArgumentNullException>(() => operation.Fail(null!));
         operation.Complete();
         Assert.Throws<InvalidOperationException>(() => operation.Complete());
@@ -243,8 +252,8 @@ public class DiagnosticsTests
         using ServiceProvider provider = CreateProvider(sink);
         AgentBridgeDiagnostics diagnostics = provider.GetRequiredService<AgentBridgeDiagnostics>();
         using CancellationTokenSource source = new();
-        Assert.Throws<ArgumentOutOfRangeException>(() => diagnostics.BeginOperation((AgentBridgeOperation)int.MaxValue, Guid.NewGuid()));
-        Assert.Throws<ArgumentException>(() => diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.Empty));
+        Assert.Throws<ArgumentOutOfRangeException>(() => diagnostics.BeginOperation((AgentBridgeOperation)int.MaxValue, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken));
+        Assert.Throws<ArgumentException>(() => diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.Empty, callerCancellation: TestContext.Current.CancellationToken));
         Assert.Throws<ArgumentException>(() => diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), source.Token, source.Token));
         Assert.Empty(sink.Entries);
     }
@@ -262,7 +271,7 @@ public class DiagnosticsTests
         using (ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }))
         {
             AgentBridgeDiagnostics diagnostics = provider.GetRequiredService<AgentBridgeDiagnostics>();
-            diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid()).Fail(new UnreadableException());
+            diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), callerCancellation: TestContext.Current.CancellationToken).Fail(new UnreadableException());
             using CancellationTokenSource caller = new();
             caller.Cancel();
             diagnostics.BeginOperation(AgentBridgeOperation.ConfigurationValidation, Guid.NewGuid(), caller.Token)

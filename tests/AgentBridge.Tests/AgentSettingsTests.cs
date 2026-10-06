@@ -33,21 +33,21 @@ public class AgentSettingsTests
         services.AddAgentBridgeConfiguration(configuration);
         await using ServiceProvider root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         using IServiceScope first = root.CreateScope();
-        AgentSettingsSnapshot before = Success(await first.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call));
+        AgentSettingsSnapshot before = Success(await first.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         configuration["Retention:SoftContentLimitBytes"] = "256";
         configuration["Compaction:TokenThreshold"] = "40";
         configuration.Reload();
         using IServiceScope second = root.CreateScope();
-        AgentSettingsSnapshot after = Success(await second.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call));
+        AgentSettingsSnapshot after = Success(await second.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(128, before.SoftContentLimitBytes);
         Assert.Equal(20, before.Model.TokenThreshold);
         Assert.Equal(256, after.SoftContentLimitBytes);
         Assert.Equal(40, after.Model.TokenThreshold);
-        Assert.Equal(128, Success(await first.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call)).SoftContentLimitBytes);
+        Assert.Equal(128, Success(await first.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken)).SoftContentLimitBytes);
         configuration["Compaction:TokenThreshold"] = "-1";
         configuration.Reload();
         using IServiceScope invalid = root.CreateScope();
-        await Assert.ThrowsAsync<OptionsValidationException>(() => invalid.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call));
+        await Assert.ThrowsAsync<OptionsValidationException>(() => invalid.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, probe.Writes);
     }
 
@@ -68,7 +68,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = services.BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         Assert.True((await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().SelectAsync(probe.Call,
-            probe.Dialog.Token, 0, "gpt-4", "low")).Success);
+            probe.Dialog.Token, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(new string?[] { "server-one", "server-two", null }, names);
         Assert.Equal(3, probe.Dialog.Turns[0].Items.Count);
     }
@@ -89,7 +89,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = services.BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         Task<ServiceResult<DialogModelSelection>> operation = scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low");
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken);
         if (unexpected) Assert.Same(primary, await Assert.ThrowsAsync<IOException>(() => operation));
         else Assert.Same(error, (await operation).Error);
         Assert.Equal(1, validator.Calls);
@@ -104,7 +104,7 @@ public class AgentSettingsTests
         probe.Dialog = Copy(probe.Dialog, selection: new(4, "gpt-4", "low"));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
-        AgentSettingsSnapshot settings = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call));
+        AgentSettingsSnapshot settings = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().ReadAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal("gpt-4", settings.Model.Model.Id);
         Assert.Equal("low", settings.Model.ReasoningEffort);
         Assert.Equal(4, settings.SelectionVersion);
@@ -124,11 +124,11 @@ public class AgentSettingsTests
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         AgentSettingsService service = scope.ServiceProvider.GetRequiredService<AgentSettingsService>();
-        DialogModelSelection result = Success(await service.SelectAsync(probe.Call, expected, 0, "gpt-4", "low"));
+        DialogModelSelection result = Success(await service.SelectAsync(probe.Call, expected, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(1, result.Version);
         Assert.Equal(0, probe.Dialog.Token.Revision);
         Assert.Equal(NOW.AddDays(1), probe.Dialog.ExpiresAtUtc);
-        ServiceResult<DialogModelSelection> stale = await service.SelectAsync(probe.Call, expected, 0, "gpt-5", "high");
+        ServiceResult<DialogModelSelection> stale = await service.SelectAsync(probe.Call, expected, 0, "gpt-5", "high", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, stale.Error!.Type);
         Assert.Equal("gpt-4", probe.Dialog.Selection!.Model);
         Assert.Equal(1, probe.Writes);
@@ -145,7 +145,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         Assert.False((await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, model, effort)).Success);
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, model, effort, cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(0, probe.Writes);
     }
 
@@ -158,8 +158,8 @@ public class AgentSettingsTests
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         Assert.True((await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-6", "high")).Success);
-        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call));
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-6", "high", cancellationToken: TestContext.Current.CancellationToken)).Success);
+        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal("gpt-6", status.Settings!.Model.Model.Id);
         Assert.Null(status.ContextSize);
         Assert.Equal(ServiceErrorType.Unsupported, status.ContextError!.Type);
@@ -175,7 +175,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         ServiceResult<DialogModelSelection> result = await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low");
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
         Assert.Equal(item.Content.GetRawText(), probe.Dialog.ActiveContext!.Items[0].Content.GetRawText());
         Assert.Equal(0, probe.Writes);
@@ -203,7 +203,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = services.BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         Assert.True((await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low")).Success);
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(1, validator.Calls);
     }
 
@@ -217,7 +217,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         Assert.Equal(ServiceErrorType.Unsupported, (await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low")).Error!.Type);
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
     }
 
     /// <summary>Actual BPE показывает unknown estimate opaque, точное expiry, компакт count и мягкий порог без удаления.</summary>
@@ -229,7 +229,7 @@ public class AgentSettingsTests
         probe.Clock.Now = probe.Dialog.ExpiresAtUtc;
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
-        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call));
+        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(status.IsExpired);
         Assert.False(status.CanContinue);
         Assert.True(status.SoftContentLimitReached);
@@ -254,7 +254,7 @@ public class AgentSettingsTests
         probe.Dialog = Copy(probe.Dialog, turns: [new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message()], [new(Guid.NewGuid(), response)])]);
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
-        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call));
+        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal("gpt-5", status.Settings!.Model.Model.Id);
         Assert.Equal(metadata ? "actual-server" : null, status.ServerModel);
         Assert.NotNull(status.ContextSize!.EstimatedInputTokens);
@@ -269,7 +269,7 @@ public class AgentSettingsTests
         Probe probe = new() { CatalogError = new(ServiceErrorType.Unauthorized, "Доступ отклонён.") };
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
-        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call));
+        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(probe.Dialog.ExpiresAtUtc, status.ExpiresAtUtc);
         Assert.Same(probe.CatalogError, status.ContextError);
         Assert.Null(status.Settings);
@@ -285,7 +285,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         ServiceResult<DialogModelSelection> result = await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low");
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Expired, result.Error!.Type);
         Assert.Null(probe.Dialog.Selection);
     }
@@ -299,7 +299,7 @@ public class AgentSettingsTests
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         ServiceResult<DialogModelSelection> result = await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
-            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low");
+            .SelectAsync(probe.Call, probe.Dialog.Token, 0, "gpt-4", "low", cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
         Assert.Equal(1, probe.Writes);
         Assert.Equal("gpt-5", probe.Dialog.Selection!.Model);

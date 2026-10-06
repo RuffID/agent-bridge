@@ -19,7 +19,7 @@ public class UnitOfWorkScopeTests
     {
         FakeUnitOfWorkSession session = new();
         UnitOfWorkScope scope = new(session, new());
-        ServiceResult result = await scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default);
+        ServiceResult result = await scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(["begin", "save", "commit", "dispose", "clear"], session.Events);
     }
@@ -30,7 +30,7 @@ public class UnitOfWorkScopeTests
     {
         FakeUnitOfWorkSession session = new();
         ServiceError error = new(ServiceErrorType.Forbidden, "Отказ.");
-        ServiceResult result = await new UnitOfWorkScope(session, new()).ExecuteAsync(_ => Task.FromResult(ServiceResult.Fail(error)), default);
+        ServiceResult result = await new UnitOfWorkScope(session, new()).ExecuteAsync(_ => Task.FromResult(ServiceResult.Fail(error)), TestContext.Current.CancellationToken);
         Assert.Same(error, result.Error);
         Assert.Equal(["begin", "rollback", "dispose", "clear"], session.Events);
     }
@@ -48,7 +48,7 @@ public class UnitOfWorkScopeTests
         if (phase == "save") { session.OnSave = () => throw error; }
         UnitOfWorkScope scope = new(session, new());
         Exception actual = await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ExecuteAsync(_ =>
-            phase == "action" ? throw error : Task.FromResult(ServiceResult.Ok()), default));
+            phase == "action" ? throw error : Task.FromResult(ServiceResult.Ok()), TestContext.Current.CancellationToken));
         Assert.Same(error, actual);
         Assert.DoesNotContain("commit", session.Events);
         Assert.Equal(1, session.Events.Count(item => item == "begin"));
@@ -82,9 +82,9 @@ public class UnitOfWorkScopeTests
         if (phase == "clear") { session.ClearError = error; }
         UnitOfWorkScope scope = new(session, new());
         await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ExecuteAsync(_ => Task.FromResult(
-            phase == "rollback" ? ServiceResult.Fail(new ServiceError(ServiceErrorType.Conflict, "Отказ.")) : ServiceResult.Ok()), default));
+            phase == "rollback" ? ServiceResult.Fail(new ServiceError(ServiceErrorType.Conflict, "Отказ.")) : ServiceResult.Ok()), TestContext.Current.CancellationToken));
         int calls = session.Events.Count;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), TestContext.Current.CancellationToken));
         Assert.Equal(calls, session.Events.Count);
     }
 
@@ -98,7 +98,7 @@ public class UnitOfWorkScopeTests
         session.Transaction.RollbackError = new IOException("rollback");
         session.Transaction.DisposeError = new IOException("dispose");
         AggregateException actual = await Assert.ThrowsAsync<AggregateException>(() => new UnitOfWorkScope(session, new()).ExecuteAsync(
-            _ => Task.FromResult(ServiceResult.Ok()), default));
+            _ => Task.FromResult(ServiceResult.Ok()), TestContext.Current.CancellationToken));
         Assert.Same(primary, actual.InnerExceptions[0]);
         Assert.Equal(3, actual.InnerExceptions.Count);
         Assert.Equal("clear", session.Events[^1]);
@@ -116,7 +116,7 @@ public class UnitOfWorkScopeTests
             ? new FakeRootConcurrencyException(metadata.Entry(new DialogRecord()))
             : new DbUpdateConcurrencyException("synthetic");
         FakeUnitOfWorkSession session = new() { OnSave = () => throw error };
-        Task<ServiceResult> operation = new UnitOfWorkScope(session, new()).ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default);
+        Task<ServiceResult> operation = new UnitOfWorkScope(session, new()).ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), TestContext.Current.CancellationToken);
         if (hasRoot) { Assert.Equal(ServiceErrorType.Conflict, (await operation).Error!.Type); }
         else { Assert.Same(error, await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => operation)); }
         Assert.Equal(["begin", "save", "rollback", "dispose", "clear"], session.Events);
@@ -149,7 +149,7 @@ public class UnitOfWorkScopeTests
                 primary = await Record.ExceptionAsync(async () =>
                 {
                     if (exit == "assertion") Assert.Fail("synthetic early assertion");
-                    else if (exit == "timeout") await first.WaitAsync(TimeSpan.FromMilliseconds(30));
+                    else if (exit == "timeout") await first.WaitAsync(TimeSpan.FromMilliseconds(30), cancellationToken: TestContext.Current.CancellationToken);
                     else
                     {
                         cancellation.Cancel();
@@ -172,7 +172,9 @@ public class UnitOfWorkScopeTests
         {
             // Страховка самой регрессии наблюдает work и при дефекте проверяемого cleanup.
             completion.TrySetResult();
-            if (started is not null) await Record.ExceptionAsync(() => started).WaitAsync(TimeSpan.FromSeconds(3));
+            // Cleanup имеет собственный срок и завершается независимо от отмены тестового runner.
+            using CancellationTokenSource cleanup = new(TimeSpan.FromSeconds(3));
+            if (started is not null) await Record.ExceptionAsync(() => started).AsTask().WaitAsync(cleanup.Token);
         }
     }
 
@@ -203,7 +205,7 @@ public class UnitOfWorkScopeTests
         finally
         {
             completion.TrySetResult();
-            try { await Record.ExceptionAsync(() => first).WaitAsync(TimeSpan.FromSeconds(10)); }
+            try { await Record.ExceptionAsync(() => first).AsTask().WaitAsync(TimeSpan.FromSeconds(10)); }
             catch (Exception cleanup) when (primary is not null)
             {
                 throw new AggregateException("Ошибка теста и ограниченного ожидания cleanup.", primary, cleanup);

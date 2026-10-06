@@ -8,7 +8,7 @@
 
 ## Компоненты и зависимости
 
-[ToolRegistry](../../../Application/ToolRegistry.cs), [ToolExecutor](../../../Application/ToolExecutor.cs), ToolExecutionSession/Identity/Limits, IToolInvocationValidator/IToolExecutionCheckpoint, AgentBridgeToolsExtensions. [ToolExecutorTests](../../../tests/AgentBridge.Tests/ToolExecutorTests.cs), compile-only AccountSummaryValidator/Tool.
+[ToolRegistry](../../../AgentBridge/Application/ToolRegistry.cs), [ToolExecutor](../../../AgentBridge/Application/ToolExecutor.cs), ToolExecutionSession/Identity/Limits, IToolInvocationValidator/IToolExecutionCheckpoint, AgentBridgeToolsExtensions. [ToolExecutorTests](../../../tests/AgentBridge.Tests/ToolExecutorTests.cs), compile-only AccountSummaryValidator/Tool.
 
 ## Способ проверки и границы
 
@@ -49,7 +49,7 @@ A; существующие isolated executor tests — B; внешние изм
 
 ### Все группы вопросов
 
-Контракт: [main spec](../../../openspec/specs/agent-runtime/spec.md):72–105,361,430–438,857–870; [бизнес-граница](<../../Business logic/08-tools-and-permissions.md>):3–25. **E**=[ToolExecutor.cs](../../../Application/ToolExecutor.cs), **S**=[ToolExecutionSession.cs](../../../Application/Models/ToolExecutionSession.cs), **R**=[ToolRegistry.cs](../../../Application/ToolRegistry.cs), **T**=[ToolExecutorTests.cs](../../../tests/AgentBridge.Tests/ToolExecutorTests.cs). Остальные пути от корня AgentBridge; `Models/` и `Ports/` ниже означают `Application/Models/` и `Application/Ports/`. Строки сверены с текущими файлами; assertions **не pass**.
+Контракт: [main spec](../../../openspec/specs/agent-runtime/spec.md):72–105,361,430–438,857–870; [бизнес-граница](<../../Business logic/08-tools-and-permissions.md>):3–25. **E**=[ToolExecutor.cs](../../../AgentBridge/Application/ToolExecutor.cs), **S**=[ToolExecutionSession.cs](../../../AgentBridge/Application/Models/ToolExecutionSession.cs), **R**=[ToolRegistry.cs](../../../AgentBridge/Application/ToolRegistry.cs), **T**=[ToolExecutorTests.cs](../../../tests/AgentBridge.Tests/ToolExecutorTests.cs). Остальные пути от корня AgentBridge; `Models/` и `Ports/` ниже означают `Application/Models/` и `Application/Ports/`. Строки сверены с текущими файлами; assertions **не pass**.
 
 | Вопрос | Исследовано | Результат A | Evidence: символ/строки | Ограничение |
 | --- | --- | --- | --- | --- |

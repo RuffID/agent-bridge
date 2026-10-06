@@ -8,7 +8,7 @@
 
 ## Компоненты и зависимости
 
-[AgentSettingsService](../../../Application/AgentSettingsService.cs), ContextModelGuard, DialogStatus, [ExpiredDialogCleanup](../../../Application/ExpiredDialogCleanup.cs), ExpiredDialogReader/DeletionUnitOfWork. Тесты AgentSettingsTests, ExpiredDialogCleanupTests, Integration/DialogSettingsIntegrationTests и ExpiredDialogCleanupIntegrationTests.
+[AgentSettingsService](../../../AgentBridge/Application/AgentSettingsService.cs), ContextModelGuard, DialogStatus, [ExpiredDialogCleanup](../../../AgentBridge/Application/ExpiredDialogCleanup.cs), ExpiredDialogReader/DeletionUnitOfWork. Тесты AgentSettingsTests, ExpiredDialogCleanupTests, Integration/DialogSettingsIntegrationTests и ExpiredDialogCleanupIntegrationTests.
 
 ## Способ проверки и границы
 
@@ -46,7 +46,7 @@ A; existing fake-port tests — B; actual cascade шести таблиц и г�
 
 Рассмотрены safe settings/status DTO, selection/compatibility, status-only ContextBuilder projection, cleanup/report/DI и общий AgentRunScope; actual expired read/delete/settings UoW, guards, scope/session, EF metadata и базовые операции обеих библиотек. Runner/session/compactor изучены адресно для pinned выбора и late-write границ. Дополнительные соседние проекты не потребовались; детальный аудит поставки13 или общего evidence14 не выполнялся.
 
-Нормативный [main spec](../../../openspec/specs/agent-runtime/spec.md):395,469,543–558,628–678,753–764,790–821,870. Обозначения: **S**=[AgentSettingsService.cs](../../../Application/AgentSettingsService.cs), **G**=[ContextModelGuard.cs](../../../Application/ContextModelGuard.cs), **C**=[ExpiredDialogCleanup.cs](../../../Application/ExpiredDialogCleanup.cs), **D**=[DialogStatus.cs](../../../Application/Models/DialogStatus.cs); **P**=`adapters/AgentBridge.Persistence.EfCore`, **U**=`P/UnitOfWork`, **T**=`tests/AgentBridge.Tests`, **I**=`tests/AgentBridge.Persistence.EfCore.Tests/Integration`. **ST**=`T/AgentSettingsTests.cs`, **CT**=`T/ExpiredDialogCleanupTests.cs`, **SI**=`I/DialogSettingsIntegrationTests.cs`, **CI**=`I/ExpiredDialogCleanupIntegrationTests.cs`; техничка21=[21-settings-and-dialog-status.md](<../../Technical documentation/21-settings-and-dialog-status.md>). Пути от корня AgentBridge; все номера строк сверены по текущим файлам. Чтение assertions — **не pass**.
+Нормативный [main spec](../../../openspec/specs/agent-runtime/spec.md):395,469,543–558,628–678,753–764,790–821,870. Обозначения: **S**=[AgentSettingsService.cs](../../../AgentBridge/Application/AgentSettingsService.cs), **G**=[ContextModelGuard.cs](../../../AgentBridge/Application/ContextModelGuard.cs), **C**=[ExpiredDialogCleanup.cs](../../../AgentBridge/Application/ExpiredDialogCleanup.cs), **D**=[DialogStatus.cs](../../../AgentBridge/Application/Models/DialogStatus.cs); **P**=`adapters/AgentBridge.Persistence.EfCore`, **U**=`P/UnitOfWork`, **T**=`tests/AgentBridge.Tests`, **I**=`tests/AgentBridge.Persistence.EfCore.Tests/Integration`. **ST**=`T/AgentSettingsTests.cs`, **CT**=`T/ExpiredDialogCleanupTests.cs`, **SI**=`I/DialogSettingsIntegrationTests.cs`, **CI**=`I/ExpiredDialogCleanupIntegrationTests.cs`; техничка21=[21-settings-and-dialog-status.md](<../../Technical documentation/21-settings-and-dialog-status.md>). Пути от корня AgentBridge; все номера строк сверены по текущим файлам. Чтение assertions — **не pass**.
 
 ### Все группы вопросов
 

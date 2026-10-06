@@ -8,7 +8,7 @@
 
 ## Компоненты и зависимости
 
-[AgentRunner](../../../Application/AgentRunner.cs), [AgentRunSession](../../../Application/AgentRunSession.cs), AgentRunScope, AgentRunResult, IDialogToolAttemptWriter и DialogToolAttemptUnitOfWork. Тесты AgentRunnerTests, Integration/AgentRunnerIntegrationTests, CrossComponentIntegrationTests/CrossComponentFixture.
+[AgentRunner](../../../AgentBridge/Application/AgentRunner.cs), [AgentRunSession](../../../AgentBridge/Application/AgentRunSession.cs), AgentRunScope, AgentRunResult, IDialogToolAttemptWriter и DialogToolAttemptUnitOfWork. Тесты AgentRunnerTests, Integration/AgentRunnerIntegrationTests, CrossComponentIntegrationTests/CrossComponentFixture.
 
 ## Способ проверки и границы
 
@@ -48,7 +48,7 @@ Happy path и каждая существенная точка прерыван�
 
 ### Все группы вопросов
 
-Контракты: [main spec](../../../openspec/specs/agent-runtime/spec.md):83–105,361–391,640,847–876; [техничка20](<../../Technical documentation/20-agent-turn-orchestration.md>):20–44. Обозначения: **R**=[AgentRunner.cs](../../../Application/AgentRunner.cs), **S**=[AgentRunSession.cs](../../../Application/AgentRunSession.cs), **A**=[AgentRunScope.cs](../../../Application/AgentRunScope.cs), **E**=[ToolExecutor.cs](../../../Application/ToolExecutor.cs), **T**=[AgentRunnerTests.cs](../../../tests/AgentBridge.Tests/AgentRunnerTests.cs), **I**=[AgentRunnerIntegrationTests.cs](../../../tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs), **X**=[CrossComponentIntegrationTests.cs](../../../tests/AgentBridge.Persistence.EfCore.Tests/Integration/CrossComponentIntegrationTests.cs). **P/** означает `adapters/AgentBridge.Persistence.EfCore/UnitOfWork/`, **CodexLb/** — `adapters/AgentBridge.CodexLb/`; остальные пути — от корня AgentBridge. Строки проверены по текущим файлам; чтение assertions не pass.
+Контракты: [main spec](../../../openspec/specs/agent-runtime/spec.md):83–105,361–391,640,847–876; [техничка20](<../../Technical documentation/20-agent-turn-orchestration.md>):20–44. Обозначения: **R**=[AgentRunner.cs](../../../AgentBridge/Application/AgentRunner.cs), **S**=[AgentRunSession.cs](../../../AgentBridge/Application/AgentRunSession.cs), **A**=[AgentRunScope.cs](../../../AgentBridge/Application/AgentRunScope.cs), **E**=[ToolExecutor.cs](../../../AgentBridge/Application/ToolExecutor.cs), **T**=[AgentRunnerTests.cs](../../../tests/AgentBridge.Tests/AgentRunnerTests.cs), **I**=[AgentRunnerIntegrationTests.cs](../../../tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs), **X**=[CrossComponentIntegrationTests.cs](../../../tests/AgentBridge.Persistence.EfCore.Tests/Integration/CrossComponentIntegrationTests.cs). **P/** означает `adapters/AgentBridge.Persistence.EfCore/UnitOfWork/`, **CodexLb/** — `adapters/AgentBridge.CodexLb/`; остальные пути — от корня AgentBridge. Строки проверены по текущим файлам; чтение assertions не pass.
 
 | Вопрос | Исследовано | Результат A | Evidence: символ/строки | Ограничение |
 | --- | --- | --- | --- | --- |

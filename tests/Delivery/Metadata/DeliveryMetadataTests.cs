@@ -95,12 +95,12 @@ public class DeliveryMetadataTests
             INamedTypeSymbol contract = Assert.IsAssignableFrom<INamedTypeSymbol>(compilation.GetTypeByMetadataName(contractName));
             Assert.Contains(implementation.AllInterfaces, item => SymbolEqualityComparer.Default.Equals(item, contract));
             AssertRussianSummary(contract);
-            Assert.Contains("inheritdoc", implementation.GetDocumentationCommentXml());
+            Assert.Contains("inheritdoc", implementation.GetDocumentationCommentXml(cancellationToken: TestContext.Current.CancellationToken));
             foreach (IMethodSymbol method in contract.GetMembers().OfType<IMethodSymbol>())
             {
                 AssertRussianSummary(method);
                 ISymbol target = Assert.IsAssignableFrom<ISymbol>(implementation.FindImplementationForInterfaceMember(method));
-                Assert.Contains("inheritdoc", target.GetDocumentationCommentXml());
+                Assert.Contains("inheritdoc", target.GetDocumentationCommentXml(cancellationToken: TestContext.Current.CancellationToken));
             }
         }
     }

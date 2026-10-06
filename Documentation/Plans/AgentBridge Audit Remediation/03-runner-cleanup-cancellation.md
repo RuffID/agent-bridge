@@ -6,7 +6,7 @@
 
 Не превращать неожиданный OperationCanceledException из DisposeAsync scope в штатный Canceled только потому, что caller уже отменён. Источник — [Findings](<../AgentBridge Quality Audit/Findings.md>), [OpenSpec](../../../openspec/specs/agent-runtime/spec.md), запрет маскировать unexpected exceptions.
 
-Область: [AgentRunScope](../../../Application/AgentRunScope.cs), [AgentRunSession](../../../Application/AgentRunSession.cs), [AgentRunner](../../../Application/AgentRunner.cs), адресные AgentRunnerTests. Не менять durable schema, SQL, checkpoints или бизнес-обработчики.
+Область: [AgentRunScope](../../../AgentBridge/Application/AgentRunScope.cs), [AgentRunSession](../../../AgentBridge/Application/AgentRunSession.cs), [AgentRunner](../../../AgentBridge/Application/AgentRunner.cs), адресные AgentRunnerTests. Не менять durable schema, SQL, checkpoints или бизнес-обработчики.
 
 ## Работы
 

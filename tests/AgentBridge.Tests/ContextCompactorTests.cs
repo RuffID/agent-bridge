@@ -31,7 +31,7 @@ public class ContextCompactorTests
             Turn(4, DialogTurnStatus.Completed, [Text("after-running")])], previous);
         ModelRequest request = new("gpt-5", "medium", "instructions", [Text("new")],
             [new("tool", "description", Json("{}"), false)], parameters: new(Json("""{"text":{"format":{"type":"text"}},"service_tier":"priority"}""")));
-        ContextCompactionResult result = (await fixture.Run(snapshot, request)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, request, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.TargetReached, result.Status);
         ModelRequest sent = Assert.Single(fixture.Gateway.Requests);
         Assert.Equal(new[] { "old-window", new string('h', 200) }, sent.Input.Select(Content));
@@ -59,14 +59,14 @@ public class ContextCompactorTests
         using Fixture fixture = new(actualCounter: true);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed([Item("""{"type":"compaction","encrypted_content":"opaque","future":{"x":1}}""")], new(Json("""{"object":"response.compaction","output":[],"usage":{"input_tokens":1}}"""))));
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(string.Concat(Enumerable.Repeat("history text ", 300)))])]);
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.UnknownBudget, result.Status);
         Assert.Null(result.Count!.EstimatedInputTokens);
         Assert.True(result.Count.HasOpaqueContent);
         Assert.Single(fixture.Writer.Tokens);
         Assert.Single(fixture.Gateway.Requests);
         Assert.True(result.ActiveContext!.Items[0].Content.GetProperty("future").GetProperty("x").GetInt32() == 1);
-        ServiceResult<ContextBudgetAssessment> budget = await new ContextBudgetGuard(fixture.Counter).CheckAsync(result.PreparedRequest, Settings());
+        ServiceResult<ContextBudgetAssessment> budget = await new ContextBudgetGuard(fixture.Counter).CheckAsync(result.PreparedRequest, Settings(), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unsupported, budget.Error!.Type);
     }
 
@@ -78,7 +78,7 @@ public class ContextCompactorTests
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed([Item("""{"type":"compaction","encrypted_content":"opaque"}""")]));
         fixture.FakeCounter.Evaluate = request => new("custom", 0,
             request.Input.Any(item => item.Content.TryGetProperty("encrypted_content", out _)) ? 50 : 200, true);
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.TargetReached, result.Status);
         Assert.Equal(50, result.Count!.EstimatedInputTokens);
         Assert.Single(fixture.Writer.Tokens);
@@ -95,7 +95,7 @@ public class ContextCompactorTests
         using Fixture fixture = new();
         fixture.FakeCounter.Evaluate = request => new("custom", 0,
             request.Input.Any(item => Content(item) == "small") ? 10 : initial < 0 ? null : initial, initial < 0);
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(expected, result.Status);
         Assert.Equal(calls, fixture.Gateway.Requests.Count);
     }
@@ -108,7 +108,7 @@ public class ContextCompactorTests
     {
         using Fixture fixture = new();
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed([Text(new string('x', outputSize))]));
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.NoReduction, result.Status);
         Assert.Empty(fixture.Writer.Tokens);
         Assert.Null(result.ActiveContext);
@@ -123,7 +123,7 @@ public class ContextCompactorTests
         using Fixture fixture = new(maxPasses: 2);
         fixture.Provider.Items = [Text(new string('p', 900))];
         fixture.Gateway.Next = request => Success(ModelResponse.Completed([Text(new string('x', Content(request.Input[0]).Length - 20))]));
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.PassLimitReached, result.Status);
         Assert.Equal(2, result.Passes);
         Assert.Equal(2, fixture.Writer.Tokens.Count);
@@ -131,7 +131,7 @@ public class ContextCompactorTests
         Assert.Equal(1, fixture.Provider.Calls);
         Assert.Equal(160, Content(result.ActiveContext!.Items[0]).Length);
         Assert.Equal(ServiceErrorType.Rejected, (await new ContextBudgetGuard(fixture.Counter)
-            .CheckAsync(result.PreparedRequest, Settings())).Error!.Type);
+            .CheckAsync(result.PreparedRequest, Settings(), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
     }
 
     /// <summary>Ожидаемый отказ второго прохода оставляет первый сохранённый контекст и исходную ошибку.</summary>
@@ -146,7 +146,7 @@ public class ContextCompactorTests
             ? Task.FromResult(ServiceResult<ModelResponse>.Fail(failure))
             : Success(ModelResponse.Completed([Text(new string('x', fixture.Gateway.Requests.Count == 1 ? 150 : 120))]));
         if (failSave) { fixture.Writer.FailureAt = 2; fixture.Writer.Failure = failure; }
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.Failed, result.Status);
         Assert.Same(failure, result.Error);
         Assert.Equal(150, Content(result.ActiveContext!.Items[0]).Length);
@@ -167,7 +167,7 @@ public class ContextCompactorTests
         fixture.Writer.FailureAt = 1;
         fixture.Writer.Failure = new(type, "failure");
         DialogSnapshot snapshot = Snapshot();
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Same(fixture.Writer.Failure, result.Error);
         Assert.Same(snapshot.Token, result.Token);
         Assert.Null(result.ActiveContext);
@@ -191,7 +191,7 @@ public class ContextCompactorTests
             };
         }
         else { fixture.Gateway.Next = _ => { fixture.Time.Now = NOW.AddHours(1); return Success(ModelResponse.Completed([Text("small")])); }; }
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ServiceErrorType.Expired, result.Error!.Type);
         Assert.Empty(fixture.Writer.Tokens);
     }
@@ -202,7 +202,7 @@ public class ContextCompactorTests
     {
         using Fixture fixture = new();
         fixture.Gateway.Next = _ => { fixture.Time.Now = NOW.AddMinutes(1); return Success(ModelResponse.Completed([Text("small")])); };
-        await fixture.Run();
+        await fixture.Run(ct: TestContext.Current.CancellationToken);
         Assert.Equal(NOW.AddMinutes(1), Assert.Single(fixture.Writer.Accesses).NowUtc);
     }
 
@@ -227,7 +227,7 @@ public class ContextCompactorTests
             _ => ModelResponse.Completed([Text("small")], continuation: new(Json("{}")))
         };
         fixture.Gateway.Next = _ => Success(report);
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.Failed, result.Status);
         Assert.Same(report, result.LastResponse);
         Assert.Empty(fixture.Writer.Tokens);
@@ -240,7 +240,7 @@ public class ContextCompactorTests
     {
         using Fixture fixture = new();
         StoredDialogContext active = new(1, 0, ModelResponse.Completed([Text(new string('x', 200))]));
-        ContextCompactionResult result = (await fixture.Run(Snapshot([Turn(1, DialogTurnStatus.InProgress, [Text("tail")])], active))).Data!;
+        ContextCompactionResult result = (await fixture.Run(Snapshot([Turn(1, DialogTurnStatus.InProgress, [Text("tail")])], active), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(0, result.ActiveContext!.ThroughTurnSequence);
         Assert.Equal(new[] { "provider", "small", "tail" }, result.PreparedRequest.Input.Select(Content));
     }
@@ -251,7 +251,7 @@ public class ContextCompactorTests
     {
         using Fixture fixture = new();
         fixture.Provider.Items = [Text(new string('x', 200))];
-        ContextCompactionResult result = (await fixture.Run(Snapshot([]))).Data!;
+        ContextCompactionResult result = (await fixture.Run(Snapshot([]), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.NoPersistableHistory, result.Status);
         Assert.Empty(fixture.Gateway.Requests);
         Assert.Empty(fixture.Writer.Tokens);
@@ -265,7 +265,7 @@ public class ContextCompactorTests
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed,
             [Text(new string('x', 200)), Item("""{"type":"function_call","call_id":"a","arguments":"{}"}""")])]);
         ModelRequest request = Request([Item("""{"type":"function_call_output","call_id":"a","output":"ok"}""")]);
-        ContextCompactionResult result = (await fixture.Run(snapshot, request)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, request, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
         Assert.Empty(fixture.Gateway.Requests);
         Assert.Empty(fixture.Writer.Tokens);
@@ -283,7 +283,7 @@ public class ContextCompactorTests
         DialogSnapshot snapshot = new(original.Token, kind == "owner" ? DialogOwnerId.From("other") : OWNER,
             original.CreatedAtUtc, kind == "expiry" ? NOW : original.ExpiresAtUtc, 100, original.Turns,
             kind == "prefix" ? new(1, 2, ModelResponse.Completed([Text("old")])) : null);
-        Assert.False((await fixture.Run(snapshot)).Success);
+        Assert.False((await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(0, fixture.Provider.Calls);
         Assert.Empty(fixture.Gateway.Requests);
     }
@@ -303,7 +303,7 @@ public class ContextCompactorTests
             return Task.FromException<ServiceResult<ModelResponse>>(error);
         };
         if (cancel) { await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Run(ct: source.Token)); }
-        else { Assert.Same(error, await Assert.ThrowsAsync<IOException>(() => fixture.Run())); }
+        else { Assert.Same(error, await Assert.ThrowsAsync<IOException>(() => fixture.Run(ct: TestContext.Current.CancellationToken))); }
         Assert.Empty(fixture.Writer.Tokens);
     }
 
@@ -324,7 +324,7 @@ public class ContextCompactorTests
         Task<ServiceResult<ContextCompactionResult>> pending = fixture.Run(ct: caller.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.False(pending.IsCompleted);
             Assert.Null(fixture.Writer.Accepted);
             Assert.Single(fixture.Gateway.Requests);
@@ -361,7 +361,7 @@ public class ContextCompactorTests
         using Fixture fixture = new();
         ServiceError error = new(ServiceErrorType.Unsupported, "counter failed");
         fixture.FakeCounter.FailureFor = request => request.Input.Any(item => Content(item) == "small") ? error : null;
-        ContextCompactionResult result = (await fixture.Run()).Data!;
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Same(error, result.Error);
         Assert.Empty(fixture.Writer.Tokens);
         Assert.Equal(208, result.Count!.EstimatedInputTokens);
@@ -373,7 +373,7 @@ public class ContextCompactorTests
     {
         using Fixture fixture = new();
         ContextCompactionResult result = (await fixture.Run(Snapshot([Turn(1, DialogTurnStatus.Completed,
-            [Text(new string('x', 991))])]))).Data!;
+            [Text(new string('x', 991))])]), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Empty(fixture.Gateway.Requests);
     }
@@ -387,7 +387,7 @@ public class ContextCompactorTests
     public async Task AllTerminalStatusesCanBeCovered(DialogTurnStatus status)
     {
         using Fixture fixture = new();
-        ContextCompactionResult result = (await fixture.Run(Snapshot([Turn(1, status, [Text(new string('h', 200))])]))).Data!;
+        ContextCompactionResult result = (await fixture.Run(Snapshot([Turn(1, status, [Text(new string('h', 200))])]), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(1, result.ActiveContext!.ThroughTurnSequence);
     }
 
@@ -397,7 +397,7 @@ public class ContextCompactorTests
     {
         using Fixture fixture = new();
         ModelRequest request = new("gpt-5", "medium", "", [], [], new(Json("{}")));
-        Assert.Equal(ServiceErrorType.Unsupported, (await fixture.Run(request: request)).Error!.Type);
+        Assert.Equal(ServiceErrorType.Unsupported, (await fixture.Run(request: request, ct: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.Equal(0, fixture.Provider.Calls);
     }
 
@@ -413,7 +413,7 @@ public class ContextCompactorTests
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed,
             [Text(new string('h', 200)), callA, callB, outputA, outputB])]);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed([callB, outputA]));
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.Failed, result.Status);
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Empty(fixture.Writer.Tokens);
@@ -436,14 +436,14 @@ public class ContextCompactorTests
         CanonicalModelItem[] retained = selection == 0 ? [a, oa] : selection == 1 ? [b, ob] : pairs;
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), .. pairs])]);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed(retained));
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.TargetReached, result.Status);
         Assert.Single(fixture.Writer.Tokens);
         Assert.Same(fixture.Writer.Accepted, result.ActiveContext!.Compaction);
         DialogSnapshot saved = new(result.Token, OWNER, snapshot.CreatedAtUtc, snapshot.ExpiresAtUtc,
             snapshot.ContentBytes, snapshot.Turns, result.ActiveContext);
         ModelRequest built = (await fixture.Root.GetRequiredService<ContextBuilder>()
-            .BuildAsync(new(ID, OWNER, Guid.NewGuid(), "agent"), saved, Request(), NOW)).Data!;
+            .BuildAsync(new(ID, OWNER, Guid.NewGuid(), "agent"), saved, Request(), NOW, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(retained.Select(item => item.Content.GetRawText()), built.Input.Skip(1).Select(item => item.Content.GetRawText()));
         Assert.Equal(snapshot.ExpiresAtUtc, saved.ExpiresAtUtc);
         Assert.Same(snapshot.Turns[0], saved.Turns[0]);
@@ -451,7 +451,7 @@ public class ContextCompactorTests
         ToolExecutor executor = new(registry, fixture.Time);
         ToolExecutionSession session = executor.CreateSession(new(ID, OWNER, Guid.NewGuid(), "agent"), result.Token,
             saved.ExpiresAtUtc, ["GetOrderStatus"], new(8, 16, 1, TimeSpan.FromMinutes(1)));
-        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, new(Guid.NewGuid(), result.ActiveContext.Compaction))).Data!;
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, new(Guid.NewGuid(), result.ActiveContext.Compaction), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Empty(batch.Results);
         Assert.Equal(0, registry.Opened);
     }
@@ -480,7 +480,7 @@ public class ContextCompactorTests
             _ => [oa]
         };
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed(candidate));
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.Failed, result.Status);
         Assert.Empty(fixture.Writer.Tokens);
         Assert.Equal(snapshot.Token, result.Token);
@@ -498,7 +498,7 @@ public class ContextCompactorTests
         CanonicalModelItem[] pairs = [a, b, ob, oa];
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), .. pairs])]);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed(pairs));
-        Assert.Equal(ContextCompactionStatus.TargetReached, (await fixture.Run(snapshot)).Data!.Status);
+        Assert.Equal(ContextCompactionStatus.TargetReached, (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!.Status);
         Assert.Single(fixture.Writer.Tokens);
     }
 
@@ -513,12 +513,12 @@ public class ContextCompactorTests
             [Item("""{"type":"compaction","encrypted_content":"opaque"}"""), a, oa]));
         fixture.FakeCounter.Evaluate = request => request.Input.Any(item => item.Content.TryGetProperty("encrypted_content", out _))
             ? new("custom", 5, null, true) : new("custom", 0, 200, false);
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.UnknownBudget, result.Status);
         Assert.Single(fixture.Writer.Tokens);
         Assert.Null(result.Count!.EstimatedInputTokens);
         Assert.Equal(ServiceErrorType.Unsupported, (await new ContextBudgetGuard(fixture.Counter)
-            .CheckAsync(result.PreparedRequest, Settings())).Error!.Type);
+            .CheckAsync(result.PreparedRequest, Settings(), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
     }
 
     /// <summary>Одна из полностью одинаковых occurrences не имеет доказанной исходной association.</summary>
@@ -533,7 +533,7 @@ public class ContextCompactorTests
         StoredDialogContext previous = new(1, 1, ModelResponse.Completed([Text(new string('h', 200)), .. pairs]));
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, pairs)], previous);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed([a, oa]));
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.Failed, result.Status);
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Empty(fixture.Writer.Tokens);
@@ -553,7 +553,7 @@ public class ContextCompactorTests
         CanonicalModelItem[] pairs = [a, a, oa, ob];
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), .. pairs])]);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed(keepAll ? pairs : [a, ob]));
-        Assert.Equal(ContextCompactionStatus.TargetReached, (await fixture.Run(snapshot)).Data!.Status);
+        Assert.Equal(ContextCompactionStatus.TargetReached, (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!.Status);
         Assert.Single(fixture.Writer.Tokens);
     }
 
@@ -567,7 +567,7 @@ public class ContextCompactorTests
             [Text(new string('h', 200)), a, b, oa, ob])]);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed(fixture.Gateway.Requests.Count == 1
             ? [Text(new string('s', 150)), a, b, oa, ob] : [b, oa]));
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.Failed, result.Status);
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Single(fixture.Writer.Tokens);
@@ -585,7 +585,7 @@ public class ContextCompactorTests
         using Fixture fixture = new();
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed,
             [Text(new string('h', 200)), PairCall("A"), PairCall("B"), PairOutput("A")])]);
-        ServiceResult<ContextCompactionResult> result = await fixture.Run(snapshot);
+        ServiceResult<ContextCompactionResult> result = await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
         Assert.Empty(fixture.Gateway.Requests);
@@ -602,12 +602,12 @@ public class ContextCompactorTests
         CanonicalModelItem a = PairCall("A"), oa = PairOutput("A");
         DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), a, oa])]);
         fixture.Gateway.Next = _ => Success(ModelResponse.Completed([Text(new string('s', 150)), a, oa]));
-        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ContextCompactionStatus.PassLimitReached, result.Status);
         Assert.Equal(1050, result.Count!.EstimatedInputTokens);
         Assert.Single(fixture.Writer.Tokens);
         Assert.Equal(ServiceErrorType.Rejected, (await new ContextBudgetGuard(fixture.Counter)
-            .CheckAsync(result.PreparedRequest, Settings())).Error!.Type);
+            .CheckAsync(result.PreparedRequest, Settings(), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
     }
 
     /// <summary>Закрытые сохранённые пары не должны открывать scope и повторять бизнес-действие.</summary>

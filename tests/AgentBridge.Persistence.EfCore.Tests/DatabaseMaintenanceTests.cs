@@ -38,7 +38,7 @@ public class DatabaseMaintenanceTests
         using IServiceScope scope = root.CreateScope();
         try
         {
-            MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout));
+            MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
             Assert.Equal(path == "native-code" ? MaintenanceError.BackupNotConfirmed : MaintenanceError.CleanupUnconfirmed, error.Code);
             Assert.Equal(MaintenanceError.BackupFailed, error.PrimaryError);
             Assert.DoesNotContain("synthetic-secret", error.ToString());
@@ -52,10 +52,10 @@ public class DatabaseMaintenanceTests
             if (path != "native-code")
             {
                 string[] calls = fake.Calls.ToArray();
-                Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout))).Code);
+                Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken))).Code);
                 Assert.Equal(calls, fake.Calls);
             }
-            else await Service(next).InspectAsync(Timeout);
+            else await Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
         }
         finally
         {
@@ -147,10 +147,10 @@ public class DatabaseMaintenanceTests
         {
             string[] calls = fake.Calls.ToArray();
             using IServiceScope next = root.CreateScope();
-            Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout))).Code);
+            Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken))).Code);
             Assert.Equal(calls, fake.Calls);
         }
-        else await Service(scope).InspectAsync(Timeout);
+        else await Service(scope).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
     }
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
@@ -189,9 +189,9 @@ public class DatabaseMaintenanceTests
         Task<DatabaseInspection>? waiter = null;
         try
         {
-            await entered.Task.WaitAsync(Timeout);
+            await entered.Task.WaitAsync(Timeout, cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(["inspect", "create", "inspect", "pin", "inspect", "pending"], fake.Calls);
-            waiter = Service(waiterScope).InspectAsync(Timeout);
+            waiter = Service(waiterScope).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
             Assert.False(waiter.IsCompleted);
             release.TrySetResult();
             Exception? error = await Record.ExceptionAsync(() => first);
@@ -207,7 +207,7 @@ public class DatabaseMaintenanceTests
             string[] calls = fake.Calls.ToArray();
             using IServiceScope fresh = root.CreateScope();
             Assert.Equal(MaintenanceError.GatePoisoned,
-                (await Assert.ThrowsAsync<MaintenanceException>(() => Service(fresh).InspectAsync(Timeout))).Code);
+                (await Assert.ThrowsAsync<MaintenanceException>(() => Service(fresh).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken))).Code);
             Assert.Equal(calls, fake.Calls);
             IReadOnlyDictionary<string, object?> diagnostic = logger.Events.First();
             Assert.Equal(MaintenanceStage.Discovery, diagnostic["Stage"]);
@@ -235,11 +235,11 @@ public class DatabaseMaintenanceTests
         using ServiceProvider root = Root(fake);
         using (IServiceScope first = root.CreateScope())
         {
-            DatabaseMaintenanceResult result = initialize ? await Service(first).InitializeNewAsync(Timeout) : await Service(first).UpdateExistingAsync(Timeout);
+            DatabaseMaintenanceResult result = initialize ? await Service(first).InitializeNewAsync(Timeout, ct: TestContext.Current.CancellationToken) : await Service(first).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken);
             Assert.Equal(initialize ? MaintenanceOutcome.Initialized : pending ? MaintenanceOutcome.Migrated : MaintenanceOutcome.Unchanged, result.Outcome);
         }
         using IServiceScope fresh = root.CreateScope();
-        Assert.True((await Service(fresh).InspectAsync(Timeout)).Exists);
+        Assert.True((await Service(fresh).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken)).Exists);
         Assert.False(fake.Pinned);
     }
 
@@ -251,11 +251,11 @@ public class DatabaseMaintenanceTests
         using ServiceProvider root = Root(fake);
         using (IServiceScope first = root.CreateScope())
             Assert.Equal(MaintenanceError.PermissionDenied,
-                (await Assert.ThrowsAsync<MaintenanceException>(() => Service(first).InitializeNewAsync(Timeout))).Code);
+                (await Assert.ThrowsAsync<MaintenanceException>(() => Service(first).InitializeNewAsync(Timeout, ct: TestContext.Current.CancellationToken))).Code);
         Assert.Equal(["inspect"], fake.Calls);
         fake.InspectionAction = null;
         using IServiceScope fresh = root.CreateScope();
-        Assert.Equal(MaintenanceOutcome.Initialized, (await Service(fresh).InitializeNewAsync(Timeout)).Outcome);
+        Assert.Equal(MaintenanceOutcome.Initialized, (await Service(fresh).InitializeNewAsync(Timeout, ct: TestContext.Current.CancellationToken)).Outcome);
     }
 
     /// <summary>Inspection возвращает pending без backup, create или migrate.</summary>
@@ -267,7 +267,7 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new() { Exists = exists };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        DatabaseInspection inspection = await Service(scope).InspectAsync(Timeout);
+        DatabaseInspection inspection = await Service(scope).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
         Assert.Equal(exists, inspection.Exists);
         Assert.Equal(exists ? new[] { "synthetic-migration" } : [], inspection.PendingMigrations);
         Assert.Equal(exists ? new[] { "inspect", "pin", "inspect", "pending", "unpin" } : ["inspect"], fake.Calls);
@@ -281,7 +281,7 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new();
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        DatabaseMaintenanceResult result = await Service(scope).UpdateExistingAsync(Timeout);
+        DatabaseMaintenanceResult result = await Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken);
         Assert.Equal(MaintenanceOutcome.Migrated, result.Outcome);
         Assert.Equal(["synthetic-migration"], result.AppliedMigrations);
         Assert.NotNull(result.Backup);
@@ -298,7 +298,7 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new() { Pending = [] };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        DatabaseMaintenanceResult result = await Service(scope).UpdateExistingAsync(Timeout);
+        DatabaseMaintenanceResult result = await Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken);
         Assert.Equal(MaintenanceOutcome.Unchanged, result.Outcome);
         Assert.Null(result.Backup);
         Assert.Empty(result.AppliedMigrations);
@@ -312,7 +312,7 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new() { Exists = false };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        DatabaseMaintenanceResult result = await Service(scope).InitializeNewAsync(Timeout);
+        DatabaseMaintenanceResult result = await Service(scope).InitializeNewAsync(Timeout, ct: TestContext.Current.CancellationToken);
         Assert.Equal(MaintenanceOutcome.Initialized, result.Outcome);
         Assert.Null(result.Backup);
         Assert.Equal(["inspect", "create", "inspect", "pin", "inspect", "pending", "inspect", "migrate", "pending", "unpin"], fake.Calls);
@@ -328,7 +328,7 @@ public class DatabaseMaintenanceTests
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
         MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => initialize
-            ? Service(scope).InitializeNewAsync(Timeout) : Service(scope).UpdateExistingAsync(Timeout));
+            ? Service(scope).InitializeNewAsync(Timeout, ct: TestContext.Current.CancellationToken) : Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(expected, error.Code);
         Assert.Equal(["inspect"], fake.Calls);
     }
@@ -343,7 +343,7 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new() { InspectionAction = _ => throw new MaintenanceException(code) };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InitializeNewAsync(Timeout));
+        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InitializeNewAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(code, error.Code);
         Assert.Equal(["inspect"], fake.Calls);
     }
@@ -375,7 +375,7 @@ public class DatabaseMaintenanceTests
         };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout));
+        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.BackupNotConfirmed, error.Code);
         Assert.DoesNotContain("migrate", fake.Calls);
         Assert.False(fake.Pinned);
@@ -394,7 +394,7 @@ public class DatabaseMaintenanceTests
         };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout));
+        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.BackupFailed, error.Code);
         Assert.DoesNotContain("synthetic-secret", error.ToString());
         Assert.Null(error.InnerException);
@@ -410,7 +410,7 @@ public class DatabaseMaintenanceTests
         fake.ChangeReceipt = receipt => { fake.Target = "changed-target"; return receipt; };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout));
+        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.TargetMismatch, error.Code);
         Assert.DoesNotContain("migrate", fake.Calls);
     }
@@ -431,12 +431,12 @@ public class DatabaseMaintenanceTests
         using ServiceProvider root = Root(fake);
         using IServiceScope first = root.CreateScope();
         using IServiceScope second = root.CreateScope();
-        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(first).UpdateExistingAsync(Timeout));
+        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(first).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(expected, error.Code);
         Assert.DoesNotContain("synthetic-secret", error.ToString());
         if (failure == "backup-cleanup") Assert.Equal(MaintenanceError.BackupFailed, error.PrimaryError);
         int calls = fake.Calls.Count;
-        MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() => Service(second).InspectAsync(Timeout));
+        MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() => Service(second).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.GatePoisoned, blocked.Code);
         Assert.Equal(calls, fake.Calls.Count);
     }
@@ -448,10 +448,10 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new() { Exists = false, CreationAction = _ => throw new MaintenanceException(MaintenanceError.DatabaseAlreadyExists) };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InitializeNewAsync(Timeout));
+        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InitializeNewAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.DatabaseAlreadyExists, error.Code);
         Assert.Equal(["inspect", "create"], fake.Calls);
-        MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InspectAsync(Timeout));
+        MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.GatePoisoned, blocked.Code);
     }
 
@@ -493,7 +493,7 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new() { InspectionAction = budget => Task.Delay(System.Threading.Timeout.Infinite, budget.Token) };
         using ServiceProvider root = Root(fake);
         using IServiceScope scope = root.CreateScope();
-        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InspectAsync(TimeSpan.FromMilliseconds(25)));
+        MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).InspectAsync(TimeSpan.FromMilliseconds(25), ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.DeadlineExceeded, error.Code);
         Assert.Equal(["inspect"], fake.Calls);
     }
@@ -515,12 +515,12 @@ public class DatabaseMaintenanceTests
         // Отдельная fake session для второго coordinator сохраняет общий root gate.
         DatabaseMaintenance<AgentBridgeContextKey> secondService = new(secondFake, secondFake,
             second.ServiceProvider.GetRequiredService<SingleInitializerGate>(), second.ServiceProvider.GetRequiredService<ILogger<DatabaseMaintenance<AgentBridgeContextKey>>>());
-        Task<DatabaseInspection> active = Service(first).InspectAsync(Timeout);
+        Task<DatabaseInspection> active = Service(first).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
         using CancellationTokenSource waiter = new();
         Task<DatabaseInspection>? waiting = null;
         try
         {
-            await entered.Task.WaitAsync(Timeout);
+            await entered.Task.WaitAsync(Timeout, cancellationToken: TestContext.Current.CancellationToken);
             waiting = secondService.InspectAsync(Timeout, waiter.Token);
             Assert.False(waiting.IsCompleted);
             Assert.Empty(secondFake.Calls);
@@ -537,7 +537,7 @@ public class DatabaseMaintenanceTests
             if (waiting is not null) await Record.ExceptionAsync(() => waiting);
         }
         await active;
-        await secondService.InspectAsync(Timeout);
+        await secondService.InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
         Assert.Contains("inspect", secondFake.Calls);
     }
 
@@ -549,7 +549,7 @@ public class DatabaseMaintenanceTests
         FakeMaintenanceBoundary fake = new() { BackupAction = _ => throw new InvalidOperationException("synthetic-secret-driver") };
         using ServiceProvider root = Root(fake, logger);
         using IServiceScope scope = root.CreateScope();
-        await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout));
+        await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         IReadOnlyDictionary<string, object?> failure = Assert.Single(logger.Events);
         Assert.Equal(MaintenanceStage.Backup, failure["Stage"]);
         Assert.Equal(MaintenanceError.BackupFailed, failure["Code"]);
@@ -557,7 +557,7 @@ public class DatabaseMaintenanceTests
         Assert.All(logger.Exceptions, Assert.Null);
         Assert.DoesNotContain("synthetic-secret", string.Join(" ", failure.Values));
         fake.BackupAction = null;
-        await Service(scope).UpdateExistingAsync(Timeout);
+        await Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken);
         Assert.Equal(MaintenanceStage.Verification, logger.Events.Last()["Stage"]);
     }
 

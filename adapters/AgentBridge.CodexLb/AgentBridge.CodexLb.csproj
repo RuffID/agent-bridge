@@ -9,7 +9,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**;**\bin\**;**\obj\**;**\artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../agent-bridge.csproj" />
+    <ProjectReference Include="../../AgentBridge/agent-bridge.csproj" />
     <ProjectReference Include="../../../work/HttpClientLibrary/HttpClientLibrary.csproj" />
   </ItemGroup>
 </Project>

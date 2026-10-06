@@ -97,7 +97,7 @@ public class DialogReaderTests
     public async Task EmptyExpiredDialogReturnsMetadataWithoutInventingContext()
     {
         Fixture fixture = new();
-        ServiceResult<DialogSnapshot> result = await fixture.Reader.ReadAsync(fixture.Access(nowUtc: fixture.Dialog.ExpiresAtUtc));
+        ServiceResult<DialogSnapshot> result = await fixture.Reader.ReadAsync(fixture.Access(nowUtc: fixture.Dialog.ExpiresAtUtc), cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         DialogSnapshot snapshot = Assert.IsType<DialogSnapshot>(result.Data);
         Assert.True(snapshot.IsExpired(fixture.Dialog.ExpiresAtUtc));
@@ -119,7 +119,7 @@ public class DialogReaderTests
         {
             fixture.Dialogs.Records.Clear();
         }
-        ServiceResult<DialogSnapshot> result = await fixture.Reader.ReadAsync(fixture.Access(owner ?? fixture.Dialog.OwnerId));
+        ServiceResult<DialogSnapshot> result = await fixture.Reader.ReadAsync(fixture.Access(owner ?? fixture.Dialog.OwnerId), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Null(result.Data);
         Assert.Equal(expected, result.Error!.Type);
@@ -158,7 +158,7 @@ public class DialogReaderTests
         Fixture fixture = new();
         InvalidOperationException expected = new("synthetic repository failure");
         fixture.Turns.ReadException = expected;
-        Assert.Same(expected, await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access())));
+        Assert.Same(expected, await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access(), cancellationToken: TestContext.Current.CancellationToken)));
         Assert.Equal(0, fixture.Items.ReadCalls + fixture.Steps.ReadCalls + fixture.Contexts.ReadCalls);
     }
 
@@ -174,12 +174,12 @@ public class DialogReaderTests
         if (corruptReport)
         {
             fixture.Steps.Records.Add(new() { DialogId = fixture.Dialog.Id, TurnId = turnId, Id = Guid.NewGuid(), Sequence = 1, Response = new() { FormatVersion = 99 } });
-            await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access()));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access(), cancellationToken: TestContext.Current.CancellationToken));
         }
         else
         {
             fixture.Items.Records.Add(new() { DialogId = fixture.Dialog.Id, TurnId = turnId, Sequence = 1, ContentJson = "not-json" });
-            await Assert.ThrowsAnyAsync<JsonException>(() => fixture.Reader.ReadAsync(fixture.Access()));
+            await Assert.ThrowsAnyAsync<JsonException>(() => fixture.Reader.ReadAsync(fixture.Access(), cancellationToken: TestContext.Current.CancellationToken));
         }
     }
 
@@ -212,7 +212,7 @@ public class DialogReaderTests
         {
             DialogId = fixture.Dialog.Id, TurnId = Guid.NewGuid(), Sequence = 1, ContentJson = "{\"foreign\":true}"
         });
-        ServiceResult<DialogSnapshot> result = await fixture.Reader.ReadAsync(fixture.Access());
+        ServiceResult<DialogSnapshot> result = await fixture.Reader.ReadAsync(fixture.Access(), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Null(result.Data);
         Assert.Equal(expected, result.Error!.Type);
@@ -243,7 +243,7 @@ public class DialogReaderTests
         {
             fixture.Items.Records.Add(new() { DialogId = fixture.Dialog.Id, TurnId = Guid.NewGuid(), Sequence = 1, ContentJson = "{}" });
         }
-        InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access()));
+        InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access(), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Contains("без родительского", error.Message);
     }
 
@@ -253,7 +253,7 @@ public class DialogReaderTests
     {
         Fixture fixture = new();
         fixture.Contexts.Records.Add(new() { DialogId = fixture.Dialog.Id, Version = 1, Compaction = ModelResponseRecord.FromModelResponse(ModelResponse.Incomplete([])) });
-        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(fixture.Access(), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Создаёт полный синтетический отчёт с unknown/opaque полями без секретов.</summary>

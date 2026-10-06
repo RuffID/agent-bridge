@@ -18,7 +18,7 @@ public class DialogWritePortsTests
         FakeWriteFixture fixture = new();
         DialogWriteToken token = await fixture.CreateAsync();
         ServiceResult<DialogWriteToken> duplicate = await fixture.Creator.CreateAsync(token.DialogId, DialogOwnerId.From("other"),
-            FakeWriteFixture.NOW, FakeWriteFixture.NOW.AddDays(7));
+            FakeWriteFixture.NOW, FakeWriteFixture.NOW.AddDays(7), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, duplicate.Error!.Type);
         Assert.Null(duplicate.Data);
         Assert.Equal(" User:Б ", Assert.Single(fixture.Roots.Persisted).OwnerId);
@@ -31,15 +31,15 @@ public class DialogWritePortsTests
     {
         FakeWriteFixture fixture = new();
         DialogWriteToken token = await fixture.CreateAsync();
-        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, Guid.NewGuid(), [Item("{\"x\":1}")])).Data!;
-        Assert.Equal(ServiceErrorType.Forbidden, (await fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(token, owner: "other"), token)).Error!.Type);
+        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, Guid.NewGuid(), [Item("{\"x\":1}")], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        Assert.Equal(ServiceErrorType.Forbidden, (await fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(token, owner: "other"), token, cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         fixture.BeforeSave = () => throw new IOException("delete failure");
-        await Assert.ThrowsAsync<IOException>(() => fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(token), token));
+        await Assert.ThrowsAsync<IOException>(() => fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(token), token, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Single(fixture.Roots.Persisted);
         Assert.Single(fixture.Turns.Persisted);
         Assert.Single(fixture.Items.Persisted);
         fixture.BeforeSave = null;
-        Assert.True((await fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(token, FakeWriteFixture.NOW.AddDays(2)), token)).Success);
+        Assert.True((await fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(token, FakeWriteFixture.NOW.AddDays(2)), token, cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Empty(fixture.Roots.Persisted);
         Assert.Empty(fixture.Items.Persisted);
     }
@@ -51,10 +51,10 @@ public class DialogWritePortsTests
         FakeWriteFixture fixture = new();
         DialogWriteToken token = await fixture.CreateAsync();
         Guid turn = Guid.NewGuid();
-        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [])).Data!;
+        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
         fixture.Turns.Persisted[0].Sequence = 2;
         fixture.Session.Events.Clear();
-        await Assert.ThrowsAsync<ArgumentException>(() => fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], []));
+        await Assert.ThrowsAsync<ArgumentException>(() => fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [], cancellationToken: TestContext.Current.CancellationToken));
         Assert.DoesNotContain("save", fixture.Session.Events);
         Assert.Equal(2, fixture.Turns.Persisted[0].Sequence);
         Assert.Equal(token.Revision, fixture.Roots.Persisted[0].Revision);
@@ -70,14 +70,14 @@ public class DialogWritePortsTests
         DialogWriteToken token = await fixture.CreateAsync();
         DateTimeOffset contextTime = FakeWriteFixture.NOW.AddMinutes(1);
         token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token, contextTime), token, 0,
-            Response(ModelResponseStatus.Completed))).Data!;
+            Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         DialogRecord root = Assert.Single(fixture.Roots.Persisted);
         Assert.Equal(contextTime, root.LastChangedAtUtc);
         Assert.Equal(contextTime, Assert.Single(fixture.Contexts.Persisted).CreatedAtUtc);
         if (corrupt) { root.LastChangedAtUtc = FakeWriteFixture.NOW.AddMinutes(2); }
         fixture.Session.Events.Clear();
         Task<ServiceResult<DialogWriteToken>> write = fixture.ContextWriter.SaveAsync(
-            FakeWriteFixture.Access(token, FakeWriteFixture.NOW.AddMinutes(3)), token, 0, Response(ModelResponseStatus.Completed));
+            FakeWriteFixture.Access(token, FakeWriteFixture.NOW.AddMinutes(3)), token, 0, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken);
         if (corrupt)
         {
             await Assert.ThrowsAsync<ArgumentException>(() => write);
@@ -112,13 +112,13 @@ public class DialogWritePortsTests
         DialogWriteToken original = await fixture.CreateAsync();
         Guid turn = Guid.NewGuid();
         CanonicalModelItem input = Item("{\"type\":\"message\",\"text\":\"Привет\"}");
-        DialogWriteToken started = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(original), original, turn, [input])).Data!;
+        DialogWriteToken started = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(original), original, turn, [input], cancellationToken: TestContext.Current.CancellationToken)).Data!;
         ModelResponse response = Response(status);
         Guid step = Guid.NewGuid();
         DialogWriteToken appended = (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(started), started, turn,
-            response.Output, [new StoredModelStep(step, response)])).Data!;
+            response.Output, [new StoredModelStep(step, response)], cancellationToken: TestContext.Current.CancellationToken)).Data!;
         ServiceResult<DialogWriteToken> finished = await fixture.Writer.FinishAsync(FakeWriteFixture.Access(appended), appended,
-            turn, DialogTurnStatus.Completed, [], []);
+            turn, DialogTurnStatus.Completed, [], [], cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(finished.Success);
         Assert.Equal(3, finished.Data!.Revision);
         Assert.Equal(original.IncarnationId, finished.Data.IncarnationId);
@@ -165,7 +165,7 @@ public class DialogWritePortsTests
             token = new(token.DialogId, token.IncarnationId, token.Revision + 1);
         }
         fixture.Session.Events.Clear();
-        ServiceResult<DialogWriteToken> result = await fixture.Writer.BeginAsync(access, token, Guid.NewGuid(), []);
+        ServiceResult<DialogWriteToken> result = await fixture.Writer.BeginAsync(access, token, Guid.NewGuid(), [], cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(error, result.Error!.Type);
         Assert.Null(result.Data);
         Assert.Equal(0, fixture.Turns.Repository.ReadCalls);
@@ -179,11 +179,11 @@ public class DialogWritePortsTests
     {
         FakeWriteFixture fixture = new();
         DialogWriteToken old = await fixture.CreateAsync();
-        Assert.True((await fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(old), old)).Success);
+        Assert.True((await fixture.Deletion.DeleteAsync(FakeWriteFixture.Access(old), old, cancellationToken: TestContext.Current.CancellationToken)).Success);
         DialogWriteToken fresh = (await fixture.Creator.CreateAsync(old.DialogId, FakeWriteFixture.Access(old).OwnerId,
-            FakeWriteFixture.NOW, FakeWriteFixture.NOW.AddDays(2))).Data!;
+            FakeWriteFixture.NOW, FakeWriteFixture.NOW.AddDays(2), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.NotEqual(old.IncarnationId, fresh.IncarnationId);
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(old), old, Guid.NewGuid(), [])).Error!.Type);
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(old), old, Guid.NewGuid(), [], cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.Empty(fixture.Turns.Persisted);
         Assert.Equal(0, fixture.Roots.Persisted[0].Revision);
     }
@@ -196,7 +196,7 @@ public class DialogWritePortsTests
         DialogWriteToken token = await fixture.CreateAsync();
         fixture.BeforeSave = () => throw new IOException("synthetic save failure");
         await Assert.ThrowsAsync<IOException>(() => fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token,
-            Guid.NewGuid(), [Item("{\"text\":\"данные\"}")]));
+            Guid.NewGuid(), [Item("{\"text\":\"данные\"}")], cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, fixture.Roots.Persisted[0].Revision);
         Assert.Equal(0, fixture.Roots.Persisted[0].ContentBytes);
         Assert.Empty(fixture.Items.Persisted);
@@ -223,7 +223,7 @@ public class DialogWritePortsTests
             if (change == "owner") { fixture.Roots.Persisted[0].OwnerId = "other"; }
         };
         ServiceResult<DialogWriteToken> result = await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token,
-            Guid.NewGuid(), [Item("{\"text\":\"late\"}")]);
+            Guid.NewGuid(), [Item("{\"text\":\"late\"}")], cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
         Assert.Null(result.Data);
         Assert.Empty(fixture.Turns.Persisted);
@@ -238,20 +238,20 @@ public class DialogWritePortsTests
         FakeWriteFixture fixture = new();
         DialogWriteToken token = await fixture.CreateAsync();
         Guid turn = Guid.NewGuid();
-        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [Item("{\"text\":\"input\"}")])).Data!;
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed))).Error!.Type);
-        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 0, Response(ModelResponseStatus.Completed))).Data!;
-        token = (await fixture.Writer.FinishAsync(FakeWriteFixture.Access(token), token, turn, DialogTurnStatus.Completed, [], [])).Data!;
-        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed))).Data!;
-        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed))).Data!;
+        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [Item("{\"text\":\"input\"}")], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 0, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        token = (await fixture.Writer.FinishAsync(FakeWriteFixture.Access(token), token, turn, DialogTurnStatus.Completed, [], [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal([1L, 2L, 3L], fixture.Contexts.Persisted.Select(row => row.Version));
         Assert.Equal([0L, 1L, 1L], fixture.Contexts.Persisted.Select(row => row.ThroughTurnSequence));
         Assert.Single(fixture.Items.Persisted);
         Assert.Single(fixture.Turns.Persisted);
-        Assert.Equal(ServiceErrorType.Validation, (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 0, Response(ModelResponseStatus.Completed))).Error!.Type);
-        Assert.Equal(ServiceErrorType.Validation, (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Incomplete))).Error!.Type);
+        Assert.Equal(ServiceErrorType.Validation, (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 0, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        Assert.Equal(ServiceErrorType.Validation, (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Incomplete), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         fixture.BeforeSave = () => throw new IOException("failed compact save");
-        await Assert.ThrowsAsync<IOException>(() => fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed)));
+        await Assert.ThrowsAsync<IOException>(() => fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(3, fixture.Contexts.Persisted.Count);
         Assert.Equal(token.Revision, fixture.Roots.Persisted[0].Revision);
     }
@@ -262,13 +262,13 @@ public class DialogWritePortsTests
     {
         FakeWriteFixture fixture = new();
         DialogWriteToken token = await fixture.CreateAsync();
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Deletion.DeleteAsync(token, FakeWriteFixture.NOW.AddDays(1).AddTicks(-1))).Error!.Type);
-        DialogWriteToken next = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, Guid.NewGuid(), [])).Data!;
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Deletion.DeleteAsync(token, FakeWriteFixture.NOW.AddDays(1))).Error!.Type);
-        Assert.True((await fixture.Deletion.DeleteAsync(next, FakeWriteFixture.NOW.AddDays(1))).Success);
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Deletion.DeleteAsync(token, FakeWriteFixture.NOW.AddDays(1).AddTicks(-1), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        DialogWriteToken next = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, Guid.NewGuid(), [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Deletion.DeleteAsync(token, FakeWriteFixture.NOW.AddDays(1), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        Assert.True((await fixture.Deletion.DeleteAsync(next, FakeWriteFixture.NOW.AddDays(1), cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Empty(fixture.Roots.Persisted);
         Assert.Empty(fixture.Turns.Persisted);
-        Assert.Equal(ServiceErrorType.NotFound, (await fixture.Deletion.DeleteAsync(next, FakeWriteFixture.NOW.AddDays(1))).Error!.Type);
+        Assert.Equal(ServiceErrorType.NotFound, (await fixture.Deletion.DeleteAsync(next, FakeWriteFixture.NOW.AddDays(1), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
     }
 
     /// <summary>Повторные ID/terminal completion не меняют данные; child ID остаются локальны своему родителю.</summary>
@@ -278,20 +278,20 @@ public class DialogWritePortsTests
         FakeWriteFixture fixture = new();
         DialogWriteToken token = await fixture.CreateAsync();
         Guid turn = Guid.NewGuid();
-        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [])).Data!;
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [])).Error!.Type);
+        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn, [], cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         Guid stepId = Guid.NewGuid();
         StoredModelStep step = new(stepId, Response(ModelResponseStatus.Failed));
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [step, step])).Error!.Type);
-        token = (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [step])).Data!;
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [step])).Error!.Type);
-        token = (await fixture.Writer.FinishAsync(FakeWriteFixture.Access(token), token, turn, DialogTurnStatus.Failed, [], [])).Data!;
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [])).Error!.Type);
-        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.FinishAsync(FakeWriteFixture.Access(token), token, turn, DialogTurnStatus.Completed, [], [])).Error!.Type);
-        Assert.Equal(ServiceErrorType.NotFound, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, Guid.NewGuid(), [], [])).Error!.Type);
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [step, step], cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        token = (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [step], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [step], cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        token = (await fixture.Writer.FinishAsync(FakeWriteFixture.Access(token), token, turn, DialogTurnStatus.Failed, [], [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, turn, [], [], cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        Assert.Equal(ServiceErrorType.Conflict, (await fixture.Writer.FinishAsync(FakeWriteFixture.Access(token), token, turn, DialogTurnStatus.Completed, [], [], cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        Assert.Equal(ServiceErrorType.NotFound, (await fixture.Writer.AppendAsync(FakeWriteFixture.Access(token), token, Guid.NewGuid(), [], [], cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         DialogWriteToken other = await fixture.CreateAsync();
-        other = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(other), other, turn, [])).Data!;
-        Assert.True((await fixture.Writer.AppendAsync(FakeWriteFixture.Access(other), other, turn, [], [step])).Success);
+        other = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(other), other, turn, [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        Assert.True((await fixture.Writer.AppendAsync(FakeWriteFixture.Access(other), other, turn, [], [step], cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(2, fixture.Steps.Persisted.Count);
     }
 

@@ -21,7 +21,7 @@ public class ExpiredDialogCleanupTests
         Assert.Equal(0, probe.Created);
         using IServiceScope caller = root.CreateScope();
         ExpiredDialogCleanup cleanup = caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>();
-        ExpiredDialogCleanupResult result = await cleanup.CleanupAsync(2);
+        ExpiredDialogCleanupResult result = await cleanup.CleanupAsync(2, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ExpiredDialogCleanupStatus.Completed, result.Status);
         Assert.True(result.CandidatesRead);
         Assert.Equal(2, result.DeletedCount);
@@ -44,7 +44,7 @@ public class ExpiredDialogCleanupTests
         probe.Delete = (token, _) => Task.FromResult(ReferenceEquals(token, probe.Tokens[1]) ? ServiceResult.Fail(error) : ServiceResult.Ok());
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
-        ExpiredDialogCleanupResult result = await caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>().CleanupAsync(3);
+        ExpiredDialogCleanupResult result = await caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>().CleanupAsync(3, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ExpiredDialogCleanupStatus.Partial, result.Status);
         Assert.Equal(2, result.DeletedCount);
         Assert.Equal(new[] { ExpiredDialogDeletionStatus.Deleted, ExpiredDialogDeletionStatus.Failed, ExpiredDialogDeletionStatus.Deleted }, result.Candidates.Select(candidate => candidate.Status));
@@ -66,7 +66,7 @@ public class ExpiredDialogCleanupTests
         if (failed) probe.Read = (_, _) => Task.FromResult(ServiceResult<IReadOnlyList<DialogWriteToken>>.Fail(error));
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
-        ExpiredDialogCleanupResult result = await caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>().CleanupAsync(1);
+        ExpiredDialogCleanupResult result = await caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>().CleanupAsync(1, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(failed ? ExpiredDialogCleanupStatus.Failed : ExpiredDialogCleanupStatus.Completed, result.Status);
         Assert.Equal(!failed, result.CandidatesRead);
         Assert.Same(failed ? error : null, result.Error);
@@ -113,7 +113,7 @@ public class ExpiredDialogCleanupTests
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
         Task<ExpiredDialogCleanupResult> running = caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>().CleanupAsync(3, cancellation.Token);
-        try { await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)); }
+        try { await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken); }
         finally { cancellation.Cancel(); await running; }
         ExpiredDialogCleanupResult result = await running;
         Assert.Equal(ExpiredDialogCleanupStatus.Canceled, result.Status);
@@ -132,7 +132,7 @@ public class ExpiredDialogCleanupTests
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
         ExpiredDialogCleanup cleanup = caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>();
-        Assert.Same(primary, await Assert.ThrowsAsync<IOException>(() => cleanup.CleanupAsync(3)));
+        Assert.Same(primary, await Assert.ThrowsAsync<IOException>(() => cleanup.CleanupAsync(3, cancellationToken: TestContext.Current.CancellationToken)));
         ExpiredDialogCleanupResult result = cleanup.LastResult!;
         Assert.Equal(ExpiredDialogCleanupStatus.Interrupted, result.Status);
         Assert.Equal(new[] { ExpiredDialogDeletionStatus.Deleted, ExpiredDialogDeletionStatus.Unknown, ExpiredDialogDeletionStatus.NotAttempted }, result.Candidates.Select(candidate => candidate.Status));
@@ -140,7 +140,7 @@ public class ExpiredDialogCleanupTests
         Assert.Equal(probe.Created, probe.Disposed);
         Assert.DoesNotContain("synthetic-secret", System.Text.Json.JsonSerializer.Serialize(result));
         probe.Delete = (_, _) => Task.FromResult(ServiceResult.Ok());
-        Assert.Equal(ExpiredDialogCleanupStatus.Completed, (await cleanup.CleanupAsync(1)).Status);
+        Assert.Equal(ExpiredDialogCleanupStatus.Completed, (await cleanup.CleanupAsync(1, cancellationToken: TestContext.Current.CancellationToken)).Status);
         Assert.Equal(1, result.DeletedCount);
         Assert.Equal(2, probe.Reads);
     }
@@ -157,7 +157,7 @@ public class ExpiredDialogCleanupTests
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
         ExpiredDialogCleanup cleanup = caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>();
-        await Assert.ThrowsAsync<IOException>(() => cleanup.CleanupAsync(2));
+        await Assert.ThrowsAsync<IOException>(() => cleanup.CleanupAsync(2, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(ExpiredDialogCleanupStatus.Interrupted, cleanup.LastResult!.Status);
         Assert.Equal(failed ? ExpiredDialogDeletionStatus.Failed : ExpiredDialogDeletionStatus.Deleted, cleanup.LastResult.Candidates[0].Status);
         Assert.Same(failed ? expected : null, cleanup.LastResult.Candidates[0].Error);
@@ -213,8 +213,8 @@ public class ExpiredDialogCleanupTests
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
         ExpiredDialogCleanup cleanup = caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>();
-        if (dispose) await Assert.ThrowsAsync<IOException>(() => cleanup.CleanupAsync(1));
-        else await Assert.ThrowsAsync<OperationCanceledException>(() => cleanup.CleanupAsync(1));
+        if (dispose) await Assert.ThrowsAsync<IOException>(() => cleanup.CleanupAsync(1, cancellationToken: TestContext.Current.CancellationToken));
+        else await Assert.ThrowsAsync<OperationCanceledException>(() => cleanup.CleanupAsync(1, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(ExpiredDialogCleanupStatus.Interrupted, cleanup.LastResult!.Status);
         Assert.Equal(dispose, cleanup.LastResult.CandidatesRead);
         Assert.All(cleanup.LastResult.Candidates, candidate => Assert.Equal(ExpiredDialogDeletionStatus.NotAttempted, candidate.Status));
@@ -235,8 +235,8 @@ public class ExpiredDialogCleanupTests
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
         ExpiredDialogCleanup cleanup = caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>();
-        if (kind == "limit") await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => cleanup.CleanupAsync(0));
-        else await Assert.ThrowsAsync<InvalidOperationException>(() => cleanup.CleanupAsync(kind == "duplicate" ? 2 : 1));
+        if (kind == "limit") await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => cleanup.CleanupAsync(0, cancellationToken: TestContext.Current.CancellationToken));
+        else await Assert.ThrowsAsync<InvalidOperationException>(() => cleanup.CleanupAsync(kind == "duplicate" ? 2 : 1, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, probe.Deletes);
         Assert.Equal(kind == "limit" ? 0 : 1, probe.Reads);
     }
@@ -252,11 +252,11 @@ public class ExpiredDialogCleanupTests
         await using ServiceProvider root = Root(probe);
         using IServiceScope caller = root.CreateScope();
         ExpiredDialogCleanup cleanup = caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>();
-        Task<ExpiredDialogCleanupResult> running = cleanup.CleanupAsync(1);
+        Task<ExpiredDialogCleanupResult> running = cleanup.CleanupAsync(1, cancellationToken: TestContext.Current.CancellationToken);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await Assert.ThrowsAsync<InvalidOperationException>(() => cleanup.CleanupAsync(1));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => cleanup.CleanupAsync(1, cancellationToken: TestContext.Current.CancellationToken));
         }
         finally { release.TrySetResult(); await running; }
         Assert.Same(await running, cleanup.LastResult);

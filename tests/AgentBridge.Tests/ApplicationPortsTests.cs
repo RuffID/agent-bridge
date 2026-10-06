@@ -83,7 +83,7 @@ public class ApplicationPortsTests
         IModelGateway gateway = new FakeGateway(response);
         List<string?> deltas = [];
         ServiceResult<ModelResponse> result = await gateway.GenerateAsync(Call(), Request(), new("synthetic-user-key"),
-            (update, _) => { deltas.Add(update.TextDelta); return ValueTask.CompletedTask; });
+            (update, _) => { deltas.Add(update.TextDelta); return ValueTask.CompletedTask; }, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Null(result.Error);
         Assert.NotNull(result.Data);
@@ -114,7 +114,7 @@ public class ApplicationPortsTests
         IModelGateway gateway = new FakeGateway(ModelResponse.Completed([]));
         InvalidOperationException expected = new("Ошибка приложения.");
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            gateway.GenerateAsync(Call(), Request(), new("synthetic"), (_, _) => throw expected));
+            gateway.GenerateAsync(Call(), Request(), new("synthetic"), (_, _) => throw expected, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Same(expected, actual);
     }
 
@@ -125,9 +125,9 @@ public class ApplicationPortsTests
         ServiceError forbidden = new(ServiceErrorType.Forbidden, "Доступ запрещён.");
         IContextProvider provider = new DeniedContextProvider(forbidden);
         IToolHandler tool = new DeniedToolHandler(forbidden);
-        ServiceResult<ContextContribution> context = await provider.GetContextAsync(new(Call(), []));
+        ServiceResult<ContextContribution> context = await provider.GetContextAsync(new(Call(), []), cancellationToken: TestContext.Current.CancellationToken);
         using JsonDocument arguments = JsonDocument.Parse("{\"orderId\":42}");
-        ServiceResult<ToolOutput> output = await tool.ExecuteAsync(new(Call(), "call-42", tool.Definition.Name, arguments.RootElement));
+        ServiceResult<ToolOutput> output = await tool.ExecuteAsync(new(Call(), "call-42", tool.Definition.Name, arguments.RootElement), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(context.Success);
         Assert.False(output.Success);
         Assert.Null(context.Data);
@@ -163,7 +163,7 @@ public class ApplicationPortsTests
     {
         ModelRequest request = Request();
         CapturingTokenCounter counter = new();
-        ServiceResult<ContextTokenCount> result = await counter.CountAsync(request);
+        ServiceResult<ContextTokenCount> result = await counter.CountAsync(request, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Same(request, counter.Received);
         Assert.Equal("instructions", counter.Received!.Instructions);
         Assert.Single(counter.Received.Tools);
@@ -181,7 +181,7 @@ public class ApplicationPortsTests
     {
         FakeGateway gateway = new(ModelResponse.Completed([]));
         ModelAccess access = new("synthetic-user-secret");
-        await gateway.GenerateAsync(Call(), Request(), access);
+        await gateway.GenerateAsync(Call(), Request(), access, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Same(access, gateway.ReceivedAccess);
         Assert.Equal("synthetic-user-secret", gateway.ReceivedAccess!.RevealApiKey());
         Assert.DoesNotContain("synthetic-user-secret", access.ToString());
@@ -214,7 +214,7 @@ public class ApplicationPortsTests
         DialogWriteToken expected = store.Snapshot!.Token;
         DialogAccess access = new(expected.DialogId, OWNER, NOW_UTC);
         Guid turnId = Guid.NewGuid();
-        ServiceResult<DialogWriteToken> begun = await ((IDialogTurnWriter)store).BeginAsync(access, expected, turnId, [], default);
+        ServiceResult<DialogWriteToken> begun = await ((IDialogTurnWriter)store).BeginAsync(access, expected, turnId, [], TestContext.Current.CancellationToken);
         expected = begun.Data!;
         DialogSnapshot before = store.Snapshot!;
         switch (condition)
@@ -227,7 +227,7 @@ public class ApplicationPortsTests
             case "dialog": access = new(DialogId.From(Guid.NewGuid()), OWNER, NOW_UTC); break;
         }
         ServiceResult<DialogWriteToken> result = await ((IDialogTurnWriter)store).FinishAsync(access, expected,
-            turnId, DialogTurnStatus.Completed, [Item("{\"type\":\"message\"}")], []);
+            turnId, DialogTurnStatus.Completed, [Item("{\"type\":\"message\"}")], [], cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Null(result.Data);
         Assert.Equal(errorType, result.Error?.Type);
@@ -241,7 +241,7 @@ public class ApplicationPortsTests
         ContractStore store = new();
         DialogWriteToken old = store.Snapshot!.Token;
         store.Snapshot = new(new(old.DialogId, Guid.NewGuid(), old.Revision), OWNER, NOW_UTC, NOW_UTC.AddDays(1), 0, [], null);
-        ServiceResult<DialogWriteToken> result = await ((IDialogTurnWriter)store).BeginAsync(new(old.DialogId, OWNER, NOW_UTC), old, Guid.NewGuid(), []);
+        ServiceResult<DialogWriteToken> result = await ((IDialogTurnWriter)store).BeginAsync(new(old.DialogId, OWNER, NOW_UTC), old, Guid.NewGuid(), [], cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, result.Error?.Type);
         Assert.Empty(store.Snapshot.Turns);
     }
@@ -253,11 +253,11 @@ public class ApplicationPortsTests
         ContractStore store = new();
         DialogSnapshot snapshot = store.Snapshot!;
         DialogAccess access = new(snapshot.Token.DialogId, OWNER, snapshot.ExpiresAtUtc);
-        ServiceResult<DialogSnapshot> read = await ((IDialogReader)store).ReadAsync(access);
+        ServiceResult<DialogSnapshot> read = await ((IDialogReader)store).ReadAsync(access, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(read.Success);
         Assert.True(read.Data!.IsExpired(access.NowUtc));
         Assert.False(read.Data.IsExpired(access.NowUtc.AddTicks(-1)));
-        ServiceResult<DialogWriteToken> begin = await store.BeginAsync(access, snapshot.Token, Guid.NewGuid(), []);
+        ServiceResult<DialogWriteToken> begin = await store.BeginAsync(access, snapshot.Token, Guid.NewGuid(), [], cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Expired, begin.Error?.Type);
         Assert.Same(snapshot, store.Snapshot);
     }
@@ -273,7 +273,7 @@ public class ApplicationPortsTests
         DialogAccess access = new(token.DialogId, OWNER, NOW_UTC);
         Guid turnId = Guid.NewGuid();
         Guid stepId = Guid.NewGuid();
-        token = (await writer.BeginAsync(access, token, turnId, [Item("{\"type\":\"message\",\"role\":\"user\"}")])).Data!;
+        token = (await writer.BeginAsync(access, token, turnId, [Item("{\"type\":\"message\",\"role\":\"user\"}")], cancellationToken: TestContext.Current.CancellationToken)).Data!;
         CanonicalModelEnvelope envelope;
         ModelContinuation continuation;
         CanonicalModelItem item;
@@ -287,9 +287,9 @@ public class ApplicationPortsTests
             item = new(document.RootElement.GetProperty("output")[0]);
         }
         ModelResponse response = ModelResponse.Incomplete([item], envelope, continuation);
-        token = (await writer.AppendAsync(access, token, turnId, [item], [new(stepId, response)])).Data!;
-        token = (await writer.FinishAsync(access, token, turnId, DialogTurnStatus.Incomplete, [], [])).Data!;
-        DialogSnapshot read = (await reader.ReadAsync(access)).Data!;
+        token = (await writer.AppendAsync(access, token, turnId, [item], [new(stepId, response)], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        token = (await writer.FinishAsync(access, token, turnId, DialogTurnStatus.Incomplete, [], [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        DialogSnapshot read = (await reader.ReadAsync(access, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         StoredDialogTurn turn = Assert.Single(read.Turns);
         StoredModelStep step = Assert.Single(turn.ModelSteps);
         Assert.Equal(turnId, turn.Id);
@@ -301,7 +301,7 @@ public class ApplicationPortsTests
         Assert.Equal("opaque", Assert.Single(step.Response.Output).Content.GetProperty("encrypted_content").GetString());
         Assert.Equal(2, turn.Items.Count);
         Assert.All(turn.Items, value => Assert.False(value.Content.TryGetProperty("usage", out _)));
-        ServiceResult<DialogWriteToken> repeated = await writer.FinishAsync(access, token, turnId, DialogTurnStatus.Completed, [], []);
+        ServiceResult<DialogWriteToken> repeated = await writer.FinishAsync(access, token, turnId, DialogTurnStatus.Completed, [], [], cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, repeated.Error?.Type);
         Assert.Equal(DialogTurnStatus.Incomplete, Assert.Single(store.Snapshot!.Turns).Status);
     }
@@ -340,7 +340,7 @@ public class ApplicationPortsTests
             ModelResponseStatus.Canceled => ModelResponse.Canceled(output),
             _ => throw new ArgumentOutOfRangeException(nameof(status))
         };
-        ServiceResult<DialogWriteToken> result = await writer.SaveAsync(new(before.Token.DialogId, OWNER, NOW_UTC), before.Token, 0, response);
+        ServiceResult<DialogWriteToken> result = await writer.SaveAsync(new(before.Token.DialogId, OWNER, NOW_UTC), before.Token, 0, response, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Validation, result.Error?.Type);
         Assert.Same(before, store.Snapshot);
         Assert.Null(store.Snapshot!.ActiveContext);
@@ -354,14 +354,14 @@ public class ApplicationPortsTests
         DialogWriteToken token = store.Snapshot!.Token;
         DialogAccess access = new(token.DialogId, OWNER, NOW_UTC);
         Guid turnId = Guid.NewGuid();
-        token = (await store.BeginAsync(access, token, turnId, [Item("{\"type\":\"message\"}")])).Data!;
-        token = (await store.FinishAsync(access, token, turnId, DialogTurnStatus.Completed, [], [])).Data!;
+        token = (await store.BeginAsync(access, token, turnId, [Item("{\"type\":\"message\"}")], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        token = (await store.FinishAsync(access, token, turnId, DialogTurnStatus.Completed, [], [], cancellationToken: TestContext.Current.CancellationToken)).Data!;
         using JsonDocument document = JsonDocument.Parse("{\"object\":\"response.compaction\",\"id\":\"compact-1\",\"unknown\":true}");
         ModelResponse compact = ModelResponse.Completed([Item("{\"type\":\"compaction\",\"encrypted_content\":\"opaque\"}")], new(document.RootElement));
         IDialogContextWriter writer = store;
-        ServiceResult<DialogWriteToken> saved = await writer.SaveAsync(access, token, 1, compact);
+        ServiceResult<DialogWriteToken> saved = await writer.SaveAsync(access, token, 1, compact, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(saved.Success);
-        DialogSnapshot snapshot = (await ((IDialogReader)store).ReadAsync(access)).Data!;
+        DialogSnapshot snapshot = (await ((IDialogReader)store).ReadAsync(access, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Single(snapshot.Turns);
         Assert.NotNull(snapshot.ActiveContext);
         Assert.Equal("compact-1", snapshot.ActiveContext.Compaction.Envelope!.Content.GetProperty("id").GetString());

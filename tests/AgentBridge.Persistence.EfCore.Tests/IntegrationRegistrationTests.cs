@@ -54,7 +54,7 @@ public class IntegrationRegistrationTests
         Assert.Null(scoped.GetService<IConfiguration>());
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType.Name.Contains("MaintenanceCoordinator", StringComparison.Ordinal));
         Assert.Equal(0, handler.Calls);
-        ServiceResult<ModelAccess> access = await scoped.GetRequiredService<IModelAccessResolver>().ResolveAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelAccess> access = await scoped.GetRequiredService<IModelAccessResolver>().ResolveAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.True(access.Success);
         Assert.Equal("synthetic-shared-key", access.Data!.RevealApiKey());
         Assert.Equal(0, handler.Calls);
@@ -83,7 +83,7 @@ public class IntegrationRegistrationTests
         await using (AsyncServiceScope scope = provider.CreateAsyncScope())
         {
             ServiceResult<ModelSettingsSnapshot> result = await scope.ServiceProvider.GetRequiredService<IModelSettingsReader>()
-                .ReadAsync(DialogOwnerId.From("owner"));
+                .ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
             Assert.Equal(success, result.Success);
             Assert.Equal(1, created);
             Assert.Equal(success ? 1 : 0, handler.Calls);
@@ -119,7 +119,7 @@ public class IntegrationRegistrationTests
         services.AddAgentBridge(Config(), _ => client);
         await using ServiceProvider provider = Build(services);
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
-        Exception error = await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<IModelSettingsReader>().ReadAsync(DialogOwnerId.From("owner")));
+        Exception error = await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<IModelSettingsReader>().ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken));
         Assert.Same(primary, error);
         Assert.Equal(0, handler.Calls);
     }
@@ -195,7 +195,7 @@ public class IntegrationRegistrationTests
         await using ServiceProvider provider = Build(services);
         provider.GetRequiredService<IStartupValidator>().Validate();
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
-        Assert.Equal("individual-key", (await scope.ServiceProvider.GetRequiredService<IModelAccessResolver>().ResolveAsync(DialogOwnerId.From("owner"))).Data!.RevealApiKey());
+        Assert.Equal("individual-key", (await scope.ServiceProvider.GetRequiredService<IModelAccessResolver>().ResolveAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken)).Data!.RevealApiKey());
         Assert.Null(provider.GetRequiredService<IOptions<AgentOptions>>().Value.Instructions);
     }
 
@@ -264,7 +264,7 @@ public class IntegrationRegistrationTests
         await using ServiceProvider provider = Build(services);
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
         Assert.Same(http, scope.ServiceProvider.GetRequiredService<HttpApiClient>());
-        Assert.True((await scope.ServiceProvider.GetRequiredService<IModelSettingsReader>().ReadAsync(DialogOwnerId.From("owner"))).Success);
+        Assert.True((await scope.ServiceProvider.GetRequiredService<IModelSettingsReader>().ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(1, handler.Calls);
     }
 
@@ -280,7 +280,7 @@ public class IntegrationRegistrationTests
         Assert.Null(client);
         await using (AsyncServiceScope scope = provider.CreateAsyncScope())
         {
-            Assert.True((await scope.ServiceProvider.GetRequiredService<IModelSettingsReader>().ReadAsync(DialogOwnerId.From("owner"))).Success);
+            Assert.True((await scope.ServiceProvider.GetRequiredService<IModelSettingsReader>().ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken)).Success);
             Assert.False(client!.Disposed);
         }
         Assert.True(client!.Disposed);
@@ -313,7 +313,7 @@ public class IntegrationRegistrationTests
         await using (AsyncServiceScope scope = provider.CreateAsyncScope())
         {
             ServiceResult<ModelRequest> result = await scope.ServiceProvider.GetRequiredService<ContextBuilder>().BuildAsync(
-                new(dialog, owner, Guid.NewGuid(), "agent"), snapshot, new("gpt-4.1", "medium", "instructions", [Item("new")], []), now);
+                new(dialog, owner, Guid.NewGuid(), "agent"), snapshot, new("gpt-4.1", "medium", "instructions", [Item("new")], []), now, cancellationToken: TestContext.Current.CancellationToken);
             Assert.True(result.Success);
             Assert.Equal(new[] { "first", "second", "history", "new" }, result.Data!.Input.Select(item => item.Content.GetProperty("content").GetString()));
             Assert.Same(history, result.Data.Input[2]);
@@ -353,7 +353,7 @@ public class IntegrationRegistrationTests
         DialogSnapshot snapshot = new(new(dialog, Guid.NewGuid(), 0), owner, now.AddDays(-1), now.AddDays(1), 100,
             [new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [history], [])], null);
         ServiceResult<ModelRequest> result = await scope.ServiceProvider.GetRequiredService<ContextBuilder>().BuildAsync(
-            new(dialog, owner, Guid.NewGuid(), "agent"), snapshot, new("gpt-4.1", "medium", "instructions", [Item("new")], []), now);
+            new(dialog, owner, Guid.NewGuid(), "agent"), snapshot, new("gpt-4.1", "medium", "instructions", [Item("new")], []), now, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(new[] { "history", "new" }, result.Data!.Input.Select(item => item.Content.GetProperty("content").GetString()));
         Assert.Same(history, snapshot.Turns[0].Items[0]);

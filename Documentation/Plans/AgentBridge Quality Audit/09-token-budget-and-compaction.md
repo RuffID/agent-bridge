@@ -8,7 +8,7 @@
 
 ## Компоненты и зависимости
 
-[ContextTokenCounter](../../../Tokenization/ContextTokenCounter.cs), ModelEncodingMap/OrdinaryTokenizerFactory, [ContextBudgetGuard](../../../Application/ContextBudgetGuard.cs), ContextCompactor, CompactRequestWriter/CompactJsonReader, IDialogContextWriter. Тесты ContextTokenCounterTests, ContextBudgetGuardTests, ContextCompactorTests и compact cases ResponsesJsonTests.
+[ContextTokenCounter](../../../AgentBridge/Tokenization/ContextTokenCounter.cs), ModelEncodingMap/OrdinaryTokenizerFactory, [ContextBudgetGuard](../../../AgentBridge/Application/ContextBudgetGuard.cs), ContextCompactor, CompactRequestWriter/CompactJsonReader, IDialogContextWriter. Тесты ContextTokenCounterTests, ContextBudgetGuardTests, ContextCompactorTests и compact cases ResponsesJsonTests.
 
 ## Способ проверки и границы
 
@@ -49,7 +49,7 @@ Server billing/точный upstream count, сохранение каждой с
 
 ### Все группы вопросов
 
-Контракт: [main spec](../../../openspec/specs/agent-runtime/spec.md):113–186,359–366,562–564,832–845,849. **T**=[ContextTokenCounter.cs](../../../Tokenization/ContextTokenCounter.cs), **G**=[ContextBudgetGuard.cs](../../../Application/ContextBudgetGuard.cs), **C**=[ContextCompactor.cs](../../../Application/ContextCompactor.cs), **R**=`adapters/AgentBridge.CodexLb/Responses`, **P**=`adapters/AgentBridge.Persistence.EfCore/UnitOfWork`. Имена Context*Tests.cs обозначают файлы в `tests/AgentBridge.Tests/`, ResponsesJsonTests.cs — в `tests/AgentBridge.CodexLb.Tests/`; ContextBuilder.cs/ModelSelectionValidator.cs — в `Application/`, OrdinaryTokenizerFactory.cs — в `Tokenization/`, техничка07 — `Documentation/Technical documentation/07-tokenizer-and-settings.md`. Остальные пути от корня AgentBridge. Строки сверены по текущим файлам; чтение assertion — **не pass**.
+Контракт: [main spec](../../../openspec/specs/agent-runtime/spec.md):113–186,359–366,562–564,832–845,849. **T**=[ContextTokenCounter.cs](../../../AgentBridge/Tokenization/ContextTokenCounter.cs), **G**=[ContextBudgetGuard.cs](../../../AgentBridge/Application/ContextBudgetGuard.cs), **C**=[ContextCompactor.cs](../../../AgentBridge/Application/ContextCompactor.cs), **R**=`adapters/AgentBridge.CodexLb/Responses`, **P**=`adapters/AgentBridge.Persistence.EfCore/UnitOfWork`. Имена Context*Tests.cs обозначают файлы в `tests/AgentBridge.Tests/`, ResponsesJsonTests.cs — в `tests/AgentBridge.CodexLb.Tests/`; ContextBuilder.cs/ModelSelectionValidator.cs — в `Application/`, OrdinaryTokenizerFactory.cs — в `Tokenization/`, техничка07 — `Documentation/Technical documentation/07-tokenizer-and-settings.md`. Остальные пути от корня AgentBridge. Строки сверены по текущим файлам; чтение assertion — **не pass**.
 
 | Вопрос | Исследовано | Результат A | Evidence: символ/строки | Ограничение |
 | --- | --- | --- | --- | --- |

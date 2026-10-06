@@ -31,7 +31,7 @@ public class ModelCatalogTests
     public async Task IndividualModeRejectsNullWithoutSharedFallback()
     {
         using Fixture fixture = new(null, SHARED_KEY, keyMode: ModelKeySourceMode.Individual);
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unauthorized, result.Error!.Type);
         Assert.Equal(1, fixture.Source.Calls); Assert.Equal(0, fixture.Handler.Calls);
     }
@@ -49,11 +49,11 @@ public class ModelCatalogTests
             fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>(),
             fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ContextCompactionOptions>>(),
             fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<AgentOptions>>());
-        AgentSettingsSnapshot initial = (await service.ReadAsync(call)).Data!;
+        AgentSettingsSnapshot initial = (await service.ReadAsync(call, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal("application-model", initial.Model.Model.Id);
         fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse(Catalog(40_000, "new-effort").Replace("application-model", "selected-model", StringComparison.Ordinal)));
-        Assert.True((await service.SelectAsync(call, initial.Token, initial.SelectionVersion, "selected-model", "new-effort")).Success);
-        AgentSettingsSnapshot selected = (await service.ReadAsync(call)).Data!;
+        Assert.True((await service.SelectAsync(call, initial.Token, initial.SelectionVersion, "selected-model", "new-effort", cancellationToken: TestContext.Current.CancellationToken)).Success);
+        AgentSettingsSnapshot selected = (await service.ReadAsync(call, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal("selected-model", selected.Model.Model.Id);
         Assert.Equal("new-effort", selected.Model.ReasoningEffort);
         Assert.Equal(1, selected.SelectionVersion);
@@ -70,9 +70,9 @@ public class ModelCatalogTests
     {
         using Fixture fixture = new(INDIVIDUAL_KEY);
         DialogOwnerId owner = DialogOwnerId.From("owner");
-        ModelAccess access = (await fixture.Scope.ServiceProvider.GetRequiredService<IModelAccessResolver>().ResolveAsync(owner)).Data!;
+        ModelAccess access = (await fixture.Scope.ServiceProvider.GetRequiredService<IModelAccessResolver>().ResolveAsync(owner, ct: TestContext.Current.CancellationToken)).Data!;
         fixture.Source.Key = "changed-key";
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadWithAccessAsync(owner, access);
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadWithAccessAsync(owner, access, ct: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(1, fixture.Source.Calls);
         Assert.Equal("Bearer " + INDIVIDUAL_KEY, Assert.Single(fixture.Handler.Authorizations));
@@ -88,7 +88,7 @@ public class ModelCatalogTests
         using Fixture fixture = new(individual);
         IModelSettingsReader reader = fixture.Reader;
         Assert.Equal(0, fixture.Handler.Calls);
-        ServiceResult<ModelSettingsSnapshot> result = await reader.ReadAsync(DialogOwnerId.From(" Owner-A "));
+        ServiceResult<ModelSettingsSnapshot> result = await reader.ReadAsync(DialogOwnerId.From(" Owner-A "), ct: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(" Owner-A ", fixture.Source.LastOwner);
         Assert.Equal("Bearer " + expected, fixture.Handler.Authorizations.Single());
@@ -106,7 +106,7 @@ public class ModelCatalogTests
     public async Task MalformedIndividualKeyDoesNotFallBack(string key)
     {
         using Fixture fixture = new(key);
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
         Assert.Null(result.Data);
         Assert.Equal(0, fixture.Handler.Calls);
@@ -118,7 +118,7 @@ public class ModelCatalogTests
     public async Task MissingBothKeysDoesNotSendHttp()
     {
         using Fixture fixture = new(null, null);
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unauthorized, result.Error!.Type);
         Assert.Equal(0, fixture.Handler.Calls);
     }
@@ -130,7 +130,7 @@ public class ModelCatalogTests
         using Fixture fixture = new(null);
         InvalidOperationException failure = new("source-private-error");
         fixture.Source.Failure = failure;
-        Exception actual = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(DialogOwnerId.From("owner")));
+        Exception actual = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken));
         Assert.Same(failure, actual);
         Assert.Equal(0, fixture.Handler.Calls);
     }
@@ -155,7 +155,7 @@ public class ModelCatalogTests
             response.Content.Headers.Add("X-Private-Content", PRIVATE_PAYLOAD);
             return Task.FromResult(response);
         };
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(type, result.Error!.Type);
         Assert.Null(result.Data);
         Assert.Equal(["Bearer " + INDIVIDUAL_KEY], fixture.Handler.Authorizations);
@@ -169,17 +169,17 @@ public class ModelCatalogTests
     public async Task CatalogRefreshesCapabilitiesPerCallAndKey()
     {
         using Fixture fixture = new(INDIVIDUAL_KEY);
-        ServiceResult<ModelSettingsSnapshot> first = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> first = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         fixture.Source.Key = "another-synthetic-key";
         fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse(Catalog(36_095)));
-        ServiceResult<ModelSettingsSnapshot> second = await fixture.Reader.ReadAsync(DialogOwnerId.From("another-owner"));
+        ServiceResult<ModelSettingsSnapshot> second = await fixture.Reader.ReadAsync(DialogOwnerId.From("another-owner"), ct: TestContext.Current.CancellationToken);
         Assert.True(first.Success);
         Assert.Equal(ServiceErrorType.Validation, second.Error!.Type);
         Assert.Equal(36_096, first.Data!.Model.InputContextWindow);
         fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse(Catalog(40_000, "new-effort")));
-        ServiceResult<ModelSettingsSnapshot> third = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> third = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unsupported, third.Error!.Type);
-        ServiceResult<ModelSettingsSnapshot> fourth = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), effort: "new-effort");
+        ServiceResult<ModelSettingsSnapshot> fourth = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), effort: "new-effort", ct: TestContext.Current.CancellationToken);
         Assert.True(fourth.Success);
         Assert.Equal("custom-effort", first.Data.ReasoningEffort);
         Assert.Equal("Bearer another-synthetic-key", fixture.Handler.Authorizations[1]);
@@ -190,13 +190,13 @@ public class ModelCatalogTests
     public async Task OverridesAreValidatedWithoutChangingDefaults()
     {
         using Fixture fixture = new(INDIVIDUAL_KEY);
-        ServiceResult<ModelSettingsSnapshot> invalidModel = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), model: "other-model");
-        ServiceResult<ModelSettingsSnapshot> invalidEffort = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), effort: "medium");
-        ServiceResult<ModelSettingsSnapshot> empty = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), effort: "");
+        ServiceResult<ModelSettingsSnapshot> invalidModel = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), model: "other-model", ct: TestContext.Current.CancellationToken);
+        ServiceResult<ModelSettingsSnapshot> invalidEffort = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), effort: "medium", ct: TestContext.Current.CancellationToken);
+        ServiceResult<ModelSettingsSnapshot> empty = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), effort: "", ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unsupported, invalidModel.Error!.Type);
         Assert.Equal(ServiceErrorType.Unsupported, invalidEffort.Error!.Type);
         Assert.Equal(ServiceErrorType.Validation, empty.Error!.Type);
-        Assert.True((await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"))).Success);
+        Assert.True((await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken)).Success);
     }
 
     /// <summary>Пустой каталог успешен как чтение, но недоступная выбранная модель отклоняется.</summary>
@@ -205,10 +205,10 @@ public class ModelCatalogTests
     {
         using Fixture fixture = new(INDIVIDUAL_KEY);
         fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse("{\"object\":\"list\",\"data\":[]}"));
-        ServiceResult<ModelCatalogSnapshot> catalog = await fixture.Catalog.ReadAsync(new ModelAccess(INDIVIDUAL_KEY));
+        ServiceResult<ModelCatalogSnapshot> catalog = await fixture.Catalog.ReadAsync(new ModelAccess(INDIVIDUAL_KEY), ct: TestContext.Current.CancellationToken);
         Assert.True(catalog.Success);
         Assert.Empty(catalog.Data!.Models);
-        Assert.Equal(ServiceErrorType.Unsupported, (await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"))).Error!.Type);
+        Assert.Equal(ServiceErrorType.Unsupported, (await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken)).Error!.Type);
     }
 
     /// <summary>Отсутствие metadata сохраняется, budget/effort не берутся из другого поля или статического списка.</summary>
@@ -227,7 +227,7 @@ public class ModelCatalogTests
         else if (field == "supported_in_api") item["metadata"]![field] = false;
         else item["metadata"]![field] = new JsonArray();
         fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse(root.ToJsonString()));
-        Assert.Equal(ServiceErrorType.Unsupported, (await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"))).Error!.Type);
+        Assert.Equal(ServiceErrorType.Unsupported, (await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken)).Error!.Type);
     }
 
     /// <summary>Повреждённая форма/JSON/пустой успешный ответ не превращаются в пустой каталог или статический fallback.</summary>
@@ -244,7 +244,7 @@ public class ModelCatalogTests
     {
         using Fixture fixture = new(INDIVIDUAL_KEY);
         fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse(json));
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Null(result.Data);
         Assert.Equal(1, fixture.Handler.Calls);
@@ -265,7 +265,7 @@ public class ModelCatalogTests
         JsonNode root = JsonNode.Parse(Catalog())!;
         root["data"]![0]!["metadata"]![field] = JsonNode.Parse(value);
         fixture.Handler.Response = (_, _) => Task.FromResult(JsonResponse(root.ToJsonString()));
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Null(result.Data);
     }
@@ -280,7 +280,7 @@ public class ModelCatalogTests
         {
             Content = new StreamContent(stream)
         });
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unauthorized, result.Error!.Type);
         Assert.Equal(65_537, stream.ReadBytes);
         Assert.True(stream.Disposed);
@@ -297,7 +297,7 @@ public class ModelCatalogTests
         {
             Content = new StreamContent(stream)
         });
-        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.True(stream.Disposed);
         ModelCapabilities model = result.Data!.Model;
@@ -352,7 +352,7 @@ public class ModelCatalogTests
         using Fixture fixture = new(INDIVIDUAL_KEY);
         IOException failure = new("transport-private-error");
         fixture.Handler.Response = (_, _) => throw failure;
-        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => fixture.Reader.ReadAsync(DialogOwnerId.From("owner"))));
+        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => fixture.Reader.ReadAsync(DialogOwnerId.From("owner"), ct: TestContext.Current.CancellationToken)));
         Assert.Equal(1, fixture.Handler.Calls);
     }
 

@@ -38,7 +38,7 @@ public class ContextBuilderTests
         Provider second = new((_, _) => { order.Add("second"); return Success([developer]); });
         ApplicationCallContext call = Call("selected-agent");
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([first, second]).BuildAsync(call, Snapshot([turn]), request, NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([first, second]).BuildAsync(call, Snapshot([turn]), request, NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         ModelRequest prepared = Assert.IsType<ModelRequest>(result.Data);
         Assert.True(result.Success);
@@ -84,7 +84,7 @@ public class ContextBuilderTests
             new(Json("""{"envelope_only":true}""")), compactContinuation));
         DialogSnapshot dialog = Snapshot(turns, context);
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), dialog, Request([fresh]), NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), dialog, Request([fresh]), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(new[] { compact }.Concat(turns.Where(turn => turn.Sequence > through).SelectMany(turn => turn.Items)).Append(fresh),
@@ -114,7 +114,7 @@ public class ContextBuilderTests
         StoredDialogContext context = new(1, 0, ModelResponse.Completed(window));
 
         ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(),
-            Snapshot([Turn(1, DialogTurnStatus.InProgress, tail)], context), Request(fresh), NOW_UTC);
+            Snapshot([Turn(1, DialogTurnStatus.InProgress, tail)], context), Request(fresh), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(new[] { call, output }, result.Data!.Input);
@@ -130,7 +130,7 @@ public class ContextBuilderTests
         CanonicalModelItem opaque = Item("""{"type":"compaction","encrypted_content":"opaque","future":{"call_id":"hidden"}}""");
         CanonicalModelItem[] items = [FunctionCall("A"), FunctionCall("B"), unknown, FunctionOutput("B"), opaque, FunctionOutput("A")];
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), Snapshot(), Request(items), NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), Snapshot(), Request(items), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(items.Select(item => item.Content.GetRawText()), result.Data!.Input.Select(item => item.Content.GetRawText()));
@@ -151,7 +151,7 @@ public class ContextBuilderTests
         DialogSnapshot dialog = Snapshot([turn]);
         DialogWriteToken token = dialog.Token;
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), dialog, Request(), NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), dialog, Request(), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Null(result.Data);
@@ -178,7 +178,7 @@ public class ContextBuilderTests
         StoredDialogContext context = new(1, 0, ModelResponse.Completed(source == "window" ? [call] : []));
 
         ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(context: context),
-            Request(source == "new" ? [call] : []), NOW_UTC);
+            Request(source == "new" ? [call] : []), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Null(result.Data);
@@ -208,7 +208,7 @@ public class ContextBuilderTests
             _ => throw new ArgumentOutOfRangeException(nameof(shape))
         };
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), Snapshot(), Request(items), NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), Snapshot(), Request(items), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Null(result.Data);
@@ -227,7 +227,7 @@ public class ContextBuilderTests
             ? new(DIALOG_ID, DialogOwnerId.From("Tenant/user"), Guid.NewGuid(), "agent")
             : new(DialogId.From(Guid.NewGuid()), OWNER, Guid.NewGuid(), "agent");
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(call, Snapshot(), Request(), NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(call, Snapshot(), Request(), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Null(result.Data);
@@ -245,7 +245,7 @@ public class ContextBuilderTests
         Provider provider = new((_, _) => Success([]));
         DialogSnapshot dialog = Snapshot();
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), dialog, Request(), dialog.ExpiresAtUtc.AddTicks(ticks));
+        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), dialog, Request(), dialog.ExpiresAtUtc.AddTicks(ticks), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(success, result.Success);
         Assert.Equal(success ? 1 : 0, provider.Calls);
@@ -291,7 +291,7 @@ public class ContextBuilderTests
         StoredDialogContext context = new(1, shape == "above-history" ? 2 : 1, compact);
         Provider provider = new((_, _) => Success([]));
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(turns, context), Request(), NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(turns, context), Request(), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Null(result.Data);
@@ -310,7 +310,7 @@ public class ContextBuilderTests
         CanonicalModelItem fresh = Message("new");
 
         ServiceResult<ModelRequest> result = await new ContextBuilder([selected]).BuildAsync(call,
-            Snapshot([Turn(1, DialogTurnStatus.Completed, [Message("private-history")])]), Request([fresh]), NOW_UTC);
+            Snapshot([Turn(1, DialogTurnStatus.Completed, [Message("private-history")])]), Request([fresh]), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Same(call, selected.Request!.Call);
@@ -348,7 +348,7 @@ public class ContextBuilderTests
         Provider next = new((_, _) => Success([]));
 
         InvalidOperationException actual = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new ContextBuilder([failed, next]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC));
+            new ContextBuilder([failed, next]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Same(expected, actual);
         Assert.Equal(0, next.Calls);
@@ -392,7 +392,7 @@ public class ContextBuilderTests
         Task<ServiceResult<ModelRequest>> task = new ContextBuilder([first, next]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC, source.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.False(task.IsCompleted);
             Assert.Equal(0, next.Calls);
             source.Cancel();
@@ -420,7 +420,7 @@ public class ContextBuilderTests
         ModelRequest request = Request(input);
         input.Clear();
 
-        ServiceResult<ModelRequest> result = await builder.BuildAsync(Call(), Snapshot(), request, NOW_UTC);
+        ServiceResult<ModelRequest> result = await builder.BuildAsync(Call(), Snapshot(), request, NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(1, first.Calls);
@@ -452,7 +452,7 @@ public class ContextBuilderTests
         Provider provider = new((_, _) => Success(providerItems));
 
         ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(turns, context),
-            Request(boundary == "window-new" ? pair : []), NOW_UTC);
+            Request(boundary == "window-new" ? pair : []), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(boundary == "pending" ? new[] { call, call, output, output } : new[] { call, output, call, output }, result.Data!.Input);
@@ -463,7 +463,7 @@ public class ContextBuilderTests
     public async Task RepeatedPendingCallsNeedSeparateResults()
     {
         ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(), Snapshot(),
-            Request([FunctionCall("reused"), FunctionCall("reused"), FunctionOutput("reused")]), NOW_UTC);
+            Request([FunctionCall("reused"), FunctionCall("reused"), FunctionOutput("reused")]), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Null(result.Data);
         Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
@@ -474,7 +474,7 @@ public class ContextBuilderTests
     public async Task NonUtcTimeIsRejectedBeforeProvider()
     {
         Provider provider = new((_, _) => Success([]));
-        await Assert.ThrowsAsync<ArgumentException>(() => new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC.ToOffset(TimeSpan.FromHours(7))));
+        await Assert.ThrowsAsync<ArgumentException>(() => new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC.ToOffset(TimeSpan.FromHours(7)), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, provider.Calls);
     }
 
@@ -491,7 +491,7 @@ public class ContextBuilderTests
         CanonicalModelItem item = Item(JsonSerializer.Serialize(new { type = "message", role, content = "business-data" }));
         Provider provider = new((_, _) => Success([item]));
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Same(item, Assert.Single(result.Data!.Input));
@@ -506,7 +506,7 @@ public class ContextBuilderTests
         StoredDialogTurn turn = Turn(1, DialogTurnStatus.Incomplete, [Message("partial")]);
         CanonicalModelItem compact = Item("""{"type":"compaction","encrypted_content":"opaque"}""");
         ServiceResult<ModelRequest> result = await new ContextBuilder([]).BuildAsync(Call(),
-            Snapshot([turn], new(1, 1, ModelResponse.Completed([compact]))), Request(), NOW_UTC);
+            Snapshot([turn], new(1, 1, ModelResponse.Completed([compact]))), Request(), NOW_UTC, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Same(compact, Assert.Single(result.Data!.Input));
         Assert.Equal(DialogTurnStatus.Incomplete, turn.Status);
@@ -531,11 +531,11 @@ public class ContextBuilderTests
         Task<ServiceResult<ModelRequest>> task = new ContextBuilder([first, next]).BuildAsync(Call(), Snapshot(), Request(), NOW_UTC, source.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.False(task.IsCompleted);
             Assert.Equal(0, next.Calls);
             release.TrySetResult();
-            ServiceResult<ModelRequest> result = await task.WaitAsync(TimeSpan.FromSeconds(5));
+            ServiceResult<ModelRequest> result = await task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.True(result.Success);
             Assert.Equal(new[] { "first", "next" }, result.Data!.Input.Select(item => item.Content.GetProperty("content").GetString()));
             Assert.Equal(1, next.Calls);

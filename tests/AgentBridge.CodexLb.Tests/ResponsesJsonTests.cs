@@ -214,7 +214,7 @@ public class ResponsesJsonTests
         fixture.SetJson("{\"id\":\"resp-1\",\"object\":\"response\",\"status\":\"completed\",\"model\":\"server-model\",\"output\":"
             + OUTPUT + ",\"usage\":{\"input_tokens\":7,\"future\":true},\"future\":{\"value\":[1,null]}}");
         fixture.Handler.Headers["X-Codex-Turn-State"] = "opaque-turn";
-        ServiceResult<ModelResponse> result = await fixture.Generate(request);
+        ServiceResult<ModelResponse> result = await fixture.Generate(request, ct: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         ModelResponse report = result.Data!;
         Assert.Equal(ModelResponseStatus.Completed, report.Status);
@@ -248,7 +248,7 @@ public class ResponsesJsonTests
         Assert.Equal("opaque-turn", report.Continuation!.Content.GetProperty("headers").GetProperty("x-codex-turn-state").GetString());
         Assert.DoesNotContain(KEY, report.Continuation.Content.GetRawText());
         Assert.True(fixture.Handler.Content!.Disposed);
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => fixture.Handler.RequestContent!.ReadAsStringAsync());
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => fixture.Handler.RequestContent!.ReadAsStringAsync(cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Lifecycle определяется полным status/error, а не 2xx либо непустым output.</summary>
@@ -266,7 +266,7 @@ public class ResponsesJsonTests
         using Fixture fixture = new();
         fixture.SetJson("{\"status\":" + JsonSerializer.Serialize(status) + ",\"id\":\"resp-life\",\"output\":" + OUTPUT
             + ",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"future\":{\"private\":\"" + PRIVATE + "\"}}");
-        ServiceResult<ModelResponse> result = await fixture.Generate(Request());
+        ServiceResult<ModelResponse> result = await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
         Assert.Equal(expected, result.Data!.Status);
         AssertJson(OUTPUT, JsonSerializer.Serialize(result.Data.Output.Select(item => item.Content)));
@@ -282,7 +282,7 @@ public class ResponsesJsonTests
         using Fixture fixture = new();
         fixture.SetJson("{\"status\":\"completed\",\"output\":" + OUTPUT
             + ",\"error\":{\"type\":\"server_error\",\"code\":\"server_error\",\"message\":\"" + PRIVATE + "\",\"unknown\":123}}");
-        ModelResponse report = (await fixture.Generate(Request())).Data!;
+        ModelResponse report = (await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ModelResponseStatus.Failed, report.Status);
         CodexLbServiceError error = Assert.IsType<CodexLbServiceError>(report.Error);
         Assert.Null(error.HttpStatus);
@@ -296,7 +296,7 @@ public class ResponsesJsonTests
     public async Task EmptyCompletedAndDefaultIncludeAreSupported()
     {
         using Fixture fixture = new();
-        ModelResponse report = (await fixture.Generate(Request())).Data!;
+        ModelResponse report = (await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ModelResponseStatus.Completed, report.Status);
         Assert.Empty(report.Output);
         Assert.Equal("reasoning.encrypted_content", fixture.Handler.Bodies.Single().GetProperty("include")[0].GetString());
@@ -309,7 +309,7 @@ public class ResponsesJsonTests
     {
         using Fixture fixture = new();
         fixture.SetJson("{\"status\":\"completed\",\"id\":\"resp-missing-output\",\"future\":true}");
-        ModelResponse report = (await fixture.Generate(Request())).Data!;
+        ModelResponse report = (await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ModelResponseStatus.Incomplete, report.Status);
         Assert.Empty(report.Output);
         Assert.True(report.Envelope!.Content.GetProperty("future").GetBoolean());
@@ -354,7 +354,7 @@ public class ResponsesJsonTests
         using Fixture fixture = new();
         fixture.Handler.Status = (HttpStatusCode)status;
         fixture.SetJson("{\"error\":{\"type\":\"invalid_request_error\",\"code\":\"previous_response_not_found\",\"param\":\"previous_response_id\",\"message\":\"" + PRIVATE + "\"}}");
-        ServiceResult<ModelResponse> result = await fixture.Generate(Request());
+        ServiceResult<ModelResponse> result = await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Null(result.Data);
         CodexLbServiceError error = Assert.IsType<CodexLbServiceError>(result.Error);
@@ -394,7 +394,7 @@ public class ResponsesJsonTests
         fixture.SetJson(body);
         if (variant == "unsupported") { fixture.Handler.MediaType = "application/octet-stream"; }
         if (variant == "encoding") { fixture.Handler.Bytes = [0xFF, 0xFE, 0xFF]; }
-        ServiceResult<ModelResponse> result = await fixture.Generate(Request());
+        ServiceResult<ModelResponse> result = await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken);
         CodexLbServiceError error = Assert.IsType<CodexLbServiceError>(result.Error);
         Assert.Equal(400, error.HttpStatus);
         Assert.Null(error.ApiType);
@@ -417,7 +417,7 @@ public class ResponsesJsonTests
     {
         using Fixture fixture = new();
         fixture.SetJson(json);
-        ServiceResult<ModelResponse> result = await fixture.Generate(Request());
+        ServiceResult<ModelResponse> result = await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Null(result.Data);
         Assert.True(fixture.Handler.Content!.Disposed);
@@ -432,7 +432,7 @@ public class ResponsesJsonTests
         using Fixture fixture = new();
         fixture.Handler.Headers["X-Codex-Turn-State"] = "opaque-first";
         fixture.SetJson("{\"status\":\"completed\",\"id\":\"resp-first\",\"output\":[]}");
-        ModelContinuation continuation = (await fixture.Generate(Request())).Data!.Continuation!;
+        ModelContinuation continuation = (await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken)).Data!.Continuation!;
         JsonObject content = JsonNode.Parse(continuation.Content.GetRawText())!.AsObject();
         content["future"] = JsonNode.Parse("{\"opaque\":[1,null]}");
         content["headers"]!["x-private-never-send"] = PRIVATE;
@@ -440,7 +440,7 @@ public class ResponsesJsonTests
         fixture.SetJson("{\"status\":\"incomplete\",\"id\":\"resp-second\",\"output\":" + OUTPUT + "}");
         fixture.Handler.Headers["X-Codex-Turn-State"] = "opaque-second";
         ApplicationCallContext next = new(fixture.Call.DialogId, fixture.Call.OwnerId, Guid.NewGuid(), fixture.Call.AgentId);
-        ServiceResult<ModelResponse> result = await fixture.Generate(Request(continuation), call: next);
+        ServiceResult<ModelResponse> result = await fixture.Generate(Request(continuation), call: next, ct: TestContext.Current.CancellationToken);
         Assert.Equal("resp-first", fixture.Handler.Bodies[1].GetProperty("previous_response_id").GetString());
         Assert.Equal("opaque-first", fixture.Handler.TurnStates[1]);
         Assert.False(fixture.Handler.SentPrivateHeader);
@@ -461,13 +461,13 @@ public class ResponsesJsonTests
     public async Task ContinuationCannotCrossBinding(string part)
     {
         using Fixture fixture = new();
-        ModelContinuation continuation = (await fixture.Generate(Request())).Data!.Continuation!;
+        ModelContinuation continuation = (await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken)).Data!.Continuation!;
         ApplicationCallContext call = fixture.Call;
         ModelAccess access = new(part == "key" ? "other-synthetic-key" : KEY);
         call = new(part == "dialog" ? DialogId.From(Guid.NewGuid()) : call.DialogId,
             part == "owner" ? DialogOwnerId.From("other") : call.OwnerId, Guid.NewGuid(), part == "agent" ? "other" : call.AgentId);
         using Fixture other = new(part == "endpoint" ? "https://other.invalid" : "https://gateway.invalid/prefix/");
-        ServiceResult<ModelResponse> result = await other.Generate(Request(continuation), access, call);
+        ServiceResult<ModelResponse> result = await other.Generate(Request(continuation), access, call, ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
         Assert.Equal(0, other.Handler.Calls);
         AssertSafe(JsonSerializer.Serialize(result.Error));
@@ -481,12 +481,12 @@ public class ResponsesJsonTests
     public async Task ContinuationRejectsUnknownOrUnsafeShape(string variant, ServiceErrorType expected)
     {
         using Fixture fixture = new();
-        ModelContinuation initial = (await fixture.Generate(Request())).Data!.Continuation!;
+        ModelContinuation initial = (await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken)).Data!.Continuation!;
         JsonObject content = JsonNode.Parse(initial.Content.GetRawText())!.AsObject();
         if (variant == "unknown") { content["adapter"] = "other"; }
         if (variant == "header") { content["headers"]!["x-codex-turn-state"] = "bad\r\ninjected"; }
         if (variant == "anchor") { content["previous_response_id"] = 12; }
-        ServiceResult<ModelResponse> result = await fixture.Generate(Request(new(JsonSerializer.SerializeToElement(content))));
+        ServiceResult<ModelResponse> result = await fixture.Generate(Request(new(JsonSerializer.SerializeToElement(content))), ct: TestContext.Current.CancellationToken);
         Assert.Equal(expected, result.Error!.Type);
         Assert.Equal(1, fixture.Handler.Calls);
     }
@@ -509,7 +509,7 @@ public class ResponsesJsonTests
         using Fixture fixture = new();
         using JsonDocument document = JsonDocument.Parse(json);
         ModelRequest request = new("model", null, "", [], [], parameters: new(document.RootElement));
-        ServiceResult<ModelResponse> result = await fixture.Generate(request);
+        ServiceResult<ModelResponse> result = await fixture.Generate(request, ct: TestContext.Current.CancellationToken);
         Assert.Equal(expected, result.Error!.Type);
         Assert.Equal(0, fixture.Handler.Calls);
     }
@@ -525,7 +525,7 @@ public class ResponsesJsonTests
         using JsonDocument controls = JsonDocument.Parse("""{"reasoning":{"summary":"auto","future":true},"service_tier":"priority","prompt_cache_key":"cache"}""");
         ModelRequest request = new("exact-model", "exact-effort", "instructions",
             input.RootElement.EnumerateArray().Select(item => new CanonicalModelItem(item)), [], parameters: new(controls.RootElement));
-        ServiceResult<ModelResponse> compact = await fixture.Compact(request);
+        ServiceResult<ModelResponse> compact = await fixture.Compact(request, ct: TestContext.Current.CancellationToken);
         Assert.Equal(ModelResponseStatus.Completed, compact.Data!.Status);
         Assert.Null(compact.Data.Continuation);
         AssertJson(json, compact.Data.Envelope!.Content.GetRawText());
@@ -548,7 +548,7 @@ public class ResponsesJsonTests
         Assert.True(fixture.Handler.Content!.Disposed);
         AssertSafe(fixture.Log.Text);
         fixture.SetJson("""{"status":"completed","output":[]}""");
-        await fixture.Generate(new("model", null, "", compact.Data.Output, [], compact.Data.Continuation));
+        await fixture.Generate(new("model", null, "", compact.Data.Output, [], compact.Data.Continuation), ct: TestContext.Current.CancellationToken);
         Assert.False(fixture.Handler.Bodies[1].TryGetProperty("previous_response_id", out _));
     }
 
@@ -567,7 +567,7 @@ public class ResponsesJsonTests
     {
         using Fixture fixture = new();
         fixture.SetJson(json);
-        ModelResponse report = (await fixture.Compact(Request())).Data!;
+        ModelResponse report = (await fixture.Compact(Request(), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(expected, report.Status);
         Assert.Null(report.Continuation);
         AssertJson(json, report.Envelope!.Content.GetRawText());
@@ -589,7 +589,7 @@ public class ResponsesJsonTests
     {
         using Fixture fixture = new();
         fixture.SetJson(json);
-        Assert.Equal(ServiceErrorType.Rejected, (await fixture.Compact(Request())).Error!.Type);
+        Assert.Equal(ServiceErrorType.Rejected, (await fixture.Compact(Request(), ct: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.True(fixture.Handler.Content!.Disposed);
         AssertSafe(fixture.Log.Text);
     }
@@ -613,7 +613,7 @@ public class ResponsesJsonTests
             "tools" => new("model", null, "", [], [new("tool", "", empty.RootElement, false)]),
             _ => new("model", null, "", [], [], parameters: new(JsonSerializer.Deserialize<JsonElement>(input)))
         };
-        Assert.Equal(expected, (await fixture.Compact(request)).Error!.Type);
+        Assert.Equal(expected, (await fixture.Compact(request, ct: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.Equal(0, fixture.Handler.Calls);
     }
 
@@ -636,7 +636,7 @@ public class ResponsesJsonTests
             OperationCanceledException error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Compact(Request(), caller.Token));
             Assert.Equal(caller.Token, error.CancellationToken);
         }
-        else { Assert.Equal(ServiceErrorType.Timeout, (await fixture.Compact(Request())).Error!.Type); }
+        else { Assert.Equal(ServiceErrorType.Timeout, (await fixture.Compact(Request(), ct: TestContext.Current.CancellationToken)).Error!.Type); }
         Assert.Equal(1, fixture.Handler.Calls);
     }
 
@@ -668,7 +668,7 @@ public class ResponsesJsonTests
         using Fixture fixture = new();
         fixture.Handler.Status = status;
         fixture.SetJson("{\"error\":{\"message\":\"" + PRIVATE + "\",\"code\":\"invalid_api_key\"}}");
-        ServiceResult<ModelResponse> result = await fixture.Compact(Request());
+        ServiceResult<ModelResponse> result = await fixture.Compact(Request(), ct: TestContext.Current.CancellationToken);
         Assert.Equal(expected, result.Error!.Type);
         AssertSafe(result.Error.Message + fixture.Log.Text);
         Assert.True(fixture.Handler.Content!.Disposed);
@@ -683,7 +683,7 @@ public class ResponsesJsonTests
         IOException failure = new(PRIVATE);
         FailingStream stream = new(failure);
         fixture.Handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
-        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => fixture.Compact(Request())));
+        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => fixture.Compact(Request(), ct: TestContext.Current.CancellationToken)));
         Assert.True(stream.Disposed);
         Assert.Equal(1, fixture.Handler.Calls);
         AssertSafe(fixture.Log.Text);
@@ -708,7 +708,7 @@ public class ResponsesJsonTests
         Task<ServiceResult<ModelResponse>> pending = fixture.Compact(Request(), caller.Token);
         try
         {
-            await stream.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await stream.Started.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             caller.Cancel();
             OperationCanceledException failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
             Assert.Equal(caller.Token, failure.CancellationToken);
@@ -731,7 +731,7 @@ public class ResponsesJsonTests
         caller.Cancel();
         OperationCanceledException failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Compact(Request(), caller.Token));
         Assert.Equal(caller.Token, failure.CancellationToken);
-        ServiceResult<ModelResponse> result = await fixture.Gateway.CompactAsync(fixture.Call, Request(), new("bad key"));
+        ServiceResult<ModelResponse> result = await fixture.Gateway.CompactAsync(fixture.Call, Request(), new("bad key"), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
         Assert.Equal(0, fixture.Handler.Calls);
     }
@@ -767,7 +767,7 @@ public class ResponsesJsonTests
         OperationCanceledException error = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
         Assert.Equal(caller.Token, error.CancellationToken);
         Assert.Equal(1, fixture.Handler.Calls);
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => fixture.Handler.RequestContent!.ReadAsStringAsync());
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => fixture.Handler.RequestContent!.ReadAsStringAsync(cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Конечный deadline ограничивает отправку; caller имеет приоритет при одновременной отмене.</summary>
@@ -862,15 +862,15 @@ public class ResponsesJsonTests
     public async Task MissingOrInvalidNewIdNeverReusesOldAnchor(string? idJson)
     {
         using Fixture fixture = new();
-        ModelContinuation old = (await fixture.Generate(Request())).Data!.Continuation!;
+        ModelContinuation old = (await fixture.Generate(Request(), ct: TestContext.Current.CancellationToken)).Data!.Continuation!;
         fixture.SetJson("{\"status\":\"completed\",\"output\":[],\"future\":true"
             + (idJson is null ? "" : ",\"id\":" + idJson) + "}");
-        ModelResponse report = (await fixture.Generate(Request(old))).Data!;
+        ModelResponse report = (await fixture.Generate(Request(old), ct: TestContext.Current.CancellationToken)).Data!;
         Assert.False(report.Continuation!.Content.TryGetProperty("previous_response_id", out _));
         Assert.Equal("resp-default", old.Content.GetProperty("previous_response_id").GetString());
         Assert.True(report.Envelope!.Content.GetProperty("future").GetBoolean());
         if (idJson is not null) { AssertJson(idJson, report.Envelope.Content.GetProperty("id").GetRawText()); }
-        await fixture.Generate(Request(report.Continuation));
+        await fixture.Generate(Request(report.Continuation), ct: TestContext.Current.CancellationToken);
         Assert.False(fixture.Handler.Bodies[2].TryGetProperty("previous_response_id", out _));
     }
 
@@ -911,7 +911,7 @@ public class ResponsesJsonTests
         IOException failure = new(PRIVATE);
         FailingStream stream = new(failure);
         fixture.Handler.Respond = (_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
-        Exception actual = await Assert.ThrowsAsync<IOException>(() => fixture.Generate(Request()));
+        Exception actual = await Assert.ThrowsAsync<IOException>(() => fixture.Generate(Request(), ct: TestContext.Current.CancellationToken));
         Assert.Same(failure, actual);
         Assert.True(stream.Disposed);
         Assert.Equal(1, fixture.Handler.Calls);
@@ -926,7 +926,7 @@ public class ResponsesJsonTests
         using Fixture fixture = new();
         HttpRequestException failure = new(PRIVATE);
         fixture.Handler.Respond = (_, _) => Task.FromException<HttpResponseMessage>(failure);
-        Exception actual = await Assert.ThrowsAsync<HttpRequestException>(() => fixture.Generate(Request()));
+        Exception actual = await Assert.ThrowsAsync<HttpRequestException>(() => fixture.Generate(Request(), ct: TestContext.Current.CancellationToken));
         Assert.Same(failure, actual);
         Assert.Equal(1, fixture.Handler.Calls);
         AssertSafe(fixture.Log.Text);

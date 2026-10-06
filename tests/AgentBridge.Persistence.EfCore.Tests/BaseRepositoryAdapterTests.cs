@@ -41,7 +41,7 @@ public class BaseRepositoryAdapterTests
         Assert.Same(selected, await adapter.FindAsync(dialogId, turnId, source.Token, trackChanges: true));
         Assert.False(repository.LastAsNoTracking);
         Assert.Equal(source.Token, repository.LastCancellationToken);
-        Assert.Null(await adapter.FindAsync(dialogId, Guid.NewGuid()));
+        Assert.Null(await adapter.FindAsync(dialogId, Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(repository.LastAsNoTracking);
     }
 
@@ -59,9 +59,9 @@ public class BaseRepositoryAdapterTests
             new() { DialogId = dialogId, TurnId = Guid.NewGuid(), Id = stepId },
             new() { DialogId = dialogId, TurnId = turnId, Id = Guid.NewGuid() }, selected]);
         ModelStepRecordQueries adapter = new(repository);
-        Assert.Same(selected, await adapter.FindAsync(dialogId, turnId, stepId));
+        Assert.Same(selected, await adapter.FindAsync(dialogId, turnId, stepId, cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(repository.LastAsNoTracking);
-        Assert.Null(await adapter.FindAsync(Guid.NewGuid(), turnId, stepId));
+        Assert.Null(await adapter.FindAsync(Guid.NewGuid(), turnId, stepId, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     /// <summary>Items фильтруются обоими родителями и сортируются по Sequence вместо порядка входных строк.</summary>
@@ -76,7 +76,7 @@ public class BaseRepositoryAdapterTests
         repository.Records.AddRange([second,
             new() { DialogId = Guid.NewGuid(), TurnId = turnId, Sequence = 1 },
             new() { DialogId = dialogId, TurnId = Guid.NewGuid(), Sequence = 1 }, first]);
-        Assert.Equal([first, second], await new ItemRecordQueries(repository).ReadTurnAsync(dialogId, turnId));
+        Assert.Equal([first, second], await new ItemRecordQueries(repository).ReadTurnAsync(dialogId, turnId, cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(repository.LastAsNoTracking);
     }
 
@@ -91,10 +91,10 @@ public class BaseRepositoryAdapterTests
         DialogContextRecord active = new() { DialogId = dialogId, Version = 2, CreatedAtUtc = now };
         repository.Records.AddRange([old, new() { DialogId = Guid.NewGuid(), Version = 99 }, active]);
         ContextRecordQueries adapter = new(repository);
-        Assert.Same(active, await adapter.ReadActiveAsync(dialogId));
-        Assert.Equal([old, active], await adapter.ReadAsync(dialogId));
+        Assert.Same(active, await adapter.ReadActiveAsync(dialogId, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Equal([old, active], await adapter.ReadAsync(dialogId, cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(3, repository.Records.Count);
-        Assert.Null(await adapter.ReadActiveAsync(Guid.NewGuid()));
+        Assert.Null(await adapter.ReadActiveAsync(Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(repository.LastAsNoTracking);
     }
 
@@ -106,9 +106,9 @@ public class BaseRepositoryAdapterTests
         DialogRecord selected = new() { Id = Guid.NewGuid() };
         repository.Records.AddRange([new() { Id = Guid.NewGuid() }, selected]);
         DialogRecordQueries adapter = new(new FakeDialogByIdRepository(repository), repository);
-        Assert.Same(selected, await adapter.FindAsync(selected.Id, trackChanges: true));
+        Assert.Same(selected, await adapter.FindAsync(selected.Id, trackChanges: true, cancellationToken: TestContext.Current.CancellationToken));
         Assert.False(repository.LastAsNoTracking);
-        Assert.Null(await adapter.FindAsync(Guid.NewGuid()));
+        Assert.Null(await adapter.FindAsync(Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));
         Assert.True(repository.LastAsNoTracking);
     }
 

@@ -23,7 +23,7 @@ public class AgentRunnerTests
         Probe probe = new(); ServiceCollection services = Services(probe);
         services.Configure<AgentOptions>(options => options.InstructionsSource = AgentInstructionsSource.PerRequest);
         await using ServiceProvider root = services.BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
         Assert.Empty(probe.Events); Assert.Equal(0, probe.AccessCalls); Assert.Equal(0, probe.ProviderCalls); Assert.Equal(0, probe.Generations);
     }
@@ -36,7 +36,7 @@ public class AgentRunnerTests
         ServiceCollection services = Services(probe);
         services.Configure<AgentOptions>(options => options.InstructionsSource = AgentInstructionsSource.PerRequest);
         await using ServiceProvider root = services.BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, new(probe.Call, [Message("input")], [TOOL.Name], new(8, 8, 2, TimeSpan.FromMinutes(1)), instructions: "request instructions"));
+        AgentRunResult result = await RunAsync(root, new(probe.Call, [Message("input")], [TOOL.Name], new(8, 8, 2, TimeSpan.FromMinutes(1)), instructions: "request instructions"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Completed, result.Status); Assert.Equal("request instructions", Assert.Single(probe.Requests).Instructions);
     }
 
@@ -53,7 +53,7 @@ public class AgentRunnerTests
         probe.Responses.Enqueue(ModelResponse.Completed([Call("call")]));
         probe.Responses.Enqueue(ModelResponse.Completed([Message("done")]));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, new(probe.Call, [Message("input")], [TOOL.Name], new(8, 8, 2, TimeSpan.FromMinutes(1)), effort: "high"));
+        AgentRunResult result = await RunAsync(root, new(probe.Call, [Message("input")], [TOOL.Name], new(8, 8, 2, TimeSpan.FromMinutes(1)), effort: "high"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Completed, result.Status);
         Assert.Equal("gpt-5", result.Settings!.Model.Id);
         Assert.Equal("high", result.Settings.ReasoningEffort);
@@ -73,7 +73,7 @@ public class AgentRunnerTests
         ServiceCollection services = Services(probe);
         services.AddSingleton<IDialogTurnWriter, LegacyWriter>();
         await using ServiceProvider root = services.BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
         Assert.Empty(probe.Events);
         Assert.Equal(0, probe.Generations);
@@ -87,7 +87,7 @@ public class AgentRunnerTests
         ServiceCollection services = Services(probe);
         services.AddSingleton<IModelSettingsReader, LegacySettings>();
         await using ServiceProvider root = services.BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
         Assert.Empty(probe.Events);
         Assert.Equal(0, probe.Generations);
@@ -106,7 +106,7 @@ public class AgentRunnerTests
         using IServiceScope scope = root.CreateScope();
         int updates = 0;
         AgentRunResult result = await scope.ServiceProvider.GetRequiredService<AgentRunner>().RunAsync(Request(probe),
-            (_, _) => { updates++; return ValueTask.CompletedTask; });
+            (_, _) => { updates++; return ValueTask.CompletedTask; }, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Completed, result.Status);
         Assert.True(result.TerminalSaved);
         Assert.Equal(2, probe.Actions);
@@ -135,7 +135,7 @@ public class AgentRunnerTests
             started ? [new(0, "agent", ToolAttemptState.Started)] : []);
         probe.Replace([new(probe.Call.TurnId, 1, DialogTurnStatus.InProgress, step.Response.Output, [step])]);
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Interrupted, result.Status);
         Assert.False(result.TerminalSaved);
         Assert.Equal(0, probe.Actions);
@@ -161,11 +161,11 @@ public class AgentRunnerTests
         };
         probe.Responses.Enqueue(response);
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(expected, result.Status);
         Assert.Same(response, Assert.Single(result.Turn!.ModelSteps).Response);
         Assert.DoesNotContain(result.Turn.Items, item => Type(item) == "function_call_output");
-        AgentRunResult next = await RunAsync(root, Request(probe, Guid.NewGuid()));
+        AgentRunResult next = await RunAsync(root, Request(probe, Guid.NewGuid()), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, next.Error!.Type);
         Assert.Equal(1, probe.Generations);
         Assert.Equal(0, probe.Actions);
@@ -179,13 +179,13 @@ public class AgentRunnerTests
         probe.Responses.Enqueue(ModelResponse.Completed([Call("unknown")]));
         probe.Action = (_, _) => Task.FromResult(ServiceResult<ToolOutput>.Fail(new(ServiceErrorType.Timeout, "raw private detail")));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Interrupted, result.Status);
         Assert.Equal(ToolAttemptState.Unknown, result.Turn!.ModelSteps[0].ToolAttempts[0].State);
         Assert.Empty(result.LastTools!.Outputs);
         Assert.Equal(1, probe.Generations);
         Assert.DoesNotContain("raw", result.Error!.Message);
-        Assert.Equal(AgentRunStatus.Interrupted, (await RunAsync(root, Request(probe))).Status);
+        Assert.Equal(AgentRunStatus.Interrupted, (await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken)).Status);
         Assert.Equal(1, probe.Actions);
     }
 
@@ -200,7 +200,7 @@ public class AgentRunnerTests
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
         probe.Responses.Enqueue(ModelResponse.Completed([Message("done")]));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Failed, result.Status);
         Assert.False(result.TerminalSaved);
         Assert.Equal(actions, probe.Actions);
@@ -218,7 +218,7 @@ public class AgentRunnerTests
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
         probe.Action = (_, _) => Task.FromException<ServiceResult<ToolOutput>>(primary);
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        Assert.Same(primary, await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(root, Request(probe))));
+        Assert.Same(primary, await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken)));
         Assert.Equal(DialogTurnStatus.Incomplete, probe.Dialog.Turns[0].Status);
         Assert.Equal(ToolAttemptState.Unknown, probe.Dialog.Turns[0].ModelSteps[0].ToolAttempts[0].State);
     }
@@ -241,7 +241,7 @@ public class AgentRunnerTests
             probe.Action = (_, _) => Task.FromException<ServiceResult<ToolOutput>>(primary);
         }
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AggregateException error = await Assert.ThrowsAsync<AggregateException>(() => RunAsync(root, Request(probe), streaming: model));
+        AggregateException error = await Assert.ThrowsAsync<AggregateException>(() => RunAsync(root, Request(probe), streaming: model, ct: TestContext.Current.CancellationToken));
         Assert.Contains(primary, error.Flatten().InnerExceptions);
         Assert.Contains(cleanup, error.Flatten().InnerExceptions);
         Assert.DoesNotContain("finish", probe.Events);
@@ -278,7 +278,7 @@ public class AgentRunnerTests
             return Task.FromResult(Success());
         };
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(expected, result.Error!.Type);
         Assert.False(result.TerminalSaved);
         Assert.Single(result.LastTools!.Outputs);
@@ -304,7 +304,7 @@ public class AgentRunnerTests
         };
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         if (cancel) Assert.Equal(AgentRunStatus.Canceled, (await RunAsync(root, Request(probe), caller.Token)).Status);
-        else Assert.Same(primary, await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(root, Request(probe))));
+        else Assert.Same(primary, await Assert.ThrowsAsync<InvalidOperationException>(() => RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken)));
         Assert.Equal(1, probe.Dialog.ActiveContext!.Version);
         Assert.Equal(1, probe.Dialog.ActiveContext.ThroughTurnSequence);
         Assert.Equal(1, probe.ProviderCalls);
@@ -338,7 +338,7 @@ public class AgentRunnerTests
         probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [], new("gpt-5", "high", 50, 10, 1000))]);
         probe.Compact = () => Task.FromResult(ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Rejected, "compact refused")));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Failed, result.Status);
         Assert.Equal("compact refused", result.Error!.Message);
         Assert.Equal(0, probe.Generations);
@@ -353,7 +353,7 @@ public class AgentRunnerTests
         probe.Replace([new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, [Message("large", 100)], [], new("gpt-5", "high", 50, 10, 1000))]);
         probe.Compact = () => Task.FromResult(ServiceResult<ModelResponse>.Ok(ModelResponse.Completed([Item("{\"type\":\"compaction\",\"encrypted_content\":\"opaque\"}")])));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
         Assert.NotNull(probe.Dialog.ActiveContext);
         Assert.Equal(0, probe.Generations);
@@ -392,10 +392,10 @@ public class AgentRunnerTests
             return Success();
         };
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        Task<AgentRunResult> run = RunAsync(root, Request(probe));
+        Task<AgentRunResult> run = RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         try
         {
-            await failed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await failed.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.False(run.IsCompleted);
             release.SetResult();
             Assert.Same(primary, await Assert.ThrowsAsync<InvalidOperationException>(() => run));
@@ -430,7 +430,7 @@ public class AgentRunnerTests
         Probe probe = new() { LargeToolOutputBudget = true };
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AgentRunResult result = await RunAsync(root, Request(probe));
+        AgentRunResult result = await RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
         Assert.Equal(AgentRunStatus.Failed, result.Status);
         Assert.Equal(1, probe.Generations);
@@ -447,7 +447,7 @@ public class AgentRunnerTests
         IOException failure = new("unknown commit");
         probe.AfterWrite = kind => { if (kind == "start") throw failure; };
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => RunAsync(root, Request(probe))));
+        Assert.Same(failure, await Assert.ThrowsAsync<IOException>(() => RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken)));
         Assert.Equal(0, probe.Actions);
         Assert.Equal(1, probe.Reads);
         Assert.Equal(new[] { "begin", "append", "start" }, probe.Events);
@@ -469,7 +469,7 @@ public class AgentRunnerTests
         else { probe.ThrowWrite = boundary; probe.WriteException = primary; }
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        AggregateException error = await Assert.ThrowsAsync<AggregateException>(() => RunAsync(root, Request(probe)));
+        AggregateException error = await Assert.ThrowsAsync<AggregateException>(() => RunAsync(root, Request(probe), ct: TestContext.Current.CancellationToken));
         Assert.Contains(primary, error.Flatten().InnerExceptions);
         Assert.Contains(cleanup, error.Flatten().InnerExceptions);
         Assert.Equal(0, probe.Actions);

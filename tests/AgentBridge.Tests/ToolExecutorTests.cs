@@ -47,7 +47,7 @@ public class ToolExecutorTests
         CanonicalModelItem call = Function("call-one");
         CanonicalModelItem opaque = Item("""{"type":"reasoning","encrypted_content":"preserved","unknown":[1,null]}""");
         StoredModelStep step = new(Guid.NewGuid(), ModelResponse.Completed([opaque, call]));
-        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, step)).Data!;
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, step, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         ToolExecutionResult result = Assert.Single(batch.Results);
         Assert.True(batch.CanContinue);
         Assert.Equal(ToolExecutionStatus.Succeeded, result.Status);
@@ -71,11 +71,11 @@ public class ToolExecutorTests
             0, [turn], null);
         ModelRequest next = new("gpt-5", "high", "instructions", [Item("""{"type":"message","role":"user","content":"Когда доставят?"}""")], [DEFINITION]);
         ContextBuilder builder = new([]);
-        ServiceResult<ModelRequest> prepared = await builder.BuildAsync(session.Call, snapshot, next, NOW);
+        ServiceResult<ModelRequest> prepared = await builder.BuildAsync(session.Call, snapshot, next, NOW, cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(prepared.Success);
         Assert.Equal([opaque, call, result.Output, next.Input[0]], prepared.Data!.Input);
         ApplicationCallContext other = new(session.Call.DialogId, DialogOwnerId.From("owner-b"), Guid.NewGuid(), "agent");
-        ServiceResult<ModelRequest> forbidden = await builder.BuildAsync(other, snapshot, next, NOW);
+        ServiceResult<ModelRequest> forbidden = await builder.BuildAsync(other, snapshot, next, NOW, cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(forbidden.Success);
         Assert.Equal(ServiceErrorType.Forbidden, forbidden.Error!.Type);
         Assert.Equal(opaque.Content.GetRawText(), prepared.Data.Input[0].Content.GetRawText());
@@ -94,7 +94,7 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor, selected: [selected]);
-        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, Step(Function("call", name, orderId)))).Data!;
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, Step(Function("call", name, orderId)), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         ToolExecutionResult result = Assert.Single(batch.Results);
         Assert.Equal(ToolExecutionStatus.Rejected, result.Status);
         Assert.Equal(expected, result.Error!.Type);
@@ -117,7 +117,7 @@ public class ToolExecutorTests
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         CanonicalModelItem call = new(JsonSerializer.SerializeToElement(new { type = "function_call", call_id = "call",
             name = DEFINITION.Name, arguments }));
-        ToolExecutionBatch batch = (await executor.ExecuteAsync(Session(executor), Step(call))).Data!;
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(Session(executor), Step(call), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ServiceErrorType.Validation, batch.Results[0].Error!.Type);
         Assert.Equal(0, probe.Started);
         Assert.Equal(1, probe.Validations);
@@ -137,7 +137,7 @@ public class ToolExecutorTests
         Probe probe = new();
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
-        ServiceResult<ToolExecutionBatch> result = await executor.ExecuteAsync(Session(executor), Step(Function("good"), Item(malformed)));
+        ServiceResult<ToolExecutionBatch> result = await executor.ExecuteAsync(Session(executor), Step(Function("good"), Item(malformed)), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
         Assert.Equal(0, probe.Started);
@@ -160,7 +160,7 @@ public class ToolExecutorTests
             ModelResponseStatus.Canceled => ModelResponse.Canceled([Function("call")]),
             _ => ModelResponse.Failed([Function("call")], new(ServiceErrorType.Rejected, "safe"))
         };
-        Assert.False((await executor.ExecuteAsync(Session(executor), new(Guid.NewGuid(), response))).Success);
+        Assert.False((await executor.ExecuteAsync(Session(executor), new(Guid.NewGuid(), response), cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(0, probe.Started);
     }
 
@@ -173,23 +173,23 @@ public class ToolExecutorTests
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
         StoredModelStep first = Step(Function("same"));
-        ToolExecutionBatch firstBatch = (await executor.ExecuteAsync(session, first)).Data!;
-        ServiceResult<ToolExecutionBatch> repeated = await executor.ExecuteAsync(session, first);
+        ToolExecutionBatch firstBatch = (await executor.ExecuteAsync(session, first, cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        ServiceResult<ToolExecutionBatch> repeated = await executor.ExecuteAsync(session, first, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Conflict, repeated.Error!.Type);
         StoredModelStep second = Step(Function("same"));
-        ToolExecutionBatch secondBatch = (await executor.ExecuteAsync(session, second)).Data!;
+        ToolExecutionBatch secondBatch = (await executor.ExecuteAsync(session, second, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.NotEqual(firstBatch.Results[0].Identity.StepId, secondBatch.Results[0].Identity.StepId);
         Assert.Equal(2, probe.Started);
         StoredModelStep closed = Step(Function("same"), firstBatch.Outputs[0], Function("same"), secondBatch.Outputs[0], Function("same"));
-        ToolExecutionBatch third = (await executor.ExecuteAsync(session, closed)).Data!;
+        ToolExecutionBatch third = (await executor.ExecuteAsync(session, closed, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Single(third.Results);
         Assert.Equal(4, third.Results[0].Identity.OutputIndex);
         Assert.Equal(3, probe.Started);
-        ToolExecutionBatch overlapping = (await executor.ExecuteAsync(session, Step(Function("overlap"), Function("overlap")))).Data!;
+        ToolExecutionBatch overlapping = (await executor.ExecuteAsync(session, Step(Function("overlap"), Function("overlap")), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal([0, 1], overlapping.Results.Select(result => result.Identity.OutputIndex));
         Assert.Equal(5, probe.Started);
         ToolExecutionBatch alreadyClosed = (await executor.ExecuteAsync(session, Step(Function("overlap"), Function("overlap"),
-            overlapping.Outputs[0], overlapping.Outputs[1]))).Data!;
+            overlapping.Outputs[0], overlapping.Outputs[1]), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Empty(alreadyClosed.Results);
         Assert.Equal(5, probe.Started);
     }
@@ -203,13 +203,13 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe, clock).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor, new(1, 1, 1, TimeSpan.FromMinutes(1)));
-        Assert.False((await executor.ExecuteAsync(session, Step(Function("one"), Function("two")))).Success);
+        Assert.False((await executor.ExecuteAsync(session, Step(Function("one"), Function("two")), cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(0, probe.Started);
-        Assert.True((await executor.ExecuteAsync(session, Step(Function("one")))).Data!.CanContinue);
-        Assert.Equal(ServiceErrorType.Rejected, (await executor.ExecuteAsync(session, Step(Function("two")))).Error!.Type);
+        Assert.True((await executor.ExecuteAsync(session, Step(Function("one")), cancellationToken: TestContext.Current.CancellationToken)).Data!.CanContinue);
+        Assert.Equal(ServiceErrorType.Rejected, (await executor.ExecuteAsync(session, Step(Function("two")), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         ToolExecutionSession expired = Session(executor);
         clock.Advance(TimeSpan.FromDays(1));
-        Assert.Equal(ServiceErrorType.Expired, (await executor.ExecuteAsync(expired, Step(Function("expired")))).Error!.Type);
+        Assert.Equal(ServiceErrorType.Expired, (await executor.ExecuteAsync(expired, Step(Function("expired")), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.Equal(NOW.AddDays(1), expired.ExpiresAtUtc);
         Assert.Equal(1, probe.Started);
     }
@@ -223,9 +223,9 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe, clock).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor, new(8, 16, 1, TimeSpan.FromSeconds(1)));
-        Assert.True((await executor.ExecuteAsync(session, Step(Function("one")))).Success);
+        Assert.True((await executor.ExecuteAsync(session, Step(Function("one")), cancellationToken: TestContext.Current.CancellationToken)).Success);
         clock.Advance(TimeSpan.FromSeconds(1));
-        Assert.Equal(ServiceErrorType.Timeout, (await executor.ExecuteAsync(session, Step(Function("two")))).Error!.Type);
+        Assert.Equal(ServiceErrorType.Timeout, (await executor.ExecuteAsync(session, Step(Function("two")), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.Equal(1, probe.Started);
     }
 
@@ -238,7 +238,7 @@ public class ToolExecutorTests
             ? ServiceResult<ToolOutput>.Fail(new(ServiceErrorType.Rejected, "secret raw business data")) : Success(invocation));
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
-        ToolExecutionBatch batch = (await executor.ExecuteAsync(Session(executor), Step(Function("ok"), Function("fail")))).Data!;
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(Session(executor), Step(Function("ok"), Function("fail")), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal([ToolExecutionStatus.Succeeded, ToolExecutionStatus.Rejected], batch.Results.Select(result => result.Status));
         Assert.Equal(2, batch.Outputs.Count);
         Assert.True(batch.CanContinue);
@@ -258,15 +258,15 @@ public class ToolExecutorTests
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
         StoredModelStep step = Step(Function("ok"), Function("fail"), Function("unstarted"));
-        Assert.Same(original, await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, step)));
+        Assert.Same(original, await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, step, cancellationToken: TestContext.Current.CancellationToken)));
         ToolExecutionBatch report = session.LastResult!;
         Assert.Equal([ToolExecutionStatus.Succeeded, ToolExecutionStatus.Unknown, ToolExecutionStatus.NotStarted],
             report.Results.Select(result => result.Status));
         Assert.Single(report.Outputs);
         Assert.Null(report.Results[1].Output);
         Assert.DoesNotContain("secret", report.Results[1].Error!.Message);
-        Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, step)).Error!.Type);
-        Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, Step(Function("other")))).Error!.Type);
+        Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, step, cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
+        Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, Step(Function("other")), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.Equal(2, probe.Started);
         Assert.Equal(2, probe.Disposed);
     }
@@ -280,11 +280,11 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
-        ToolExecutionBatch report = (await executor.ExecuteAsync(session, Step(Function("timeout"), Function("later")))).Data!;
+        ToolExecutionBatch report = (await executor.ExecuteAsync(session, Step(Function("timeout"), Function("later")), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ToolExecutionStatus.Unknown, report.Results[0].Status);
         Assert.Empty(report.Outputs);
         Assert.False(report.CanContinue);
-        Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")))).Success);
+        Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")), cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(1, probe.Started);
     }
 
@@ -302,8 +302,8 @@ public class ToolExecutorTests
         Task<ServiceResult<ToolExecutionBatch>> execution = executor.ExecuteAsync(session, Step(Function("cancel")), cancellation.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, Step(Function("concurrent")))).Error!.Type);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
+            Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, Step(Function("concurrent")), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
             cancellation.Cancel();
             OperationCanceledException exception = await Assert.ThrowsAsync<OperationCanceledException>(() => execution);
             Assert.Equal(cancellation.Token, exception.CancellationToken);
@@ -327,7 +327,7 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
-        Assert.Same(original, await Assert.ThrowsAsync<OperationCanceledException>(() => executor.ExecuteAsync(session, Step(Function("call")))));
+        Assert.Same(original, await Assert.ThrowsAsync<OperationCanceledException>(() => executor.ExecuteAsync(session, Step(Function("call")), cancellationToken: TestContext.Current.CancellationToken)));
         Assert.Equal(ToolExecutionStatus.Unknown, session.LastResult!.Results[0].Status);
     }
 
@@ -358,7 +358,7 @@ public class ToolExecutorTests
             Session(executor, new(8, 16, 2, TimeSpan.FromMinutes(1))), Step(Function("a"), Function("b"), Function("c")), cleanup.Token);
         try
         {
-            await bothEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await bothEntered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.Equal(2, probe.Started);
             release.SetResult();
             ToolExecutionBatch batch = (await execution).Data!;
@@ -384,9 +384,9 @@ public class ToolExecutorTests
         Probe probe = new();
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
-        Task<ServiceResult<ToolExecutionBatch>> first = executor.ExecuteAsync(Session(executor), Step(Function("same")));
+        Task<ServiceResult<ToolExecutionBatch>> first = executor.ExecuteAsync(Session(executor), Step(Function("same")), cancellationToken: TestContext.Current.CancellationToken);
         Task<ServiceResult<ToolExecutionBatch>> second = executor.ExecuteAsync(Session(executor, owner: "owner-b"),
-            Step(Function("same", orderId: "order-b")));
+            Step(Function("same", orderId: "order-b")), cancellationToken: TestContext.Current.CancellationToken);
         ServiceResult<ToolExecutionBatch>[] batches = await Task.WhenAll(first, second);
         Assert.Equal(["owner-a", "owner-b"], batches.Select(batch => batch.Data!.Results[0].Invocation.Call.OwnerId.Value));
         Assert.DoesNotContain("owner-b", batches[0].Data!.Outputs[0].Content.GetRawText());
@@ -401,7 +401,7 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, Step(Function("call"))));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, Step(Function("call")), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(0, probe.Validations);
         Assert.Equal(0, probe.Started);
         Assert.Equal(1, probe.Disposed);
@@ -425,7 +425,7 @@ public class ToolExecutorTests
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
         AggregateException exception = await Assert.ThrowsAsync<AggregateException>(() => executor.ExecuteAsync(session,
-            Step(Function("ok"), Function("fail"))));
+            Step(Function("ok"), Function("fail")), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal([primary, cleanup], exception.InnerExceptions);
         Assert.Single(session.LastResult!.Outputs);
         Assert.Equal(ToolExecutionStatus.Unknown, session.LastResult.Results[1].Status);
@@ -441,7 +441,7 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
-        Assert.Same(cleanup, await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, Step(Function("ok")))));
+        Assert.Same(cleanup, await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, Step(Function("ok")), cancellationToken: TestContext.Current.CancellationToken)));
         Assert.Equal(ToolExecutionStatus.Succeeded, session.LastResult!.Results[0].Status);
         Assert.Single(session.LastResult.Outputs);
         Assert.False(session.LastResult.CanContinue);
@@ -463,7 +463,7 @@ public class ToolExecutorTests
         Assert.Equal(ToolExecutionStatus.Succeeded, session.LastResult!.Results[0].Status);
         Assert.Single(session.LastResult.Outputs);
         Assert.False(session.LastResult.CanContinue);
-        Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, Step(Function("next")))).Error!.Type);
+        Assert.Equal(ServiceErrorType.Conflict, (await executor.ExecuteAsync(session, Step(Function("next")), cancellationToken: TestContext.Current.CancellationToken)).Error!.Type);
         Assert.Equal(1, probe.Started);
     }
 
@@ -483,13 +483,13 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe, clock).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor, new(8, 16, 1, TimeSpan.FromSeconds(1)));
-        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, Step(Function("ok"), Function("deadline"), Function("later")))).Data!;
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, Step(Function("ok"), Function("deadline"), Function("later")), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ServiceErrorType.Timeout, batch.Error!.Type);
         Assert.Equal([ToolExecutionStatus.Succeeded, ToolExecutionStatus.Unknown, ToolExecutionStatus.NotStarted],
             batch.Results.Select(result => result.Status));
         Assert.Single(batch.Outputs);
         Assert.Equal(2, probe.Disposed);
-        Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")))).Success);
+        Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")), cancellationToken: TestContext.Current.CancellationToken)).Success);
     }
 
     /// <summary>Expiry между validator и действием не разрешает начать handler.</summary>
@@ -501,7 +501,7 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe, clock).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor);
-        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, Step(Function("late")))).Data!;
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, Step(Function("late")), cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(ServiceErrorType.Expired, batch.Error!.Type);
         Assert.Equal(ToolExecutionStatus.NotStarted, batch.Results[0].Status);
         Assert.Empty(batch.Outputs);
@@ -521,10 +521,10 @@ public class ToolExecutorTests
         await using ServiceProvider provider = Services(probe, clock).BuildServiceProvider();
         IToolExecutor executor = provider.GetRequiredService<IToolExecutor>();
         ToolExecutionSession session = Session(executor, new(8, 16, 1, TimeSpan.FromSeconds(1)));
-        Task<ServiceResult<ToolExecutionBatch>> execution = executor.ExecuteAsync(session, Step(Function("late")));
+        Task<ServiceResult<ToolExecutionBatch>> execution = executor.ExecuteAsync(session, Step(Function("late")), cancellationToken: TestContext.Current.CancellationToken);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             clock.Advance(TimeSpan.FromSeconds(1));
             Assert.False(execution.IsCompleted);
             Assert.Equal(0, probe.Disposed);
@@ -568,7 +568,7 @@ public class ToolExecutorTests
         Task<ServiceResult<ToolExecutionBatch>> execution = executor.ExecuteAsync(session, step, cleanup.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.False(execution.IsCompleted);
             Assert.Equal(0, probe.Started);
             release.SetResult();
@@ -582,7 +582,7 @@ public class ToolExecutorTests
             {
                 Assert.Equal(ToolExecutionStatus.NotStarted, batch.Results[0].Status);
                 Assert.Empty(batch.Outputs);
-                Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")))).Success);
+                Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")), cancellationToken: TestContext.Current.CancellationToken)).Success);
                 Assert.DoesNotContain("secret", batch.Error!.Message);
             }
         }
@@ -627,10 +627,10 @@ public class ToolExecutorTests
         ToolExecutionSession baseline = Session(executor);
         ToolExecutionSession session = executor.CreateSession(baseline.Call,
             new(baseline.Call.DialogId, baseline.IncarnationId, 0), baseline.ExpiresAtUtc, [DEFINITION.Name], baseline.Limits, checkpoint);
-        Assert.Same(original, await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, Step(Function("call")))));
+        Assert.Same(original, await Assert.ThrowsAsync<InvalidOperationException>(() => executor.ExecuteAsync(session, Step(Function("call")), cancellationToken: TestContext.Current.CancellationToken)));
         Assert.Equal(ToolExecutionStatus.NotStarted, session.LastResult!.Results[0].Status);
         Assert.False(session.LastResult.CanContinue);
-        Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")))).Success);
+        Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")), cancellationToken: TestContext.Current.CancellationToken)).Success);
         Assert.Equal(0, probe.Started);
         Assert.Equal(1, probe.Disposed);
     }
@@ -656,13 +656,13 @@ public class ToolExecutorTests
         Task<ServiceResult<ToolExecutionBatch>> execution = executor.ExecuteAsync(session, Step(Function("call")), caller.Token);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             caller.Cancel();
             OperationCanceledException exception = await Assert.ThrowsAsync<OperationCanceledException>(() => execution);
             Assert.Equal(caller.Token, exception.CancellationToken);
             Assert.Equal(ToolExecutionStatus.NotStarted, session.LastResult!.Results[0].Status);
             Assert.Empty(session.LastResult.Outputs);
-            Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")))).Success);
+            Assert.False((await executor.ExecuteAsync(session, Step(Function("retry")), cancellationToken: TestContext.Current.CancellationToken)).Success);
             Assert.Equal(0, probe.Started);
             Assert.Equal(1, probe.Disposed);
         }
@@ -701,7 +701,7 @@ public class ToolExecutorTests
         Task<ServiceResult<ToolExecutionBatch>> execution = executor.ExecuteAsync(session, Step(Function("fail"), Function("slow")), cleanup.Token);
         try
         {
-            await failureObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await failureObserved.Task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken);
             Assert.False(execution.IsCompleted);
             releaseSlow.SetResult();
             Assert.Same(original, await Assert.ThrowsAsync<InvalidOperationException>(() => execution));

@@ -8,7 +8,7 @@
 
 ## Компоненты и зависимости
 
-[ContextBuilder](../../../Application/ContextBuilder.cs), ContextRequest, IContextProvider, CanonicalModelItem, StoredDialogContext/Turn. [ContextBuilderTests](../../../tests/AgentBridge.Tests/ContextBuilderTests.cs), ApplicationPortsTests.
+[ContextBuilder](../../../AgentBridge/Application/ContextBuilder.cs), ContextRequest, IContextProvider, CanonicalModelItem, StoredDialogContext/Turn. [ContextBuilderTests](../../../tests/AgentBridge.Tests/ContextBuilderTests.cs), ApplicationPortsTests.
 
 ## Способ проверки и границы
 
@@ -49,7 +49,7 @@ A; существующие public builder tests — B. Бизнес-источ�
 
 ### Все группы вопросов
 
-Нормативный [main spec](../../../openspec/specs/agent-runtime/spec.md):188–236 — три composition требования;453–459 — разделение reports/items;830–845 — terminal prefix. **B**=[ContextBuilder.cs](../../../Application/ContextBuilder.cs), **M**=`Application/Models`, **T**=[ContextBuilderTests.cs](../../../tests/AgentBridge.Tests/ContextBuilderTests.cs), **P**=`adapters/AgentBridge.Persistence.EfCore`, **R**=`adapters/AgentBridge.CodexLb/Responses`. Пути от корня AgentBridge; строки сверены по текущим файлам. Все результаты — **A**, чтение assertion не pass.
+Нормативный [main spec](../../../openspec/specs/agent-runtime/spec.md):188–236 — три composition требования;453–459 — разделение reports/items;830–845 — terminal prefix. **B**=[ContextBuilder.cs](../../../AgentBridge/Application/ContextBuilder.cs), **M**=`Application/Models`, **T**=[ContextBuilderTests.cs](../../../tests/AgentBridge.Tests/ContextBuilderTests.cs), **P**=`adapters/AgentBridge.Persistence.EfCore`, **R**=`adapters/AgentBridge.CodexLb/Responses`. Пути от корня AgentBridge; строки сверены по текущим файлам. Все результаты — **A**, чтение assertion не pass.
 
 | Вопрос | Исследовано | Результат | Evidence: символ/строки | Ограничение |
 | --- | --- | --- | --- | --- |

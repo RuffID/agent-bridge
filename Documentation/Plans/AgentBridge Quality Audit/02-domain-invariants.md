@@ -8,7 +8,7 @@
 
 ## Компоненты и зависимости
 
-[Dialog](../../../Domain/Dialogs/Dialog.cs), DialogStateVersion, DialogTurn/Context snapshots; [DialogWriteToken](../../../Application/Models/DialogWriteToken.cs), DialogAccess. Тесты [DialogTests](../../../tests/AgentBridge.Tests/DialogTests.cs), DialogRestorationTests, ApplicationPortsTests.
+[Dialog](../../../AgentBridge/Domain/Dialogs/Dialog.cs), DialogStateVersion, DialogTurn/Context snapshots; [DialogWriteToken](../../../AgentBridge/Application/Models/DialogWriteToken.cs), DialogAccess. Тесты [DialogTests](../../../tests/AgentBridge.Tests/DialogTests.cs), DialogRestorationTests, ApplicationPortsTests.
 
 ## Способ проверки и границы
 

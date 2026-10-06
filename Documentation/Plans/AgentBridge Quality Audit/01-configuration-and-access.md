@@ -8,7 +8,7 @@
 
 ## Компоненты и зависимости
 
-[Configuration](../../../Configuration), [CodexLbOptions](../../../adapters/AgentBridge.CodexLb/Configuration/CodexLbOptions.cs), [CodexLbModelAccessResolver](../../../adapters/AgentBridge.CodexLb/Models/CodexLbModelAccessResolver.cs), [CodexLbModelSettingsReader](../../../adapters/AgentBridge.CodexLb/Models/CodexLbModelSettingsReader.cs), [ModelSelectionValidator](../../../Application/ModelSelectionValidator.cs), persistence/Configuration и [Diagnostics](../../../Diagnostics). Тесты ConfigurationTests, ModelSelectionTests, ModelCatalogTests, DiagnosticsTests.
+[Configuration](../../../Configuration), [CodexLbOptions](../../../adapters/AgentBridge.CodexLb/Configuration/CodexLbOptions.cs), [CodexLbModelAccessResolver](../../../adapters/AgentBridge.CodexLb/Models/CodexLbModelAccessResolver.cs), [CodexLbModelSettingsReader](../../../adapters/AgentBridge.CodexLb/Models/CodexLbModelSettingsReader.cs), [ModelSelectionValidator](../../../AgentBridge/Application/ModelSelectionValidator.cs), persistence/Configuration и [Diagnostics](../../../Diagnostics). Тесты ConfigurationTests, ModelSelectionTests, ModelCatalogTests, DiagnosticsTests.
 
 ## Способ проверки и границы
 
@@ -44,14 +44,14 @@ A; существующие isolated DI/catalog/logger тесты — B, без 
 
 | Вопрос | Результат A | Доказательство, строки от корня | Ограничение |
 | --- | --- | --- | --- |
-| Локальные options и отсутствие I/O при регистрации | Binding/ValidateOnStart, операции не вызываются; range guards явные | [Core registration](../../../Configuration/AgentBridgeConfigurationExtensions.cs):12–69; DatabaseConfigurationExtensions.cs:29–34 | Фабрика приложения может делать I/O, её поведение не доказано |
+| Локальные options и отсутствие I/O при регистрации | Binding/ValidateOnStart, операции не вызываются; range guards явные | [Core registration](../../../AgentBridge/Configuration/AgentBridgeConfigurationExtensions.cs):12–69; DatabaseConfigurationExtensions.cs:29–34 | Фабрика приложения может делать I/O, её поведение не доказано |
 | Lifetimes и custom services | Runner/compactor/settings/cleanup scoped; registry/executor/counter singleton; guard transient; TryAdd сохраняет custom counter/inspector | Configuration/AgentBridge*Extensions.cs; PersistenceRegistrationExtensions.cs:19–67 | Runtime DI потребителя не запускался |
 | Provider и ресурсы | Provider nullable/обязателен, нет default SQLite; scoped context/base repos/UoW; app владеет HttpClient, host отсутствует | [PersistenceRegistrationExtensions](../../../adapters/AgentBridge.Persistence.EfCore/Configuration/PersistenceRegistrationExtensions.cs):19–67; CodexLbModelCatalogExtensions.cs:14–30 | Реальное соединение не открывалось |
 | Null/пустой/ошибочный индивидуальный ключ | Только null выбирает shared; whitespace/control дают Validation; исключение источника распространяется | [Resolver](../../../adapters/AgentBridge.CodexLb/Models/CodexLbModelAccessResolver.cs):15–30 | Upstream Bearer-validity не доказана |
 | 401/403/no fallback и pinned key | Reader WithAccess не читает source повторно; tests содержат assertions одного вызова/Authorization | [SettingsReader](../../../adapters/AgentBridge.CodexLb/Models/CodexLbModelSettingsReader.cs):29–60; ModelCatalogTests.cs:59–154 | Fake handler, тесты только прочитаны |
-| Exact model/effort и бюджет | Ordinal ID/effort, положительный InputContextWindow; сумма threshold+reserve через long; равенство допустимо | [ModelSelectionValidator](../../../Application/ModelSelectionValidator.cs):14–36; ModelSelectionTests.cs:12–73 (36096/36095, overflow/null) | Это настройки, не полный запрос/поддержка tokenizer |
+| Exact model/effort и бюджет | Ordinal ID/effort, положительный InputContextWindow; сумма threshold+reserve через long; равенство допустимо | [ModelSelectionValidator](../../../AgentBridge/Application/ModelSelectionValidator.cs):14–36; ModelSelectionTests.cs:12–73 (36096/36095, overflow/null) | Это настройки, не полный запрос/поддержка tokenizer |
 | Timeout, retention, invalid address | Timeout конечен в пределах timer; отсутствие provider/connection отклоняется; fixed expiry вычисляется отдельно | CodexLbConfigurationExtensions.cs:31–53; core registration:57–69; ConfigurationTests.cs:161 | Достижимость таймера/максимальных дат не исполнялась |
-| Safe fields и diagnostics | Snapshot/status не содержат key; logger закрытые поля Operation/IDs/Status/ErrorCode/DurationMs без Exception | [DiagnosticOperation](../../../Diagnostics/AgentBridgeDiagnosticOperation.cs):45–80; Application/Models/AgentSettingsSnapshot.cs, DialogStatus.cs | Ambient logging приложения вне гарантии; JsonStructure dependency подробно06 |
+| Safe fields и diagnostics | Snapshot/status не содержат key; logger закрытые поля Operation/IDs/Status/ErrorCode/DurationMs без Exception | [DiagnosticOperation](../../../AgentBridge/Diagnostics/AgentBridgeDiagnosticOperation.cs):45–80; Application/Models/AgentSettingsSnapshot.cs, DialogStatus.cs | Ambient logging приложения вне гарантии; JsonStructure dependency подробно06 |
 | Override → saved → defaults / active snapshot | Reader фиксирует primitives до I/O и pinned access; saved selection/orchestration вынесены в11–12 | SettingsReader.cs:22–47; Application/AGENTS.md | Этап01 не подтверждает atomic persisted snapshot |
 
 ### Находки, вопросы и непроведённые проверки

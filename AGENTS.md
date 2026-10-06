@@ -17,12 +17,13 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 ## Структура решения
 
 - `agent-bridge.slnx` — решение .NET 10.
-- `agent-bridge.csproj` — ядро и прикладной слой в корне решения: SDK-style библиотека `net10.0`, сборка `AgentBridge.dll`, пространство имён `AgentBridge`.
-- `Configuration/` — типизированные настройки ядра и групповая регистрация options; локальные границы в `Configuration/AGENTS.md`.
-- `Diagnostics/` — безопасные структурированные события через ILogger приложения; локальные границы и контракт отмены в `Diagnostics/AGENTS.md`.
-- `Domain/` — независимое состояние диалога, фиксированный срок и проверка актуальности; границы в `Domain/AGENTS.md`.
-- `Application/` — независимые порты модели, контекста, инструментов, tokenizer и коротких сценариев хранения, ContextBuilder16, ContextCompactor18, registry/executor tools19 и AgentRunner20; границы в `Application/AGENTS.md`. Durable checkpoint/recovery20 использует явный journal и короткие scopes; standalone session-memory tools не защищает restart.
-- `Tokenization/` — offline BPE реализация IContextTokenCounter этапа17; проверенный exact mapping, known/nullable estimate, embedded словари и границы в `Tokenization/AGENTS.md`.
+- `global.json` выбирает Microsoft.Testing.Platform для `dotnet test` на .NET 10; версию SDK не фиксирует.
+- `AgentBridge/agent-bridge.csproj` — ядро и прикладной слой в отдельной папке решения: SDK-style библиотека `net10.0`, сборка `AgentBridge.dll`, пространство имён `AgentBridge`; карта проекта — `AgentBridge/AGENTS.md`.
+- `AgentBridge/Configuration/` — типизированные настройки ядра и групповая регистрация options; локальные границы в `AgentBridge/Configuration/AGENTS.md`.
+- `AgentBridge/Diagnostics/` — безопасные структурированные события через ILogger приложения; локальные границы и контракт отмены в `AgentBridge/Diagnostics/AGENTS.md`.
+- `AgentBridge/Domain/` — независимое состояние диалога, фиксированный срок и проверка актуальности; границы в `AgentBridge/Domain/AGENTS.md`.
+- `AgentBridge/Application/` — независимые порты модели, контекста, инструментов, tokenizer и коротких сценариев хранения, ContextBuilder16, ContextCompactor18, registry/executor tools19 и AgentRunner20; границы в `AgentBridge/Application/AGENTS.md`. Durable checkpoint/recovery20 использует явный journal и короткие scopes; standalone session-memory tools не защищает restart.
+- `AgentBridge/Tokenization/` — offline BPE реализация IContextTokenCounter этапа17; проверенный exact mapping, known/nullable estimate, embedded словари и границы в `AgentBridge/Tokenization/AGENTS.md`.
 - `adapters/AgentBridge.CodexLb/` — отдельный адаптер транспорта; правила в локальном `AGENTS.md`.
 - `adapters/AgentBridge.Integration/` — отдельный facade net10.0: AddAgentBridge с IConfiguration и app-owned HTTP factory, required app logger/source modes; ближайшие границы в его AGENTS. Ядро не зависит от facade/adapters/ASP.NET Core.
 - `adapters/AgentBridge.Persistence.EfCore/` — общее EF-хранилище; правила в локальном `AGENTS.md`.
@@ -32,7 +33,7 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 - `adapters/AgentBridge.Persistence.Migrations.SqlServer/` — отдельный library target/startup MSSQL с собственными AGENTS/factory/initial six-table schema. Основной сценарий MSSQL выбирается явно; SQLite/PostgreSQL сохранены. Server backup destination и EngineEdition2/3/4 определены existing EFCoreLibrary module, actual provider/runtime проверка отдельно в Audit Remediation17/18.
 - `tests/Delivery/` — SDK closure SQL Server DLL-комплектов win-x64/linux-x64/linux-arm64, сохранённые SQLite/PostgreSQL win-x64, external compile-only consumer и PE/ELF/XML/manifest проверки; правила в `tests/Delivery/AGENTS.md`. Комплекты только в ignored artifacts, runtime проверяется отдельно.
 - `Documentation/Technical documentation/25-usage-guide.md` — руководство с исходниками в `tests/Delivery/Consumer/`; примеры compile-only собираются вне всех repo с пятью current variants (SQL Server три RID и SQLite/PostgreSQL win-x64), методы не исполняются. App factories/authorization/business ports не являются API AgentBridge. Evidence хранится в плане, не в корневом README.
-- Корневой compile glob исключает `adapters`, `tests`, `test`, а также все вложенные `bin`, `obj`, `artifacts`. Новые самостоятельные проекты не должны попадать в компиляцию ядра.
+- Compile glob ядра ограничен папкой `AgentBridge/` и исключает вложенные `bin`, `obj`, `artifacts`. Адаптеры и тесты находятся за пределами папки ядра.
 
 ## Правила ядра
 

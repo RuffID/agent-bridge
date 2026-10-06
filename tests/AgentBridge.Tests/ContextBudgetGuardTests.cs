@@ -26,7 +26,7 @@ public class ContextBudgetGuardTests
     {
         ContextTokenCount count = new("o200k_base", 1, estimate, false);
         ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(new Counter(count)).CheckAsync(
-            Request(), Settings(window, threshold, reserve));
+            Request(), Settings(window, threshold, reserve), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(success, result.Success);
         if (success)
         {
@@ -44,13 +44,13 @@ public class ContextBudgetGuardTests
         using JsonDocument schema = JsonDocument.Parse("""{"type":"object","properties":{"число":{"type":"integer"}}}""");
         ModelRequest request = new("gpt-5", "medium", "Привет", [], [new("name", "Hello World", schema.RootElement, true)]);
         ContextTokenCounter counter = new();
-        ContextTokenCount count = (await counter.CountAsync(request)).Data!;
+        ContextTokenCount count = (await counter.CountAsync(request, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         int estimate = checked((int)count.EstimatedInputTokens!.Value);
         ContextBudgetGuard guard = new(counter);
-        ServiceResult<ContextBudgetAssessment> equal = await guard.CheckAsync(request, Settings(estimate + 10, estimate, 10));
+        ServiceResult<ContextBudgetAssessment> equal = await guard.CheckAsync(request, Settings(estimate + 10, estimate, 10), cancellationToken: TestContext.Current.CancellationToken);
         Assert.True(equal.Success);
         Assert.True(equal.Data!.ThresholdReached);
-        ServiceResult<ContextBudgetAssessment> over = await guard.CheckAsync(request, Settings(estimate + 10, 1, 11));
+        ServiceResult<ContextBudgetAssessment> over = await guard.CheckAsync(request, Settings(estimate + 10, 1, 11), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(over.Success);
         Assert.Equal(ServiceErrorType.Rejected, over.Error!.Type);
     }
@@ -62,10 +62,10 @@ public class ContextBudgetGuardTests
         using JsonDocument item = JsonDocument.Parse("""{"role":"user","content":[{"type":"input_text","text":"Привет"},{"type":"input_image","image_url":"secret"}]}""");
         ModelRequest request = new("gpt-5", "medium", "", [new(item.RootElement)], []);
         ContextTokenCounter counter = new();
-        ContextTokenCount count = (await counter.CountAsync(request)).Data!;
+        ContextTokenCount count = (await counter.CountAsync(request, cancellationToken: TestContext.Current.CancellationToken)).Data!;
         Assert.Equal(2, count.KnownTokens);
         Assert.Null(count.EstimatedInputTokens);
-        ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(counter).CheckAsync(request, Settings(100_000, 1000, 10_000));
+        ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(counter).CheckAsync(request, Settings(100_000, 1000, 10_000), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Null(result.Data);
         Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
@@ -83,7 +83,7 @@ public class ContextBudgetGuardTests
     public async Task PublicUnvalidatedSnapshotCannotBypassCatalogRules(int? window, int threshold, int reserve, ServiceErrorType error)
     {
         Counter counter = new(new("o200k_base", 1, 1, false));
-        ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(counter).CheckAsync(Request(), Settings(window, threshold, reserve));
+        ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(counter).CheckAsync(Request(), Settings(window, threshold, reserve), cancellationToken: TestContext.Current.CancellationToken);
         Assert.False(result.Success);
         Assert.Equal(error, result.Error!.Type);
         Assert.Equal(0, counter.Calls);
@@ -97,7 +97,7 @@ public class ContextBudgetGuardTests
     public async Task ExactRequestMustMatchValidatedSettings(string model, string? effort)
     {
         Counter counter = new(new("o200k_base", 1, 1, false));
-        ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(counter).CheckAsync(new(model, effort, "", [], []), Settings(100, 10, 0));
+        ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(counter).CheckAsync(new(model, effort, "", [], []), Settings(100, 10, 0), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
         Assert.Equal(0, counter.Calls);
     }
