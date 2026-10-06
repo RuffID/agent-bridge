@@ -2,6 +2,8 @@
 
 Этап 10 добавляет `Dialog.Restore`, `DialogTurnSnapshot`, `DialogContextSnapshot`, `LastChangedAtUtc` и `TryAppendTurn`. Restore валидирует всю сохранённую историю и хронологию, включая прошлые context versions, и сохраняет реальную revision без replay. Lifetime остаётся локальным новому экземпляру. [Production write path и проверки](10-scenario-unit-of-work.md); статус — реализован и принят; запрещённые проверки пропущены.
 
+Актуальное уточнение Restore, принятое 2026-10-06 в [исправлении05](<../Plans/AgentBridge Audit Remediation/05-restore-chronology.md#результаты>): minimum revision учитывает Begin, terminal completion и каждую версию контекста. При revision равной этой границе либо отсутствии InProgress turn LastChangedAtUtc равен максимальной известной дате mutation, включая CreatedAtUtc. Дополнительные append revisions допускают более поздний LastChanged только при наличии InProgress; одинаковые времена разрешены. Независимая версия settings не объясняет mutation истории. Невалидный внешний snapshot отклоняется без исправления данных; штатные writes не объявлены источником повреждения. B использует actual Restore/loader/UoW с fake storage; реальная persistence-проверка остаётся17.
+
 ## Статус и зависимости
 
 Этап 06 реализован и принят, запрещённые проверки пропущены. `AgentBridge.Domain.Dialogs` входит в корневую `AgentBridge.dll`; исходники используют только BCL. HTTP, EF, репозитории, payload Responses, оркестрация, токенизация и settings service не реализованы этим этапом. Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md).
@@ -26,7 +28,7 @@
 | `TryApplyContext(ownerId, version, throughTurnSequence, nowUtc)` | Новая версия контекста для неубывающего префикса только terminal turns; прежние обращения не удаляются |
 | `TryDelete(ownerId, nowUtc)` | Допускает очистку истёкшего диалога; отмечает удаление, очищает дочерние состояния и инвалидирует снимки |
 
-`DialogTurnStatus`: InProgress, Completed, Failed, Canceled, Incomplete. Терминальный статус подтверждает окончание обращения, но только Completed обозначает успешный полный результат. Проверка реального terminal completion Responses принадлежит будущему адаптеру: наличие текста не доказывает успех. Порядок обращений задаётся Sequence начала, а не порядком завершения или датой с ограниченной точностью.
+`DialogTurnStatus`: InProgress, Completed, Failed, Canceled, Incomplete. Терминальный статус подтверждает окончание обращения, но только Completed обозначает успешный полный результат. Проверка реального terminal completion Responses принадлежит реализованному [JSON14](14-responses-json-adapter.md)/[SSE15](15-responses-sse-adapter.md) адаптеру: наличие текста не доказывает успех. Порядок обращений задаётся Sequence начала, а не порядком завершения или датой с ограниченной точностью.
 
 Ожидаемые отказы возвращаются через `DialogMutationResult`: OwnerMismatch, Deleted, Expired, StaleOperation, DuplicateTurn, TurnNotFound, TurnAlreadyFinished, UnfinishedContextRange. Невалидные аргументы (UTC, диапазон, пустые идентичности, неизвестный/не конечный status, обратная хронология) дают ArgumentException/ArgumentOutOfRangeException/ArgumentNullException. HTTP-статусов и ServiceResult в Domain нет.
 
@@ -34,13 +36,13 @@
 
 `DialogContextState` содержит Version, ThroughTurnSequence, CreatedAtUtc. Согласованное пользователем покрытие — префикс обращений с конечным статусом; 0 означает отсутствие покрытых обращений. Нельзя покрыть выполняющийся turn, даже если у более позднего уже есть конечный статус. Несколько compact могут покрывать тот же префикс и давать последовательные версии. Вызов принятия делается только после успешного получения результата compact; при сбое прежнее состояние сохраняется.
 
-ThroughTurnSequence не является cutoff канонических событий Responses. Он не разрешает пропустить будущие output/tool-results текущего обращения, не описывает payload и не доказывает, что composition/compact уже реализованы. Детальное покрытие и согласованное сохранение содержимого предстоят на соответствующих этапах 14–18.
+ThroughTurnSequence не является cutoff канонических событий Responses. Он не разрешает пропустить последующие output/tool-results текущего обращения и не описывает payload. Фактическое покрытие и сохранение содержимого реализованы в [composition16](16-context-composition.md) и [compact18](18-context-compaction.md); сама доменная метадата не доказывает полноту протокольных items.
 
-`DialogStateVersion` действует для текущей жизни объекта в памяти. Его private случайный lifetime ID не переносится между заново созданными экземплярами, даже при совпадении публичного ID/Revision. Валидирующая фабрика Restore реализована этапом 10; реальный restart на БД не проверялся. Это **не готовый persistent concurrency token**: хранилище этапа 10 отдельно проверяет сохраняемую идентичность жизни и исходный token в короткой transaction. Смена состояния делает снимок устаревшим; получение свежего снимка не доказывает, что старый внешний результат был построен по свежему контексту. Прикладной сценарий должен заново проверить смысл результата, а не подставить новый token ради обхода отказа.
+`DialogStateVersion` действует для текущей жизни объекта в памяти. Его private случайный lifetime ID не переносится между заново созданными экземплярами, даже при совпадении публичного ID/Revision. Валидирующая фабрика Restore реализована этапом 10; на checkpoint10 реальный restart на БД не проверялся. Поздние actual DB проверки20–23 и их ограничения находятся в [карте evidence00–25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>); новый root container не означает OS crash evidence. Это **не готовый persistent concurrency token**: хранилище этапа 10 отдельно проверяет сохраняемую идентичность жизни и исходный token в короткой transaction. Смена состояния делает снимок устаревшим; получение свежего снимка не доказывает, что старый внешний результат был построен по свежему контексту. Прикладной сценарий должен заново проверить смысл результата, а не подставить новый token ради обхода отказа.
 
 Диалог не потокобезопасен. Domain не выбирает очередь или политику параллельных обращений; optimistic-проверка версии в памяти не решает race между БД-экземплярами. Доменное удаление не выполняет SQL и не удаляет внешние копии данных. Просроченные состояния могут ещё находиться в памяти/БД до очистки, но начать обращение или принять поздний результат уже нельзя.
 
-## Пример существующего API
+## Пример Domain API на checkpoint06
 
 ```csharp
 using AgentBridge.Configuration;
@@ -59,6 +61,6 @@ DialogMutationResult result = dialog.TryBeginTurn(
 // Внешняя операция пока не реализована. Для storage используются отдельные Application write ports.
 ```
 
-Для срока 36 часов дата остаётся «создание + 36 часов» после завершения обращения, compact и изменения options на 21 день. Следующий новый диалог получает новый настроенный срок. API изменения модели/effort появится позже и не должен менять фиксированные даты.
+Для срока 36 часов дата остаётся «создание + 36 часов» после завершения обращения, compact и изменения options на 21 день. Следующий новый диалог получает новый настроенный срок. Реализованный [API выбора модели/effort21](21-settings-and-dialog-status.md) не меняет фиксированные даты. Комментарий о внешней операции в примере относится к checkpoint06; текущий полный ход реализован в [AgentRunner20](20-agent-turn-orchestration.md).
 
-Проверки: 30 новых domain tests и 36 существующих тестов ядра, 66 passed / 0 failed / 0 skipped; две затронутые сборки без предупреждений/ошибок. Команды и пропуски: [этап 06](<../Plans/AgentBridge Initial Implementation/06-dialog-domain-state.md>).
+Исторические проверки checkpoint06: 30 новых domain tests и 36 существующих тестов ядра, 66 passed / 0 failed / 0 skipped; две затронутые сборки без предупреждений/ошибок. Команды и пропуски: [этап 06](<../Plans/AgentBridge Initial Implementation/06-dialog-domain-state.md>).

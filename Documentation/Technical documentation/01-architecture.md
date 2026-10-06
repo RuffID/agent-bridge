@@ -49,9 +49,9 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 
 Этап 13 добавляет IIndividualModelKeySource приложения, IModelAccessResolver/IModelCatalog/IModelSettingsReader и чистый ModelSelectionValidator. CodexLbModelCatalog использует actual HttpApiClient с per-request Bearer; EF в этом пути нет. Снимок ModelSettingsSnapshot содержит модель, effort и threshold/reserve, без сохранения выбора или запуска агента. [API этапа13](13-model-catalog-and-keys.md). [JSON Responses14](14-responses-json-adapter.md) и [SSE15](15-responses-sse-adapter.md) реализованы через CodexLbModelGateway; [compact18](18-context-compaction.md), [runner20](20-agent-turn-orchestration.md), [settings21](21-settings-and-dialog-status.md) и [cleanup22](22-expired-dialog-cleanup.md) реализованы позднее; evidence ранних этапов остаётся датированным.
 
-Интерфейсы IContextProvider, IToolHandler, IModelGateway и IContextTokenCounter определены на этапе 07; библиотечный `IDatabaseMaintenance<AgentBridgeContextKey>` подключён этапом 12, JSON IModelGateway реализован этапом 14. Названия без явного статуса реализации в таблице обозначают будущие типы.
+Интерфейсы IContextProvider, IToolHandler, IModelGateway и IContextTokenCounter определены на этапе 07; библиотечный `IDatabaseMaintenance<AgentBridgeContextKey>` подключён этапом 12, JSON IModelGateway реализован этапом 14. Все типы в таблице существуют в текущих исходниках; интерфейс не означает готовый обработчик бизнес-данных приложения. Раннее рабочее имя DialogRetentionService не реализовано: фактический сценарий удаления — ExpiredDialogCleanup этапа22.
 
-| Рабочее имя | Роль |
+| Фактический тип / контракт | Роль |
 | --- | --- |
 | `AgentRunner` (этап20 реализован) | Полный run с frozen providers/settings/access, guard/compact, durable checkpoint и short scopes; [API](20-agent-turn-orchestration.md) |
 | `ContextBuilder` (этап16 реализован, принят координатором) | Полный ordered ModelRequest из providers/window/tail/new input, guards и проверка known function pairs; [API](16-context-composition.md) |
@@ -59,11 +59,11 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 | `IToolHandler` | Выполнение зарегистрированного инструмента приложения |
 | `IModelGateway` | Независимый от codex-lb порт генерации и сжатия |
 | `CodexLbModelGateway` (JSON14/SSE15/compact18 реализованы) | GenerateAsync через actual HttpClientLibrary; callback выбирает SSE; отдельный CompactAsync; [JSON](14-responses-json-adapter.md)/[SSE](15-responses-sse-adapter.md)/[compact](18-context-compaction.md) |
-| `IContextTokenCounter` | Tokenizer для известной кодировки модели и учёт полного входного бюджета |
+| `IContextTokenCounter` (контракт07; offline `ContextTokenCounter` реализован этапом17) | Tokenizer для известной кодировки модели и учёт полного входного бюджета |
 | `ContextCompactor` (этап18 реализован) | Создание и version-aware сохранение следующего окна; [API](18-context-compaction.md) |
-| `DialogRetentionService` | Координация применения политики хранения |
+| `ExpiredDialogCleanup` (этап22 реализован) | Один явно вызванный bounded пакет удаления истёкших диалогов через existing ports; расписание у приложения; [API](22-expired-dialog-cleanup.md) |
 | `IDatabaseMaintenance<AgentBridgeContextKey>` (реализован в EFCoreLibrary, подключён этапом 12) | Явные InspectAsync/UpdateExistingAsync/InitializeNewAsync; регистрация без запуска операций |
-| `AgentSettingsService` | Безопасное чтение настроек и выбор модели/effort |
+| `AgentSettingsService` (этап21 реализован) | ReadAsync/SelectAsync/GetStatusAsync: безопасные настройки, независимый выбор модели/effort и статус конкретного диалога; [API](21-settings-and-dialog-status.md) |
 | `IModelAccessResolver` (реализован этапом 13) | Индивидуальный ключ от приложения или SharedApiKey только при null; без fallback после ошибки |
 
 Изменяющие сценарии используют собственные минимальные Unit of Work, соответствующие транзакционной границе. Один глобальный UoW со всеми репозиториями не используется. Сценарий только чтения получает узкий порт чтения.

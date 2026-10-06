@@ -1,18 +1,18 @@
 # Исправление проблем аудита AgentBridge
 
-Статус: **план подготовлен; этапы 00–20 не начаты**. Дата: 2026-10-06, Asia/Novosibirsk. План дополнен согласованным MSSQL/мультиплатформенным подключением и строгой конфигурацией; implementation evidence отсутствует.
+Статус на 2026-10-06, Asia/Novosibirsk: **00 принят в A;01–07 приняты в локальной A/B-границе;08 принят в A;09–20 не начаты**. MSSQL/мультиплатформенное подключение и строгая конфигурация согласованы, но ещё не реализованы.
 
-План основан на [реестре ABQA-001–010](<../AgentBridge Quality Audit/Findings.md>), [итоге аудита15](<../AgentBridge Quality Audit/15-final-reconciliation.md>) и [согласованных решениях](Decisions.md). Аудит подтвердил пять дефектов кода статически; runtime-воспроизведение ещё предстоит. ABQA-002 остаётся подозрением. Неоднозначности Q-003–005 решены пользователем; требуемая реализация/CLI/live evidence ещё не выполнены. Исторические [вопросы аудита](<../AgentBridge Quality Audit/OpenQuestions.md>) не переписываются. Нормативные изменения по согласованным решениям синхронизируются с [OpenSpec](../../../openspec/specs/agent-runtime/spec.md) в соответствующих этапах.
+План основан на [реестре ABQA-001–010](<../AgentBridge Quality Audit/Findings.md>), [итоге аудита15](<../AgentBridge Quality Audit/15-final-reconciliation.md>) и [согласованных решениях](Decisions.md). Исторический аудит подтвердил пять дефектов кода статически;01–05 исправили их и получили локальное B evidence. ABQA-002 воспроизведено и исправлено в B ownership/error границе06; S2 остаётся предварительной, deployment connection leak не доказана. ABQA-010 закрыт в обоих исходных местах локальным evidence07. Общая регрессия16, C/D17–19 и требуемые implementation/CLI/live evidence Q-003–005 ещё предстоят. Исторические [вопросы аудита](<../AgentBridge Quality Audit/OpenQuestions.md>) не переписываются. Нормативные изменения по согласованным решениям синхронизируются с [OpenSpec](../../../openspec/specs/agent-runtime/spec.md) в соответствующих этапах.
 
 ## Границы исполнения
 
-- Сейчас разрешено только создание плана. Каждый этап реализации начинается по отдельному поручению; соседние EFCoreLibrary, HttpClientLibrary и codex-lb требуют явно указанной области изменений.
+- Создание плана само по себе не разрешало реализацию. На 2026-10-06 действует отдельное прямое поручение пользователя на этапы00–20 и необходимые адресные code/tests/docs/project изменения: AgentBridge; EFCoreLibrary только maintenance/tests; HttpClientLibrary только streaming lifecycle; codex-lb только pairing compact с OpenSpec-first. Координатор выдаёт этапные задания, принимает результат и поручает отдельные локальные коммиты; один активный writer работает в existing checkout. Область конкретного этапа не расширяется автоматически на соседние репозитории.
 - Основной новый сценарий — MSSQL; .NET10; библиотека для win-x64/linux-x64/linux-arm64, сейчас тестирование на Windows11, затем ASP.NET Core на Ubuntu. Existing SQLite/PostgreSQL сохраняются. Live codex-lb отложен до предоставления endpoint и конкретного небольшого бюджета.
 - Исправления делать в компоненте, который владеет причиной. Не обходить библиотеки своим HTTP, прямым EF/SQL или альтернативным maintenance coordinator в AgentBridge.
 - Сначала создать минимальный различающий регрессионный сценарий, затем точечно исправить причину и проверить положительные и отрицательные контроли. Если воспроизведение не подтверждает вывод, переоценить запись вместо обязательной правки кода.
 - Сохранять архитектуру .NET10/DLL, публичные контракты, fixed expiry, CAS/короткие UoW, safe errors, unknown outcomes и запрет автоматического повтора side effects. Изменение контракта требует отдельного согласования.
-- Исторические отчёты первоначальной реализации и аудита не переписывать. Фактические результаты исправлений дописывать в новые этапы; после приёмки добавлять в реестр аудита датированное состояние со ссылкой, сохраняя прежнее evidence.
-- Git-операции, проектные скрипты, CLI, приложение, hosting, Docker, БД/SQL, migrations и внешние вызовы не разрешены этим планом. При исполнении сверять действующие AGENTS и профильные скиллы; требуемое разрешение содержит точную команду и ресурс. Compile-check и изолированные тесты регулируются применимыми правилами, а не историческим разрешением аудита.
+- Исторические отчёты первоначальной реализации и аудита не переписывать. Фактические результаты исправлений записывать в новые этапы и текущую навигацию со ссылками, сохраняя прежнее evidence. После приёмки в этапе20 добавить в реестр аудита явно отделённые датированные remediation notes со ссылками на Results; исходные записи и степень прежнего evidence сохраняются.
+- Сам план не разрешает команды. Текущее поручение допускает read-only Git status/diff/log/show/rev-parse/diff --check и адресные add/commit после явной приёмки и поручения координатора. Push/PR/GitHub mutations, fetch/pull/clone/reset/clean/rebase/merge/amend/force, новые ветки/worktree/checkout запрещены. Проектные скрипты/исполняемые файлы/CLI/tooling требуют отдельного точного разрешения. Приложение, hosting, Docker, реальные БД/SQL, migrations generation/apply и внешние бизнес-операции не разрешены. Compile-check и изолированные тесты регулируются применимыми skills/AGENTS после preflight; историческое разрешение аудита их не заменяет.
 
 ## Порядок и зависимости
 
@@ -63,6 +63,21 @@
 | Q-005 | 11,19 | Решение принято: FIFO/явный отказ; final subset evidence ещё требуется |
 
 Q-001 уже закрыт организационным evidence аудита; новый этап создания чатов не требуется. План не создаёт отдельные чаты и не разрешает сообщения в них.
+
+## Принятые локальные результаты
+
+Это состояние на 2026-10-06, а не новый прогон тестов. Точные команды, before/after, counts/TRX и actual/doubles находятся в результатах каждого этапа; пересекающиеся suites не суммируются.
+
+| Этап / находка | Принятый результат | Сохраняемая граница |
+| --- | --- | --- |
+| [00](00-baseline-and-scope.md#результаты) | Baseline, карта причин/областей и blockers | A; код не менялся |
+| [01 / ABQA-006](01-initialization-gate.md#результаты) | Начало CREATE фиксируется независимо от Stage; poison до release | Actual coordinator/gate, fake provider; real CREATE —17 |
+| [02 / ABQA-007](02-maintenance-primary-errors.md#результаты) | Безопасный PrimaryError сохраняется при pin/process/native cleanup failure | Actual алгоритмы и EF pin с doubles; реальные ресурсы —17 |
+| [03 / ABQA-009](03-runner-cleanup-cancellation.md#результаты) | Cleanup-only OCE не маскируется caller cancellation; accepted state/no replay сохранены | Actual runner/scopes/executor, fake storage/model; C/D отдельно |
+| [04 / ABQA-008](04-empty-sse-cancellation.md#результаты) | Empty EOF + successful disposal cancellation до canonical data даёт original-token OCE | Actual transport, fake handler/local stream; live —19 |
+| [05 / ABQA-005](05-restore-chronology.md#результаты) | Restore отклоняет несовместимые revision/LastChanged и сохраняет допустимые append | Actual Domain/loader/UoW с doubles; actual persistence —17 |
+| [06 / ABQA-002](06-http-disposal.md#результаты) | Remaining HTTP cleanup attempted; original primary/stack + immutable secondary; cleanup-only identity | B ownership/error; попытка не гарантирует release, deployment leak не доказана |
+| [07 / ABQA-010](07-gated-test-cleanup.md#результаты) | Оба исходных gated tests завершают/await tasks на normal и early exit | B test lifecycle; production hang/leak не заявлены |
 
 ## Проверки и запись результатов
 

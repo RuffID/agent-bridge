@@ -43,6 +43,8 @@ Finalization использует CancellationToken.None, fresh UTC и толь�
 
 Поздняя отмена во время успешного terminal save может вернуть **Status=Canceled, TerminalSaved=true, Turn.Status=Completed**: отмена caller и уже принятый БД результат — разные факты. Terminal статус не переписывается второй записью.
 
+В [исправлении03](<../Plans/AgentBridge Audit Remediation/03-runner-cleanup-cancellation.md#результаты>), принятом 2026-10-06, cleanup-only origin read/write scope фиксируется отдельно от caller flag. Исходная cleanup OCE распространяется с identity/stack даже при отменённом caller и промежуточной нормализации в actual ToolExecutor; primary+cleanup сохраняются вместе. Уже принятый token/step/Started journal не теряется, дальнейшие writes/handler/replay блокируются. Throwing run не возвращает AgentRunResult и не имеет public LastResult runner: public LastResult принадлежит ToolExecutionSession. Проверка03 — actual runner/DI/scopes/executor с fake storage/model; atomic DB, crash и external exactly-once ею не доказаны.
+
 ## Схема и границы проверки
 
 Согласованные новые `AddDurableToolAttempts` migrations SQLite/PostgreSQL добавляют только nullable ToolAttemptsJson; existing initial migrations не регенерировались. Down удаляет журнал, поэтому downgrade может потерять recovery сведения; canonical history остаётся, а существующий TurnId всё равно не replay. Нужны новые migrations DLL; runtime сам их не применяет.
