@@ -19,7 +19,7 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 ## Техническая документация
 
-Actual короткое подключение — [Integration facade](<Technical documentation/26-integration-registration.md>); current source examples компилируются отдельно от historical binary kits, новая поставка15/16 ещё не подтверждена.
+Actual короткое подключение — [Integration facade](<Technical documentation/26-integration-registration.md>); [fresh evidence16](<Plans/AgentBridge Audit Remediation/16-isolated-regression-and-delivery.md#результаты>) подтверждает пять binary kits/external compile-only consumers. [Windows runtime18](<Plans/AgentBridge Audit Remediation/18-runtime-delivery.md#результаты>) проверен в loader/DI/BPE границе; provider/Linux/live/crash evidence остаётся открытым.
 
 [Навигатор Technical documentation](<Technical documentation/README.md>)
 
@@ -58,4 +58,4 @@ Actual короткое подключение — [Integration facade](<Technic
 
 [Аудит качества AgentBridge](<Plans/AgentBridge Quality Audit/README.md>) — статический проход 00–15 завершён с ограничениями; общий аудит A/B/C/D частичный. [Реестр](<Plans/AgentBridge Quality Audit/Findings.md>) содержит находки и пределы их доказательств.
 
-[Исправление проблем аудита AgentBridge](<Plans/AgentBridge Audit Remediation/README.md>) — этап00 принят в A, исправления01–07 приняты в локальной A/B-границе; [сверка описаний08](<Plans/AgentBridge Audit Remediation/08-documentation-alignment.md>) принята в A. [Q-003–005 согласованы](<Plans/AgentBridge Audit Remediation/Decisions.md>); [workflow/CLI09](<Plans/AgentBridge Audit Remediation/09-openspec-reconciliation.md>) принят в A workflow/B CLI; [nested controls10](<Plans/AgentBridge Audit Remediation/10-nested-controls-contract.md>) приняты в A/B по Q-004. [FIFO compact11](<Plans/AgentBridge Audit Remediation/11-repeated-call-pairing.md>) принят в A/B по Q-005. [SQL Server12](<Plans/AgentBridge Audit Remediation/12-sql-server-provider.md>) принят в A/B; actual server17 открыт. [Явная конфигурация13](<Plans/AgentBridge Audit Remediation/13-strict-configuration.md>) принята в A/B. Единая регистрация14 и kits15 для win-x64/linux-x64/linux-arm64 ещё предстоят. Общая регрессия16 и реальные проверки17–19 не закрыты.
+[Исправление проблем аудита AgentBridge](<Plans/AgentBridge Audit Remediation/README.md>) —00/08 приняты в A,01–07/10–15 в локальной A/B-границе,09 в A workflow/B CLI,16 в B. [Решения Q-003–005](<Plans/AgentBridge Audit Remediation/Decisions.md>) реализованы09–11; MSSQL12, breaking explicit settings13, facade14 и kits15 проверены локально.17 имеет принятую подготовку A/B, C отложен пользователем;18 принята Windows runtime часть, Linux открыт;19 только A readiness без live/crash harness. [Итог20](<Plans/AgentBridge Audit Remediation/20-final-acceptance.md#результаты>) принят координатором в границе **частичной приёмки доступного локального объёма**; обязательные C/D17–19 остаются открытыми.

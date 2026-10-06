@@ -193,3 +193,22 @@
 - Последующие уточнения с датой; без исправления продукта.
 
 Пустая матрица покрытия или непроведённая интеграция записывается как пробел с ограничениями. Запрос расширить поддерживаемые модели или добавить recovery UI без нарушенного требования — пожелание, а не баг.
+
+## Remediation notes — 2026-10-06, итог20 принят в частичной границе
+
+Это отдельное последующее дополнение; исходный реестр/категории/серьёзность/достоверность и результаты A-аудита выше сохранены. [Results20](<../AgentBridge Audit Remediation/20-final-acceptance.md#результаты>) сопоставляет full commits/manifests, before/after и положительные контроли. **Частичная приёмка доступного локального объёма**, не завершение всего плана; notes приняты координатором от имени пользователя в частичной границе; поручен адресный docs commit.
+
+| Исходный ID | Принятый локальный исход | Evidence / сохраняемая граница |
+| --- | --- | --- |
+| ABQA-001 | Текущие описания исправлены в A08; текущая навигация20 синхронизирована | [08](<../AgentBridge Audit Remediation/08-documentation-alignment.md#результаты>); historical Initial/audit15 сохранены |
+| ABQA-002 | Подозрение воспроизведено и исправлено в A/B ownership/error06 | [06](<../AgentBridge Audit Remediation/06-http-disposal.md#результаты>), fresh16 HTTP58 обеTFM/gateway suite. Remaining cleanup attempted не confirmed release; deployment leak не доказана, S2 предварительно |
+| ABQA-003 | Пробел CLI evidence закрыт в B09 | [09](<../AgentBridge Audit Remediation/09-openspec-reconciliation.md#результаты>): CLI1.14.1 final19/19, ERROR0/WARNING0; current strict20 также19/19. Historical INFO2/current INFO6 archive collision отдельно, AB changes не архивированы |
+| ABQA-004 | Q-003 authority main/history workflow принят A09 | [Workflow](../../../openspec/README.md); old compact Unsupported сохранён исторически. Validation не sync/archive и не runtime compact defect |
+| ABQA-005 | Restore chronology исправлена и адресно проверена A/B05 | [05](<../AgentBridge Audit Remediation/05-restore-chronology.md#результаты>), fresh16. Actual corrupt row origin/SQL persistence/backup restore17 не установлены |
+| ABQA-006 | InitializationStarted/poison до release исправлены A/B01 | [01](<../AgentBridge Audit Remediation/01-initialization-gate.md#результаты>), fresh16 actual gate/coordinator с provider doubles; C17 real post-CREATE fault открыт |
+| ABQA-007 | Safe PrimaryError исправлен A/B02 во всех трёх owning путях | [02](<../AgentBridge Audit Remediation/02-maintenance-primary-errors.md#результаты>): pin actual EF+fake connection, process actual runner+fake handle, native actual stepper+fake session. C17 connection/process/native отдельно открыты; Load/Free18 их не закрывает |
+| ABQA-008 | Empty EOF/disposal cancel до данных даёт original-token OCE, A/B04 | [04](<../AgentBridge Audit Remediation/04-empty-sse-cancellation.md#результаты>), fresh16; controlled live cancellation19 не запускалась |
+| ABQA-009 | Cleanup OCE origin/identity и accepted state/no-replay исправлены A/B03 | [03](<../AgentBridge Audit Remediation/03-runner-cleanup-cancellation.md#результаты>), fresh16; provider disposal/real ack loss/crash19 открыты |
+| ABQA-010 | Оба исходных gated test lifecycle закрыты B07, AB и EF | [07](<../AgentBridge Audit Remediation/07-gated-test-cleanup.md#результаты>): normal/early assertion/timeout/cancel source tasks await; EF before уже8/8 после01, не новый production hang/leak |
+
+[Fresh16](<../AgentBridge Audit Remediation/16-isolated-regression-and-delivery.md#результаты>) подтверждает текущие локальные suites/kits/external compile-only examples в B; outcomes не суммируются с прежними/пересекающимися runs. [17](<../AgentBridge Audit Remediation/17-provider-verification.md#результаты>) принят только как A/B подготовка, C отложен пользователем и не вся Cматрица подготовлена. [18](<../AgentBridge Audit Remediation/18-runtime-delivery.md#результаты>) принят в Windows loader/DI/BPE части; Linux runtime/production app graph/provider exports открыты. [19](<../AgentBridge Audit Remediation/19-live-contracts-and-recovery.md#результаты>) принят только A readiness31 not_run; executable harness/fault controllers/durable counter отсутствуют. Эти ограничения не превращены в новые подтверждённые дефекты.

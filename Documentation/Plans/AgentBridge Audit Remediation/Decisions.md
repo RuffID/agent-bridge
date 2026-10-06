@@ -4,6 +4,10 @@
 
 Документ дополняет исторический [OpenQuestions аудита](<../AgentBridge Quality Audit/OpenQuestions.md>). Старые результаты A и незапущенные B/C/D не переписываются. Решение о контракте не означает исправление кода или прохождение проверки.
 
+## Актуальный checkpoint20, 2026-10-06
+
+[Итог20](20-final-acceptance.md#результаты) принят координатором от имени пользователя в границе **частичного доступного локального объёма**. Принятые00–16 и решения Q-003–005 сохраняются.17 принят как подготовка A/B (final310/310), C отложен пользователем, полная Cматрица не подготовлена.18 принята Windows loader/DI/BPE часть для трёх kits; Linux runtime/production app graph/provider exports открыты.19 принят только как A readiness:31 not_run, executable harness/fault controllers/durable counter отсутствуют. Q-002 частичный: Windows receipts имеются, Pi5 Ubuntu24.04.3/aarch64 предоставлен пользователем, .NET отсутствует; Linux x64 ресурс, MSSQL/TLS/auth/server backup/restore ресурсы и live endpoint/budget не определены. Installation/copy/remote runs не выполнялись. Старые checkpoints ниже сохраняют состояние на свою дату/этап; они не отменяют фактический текущий статус. Полная приёмка17–19/всего плана не заявляется.
+
 ## Q-002 — Окружение и поставка
 
 **Актуальный checkpoint15–16, 2026-10-06:** delivery composition15 принят в A/B, commit `b0c81321b1a9cfe0b4c640a1413419088daae88d`; [fresh regression16](16-isolated-regression-and-delivery.md#результаты) принят в B, commit `b1e966445c70f30cad63cc5ba690808c75c7fd35`. Пять новых kits находятся в `artifacts/delivery/stage16`: SQL Server три RID и SQLite/PostgreSQL win-x64. Fresh builds/isolated TRX/metadata/external compilation не являются provider/native/runtime/live evidence17–19; реальные ресурсы Q-002 остаются неопределёнными. Предыдущие checkpoint формулировки сохраняют историю и не меняют согласованные решения.

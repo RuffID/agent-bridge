@@ -63,3 +63,17 @@
 - Влияние: неоднозначна готовность OpenSpec workflow; текущий compact исследуется по main, а не объявляется дефектом из-за запрета delta14/15.
 - Разрешает: владелец workflow и фактическое evidence соответствующей версии CLI при отдельном разрешении B.
 - Зависимые проверки: strict validation/sync/rename semantics и будущая готовность archive. Доступный статический аудит следующих этапов не заблокирован.
+
+## Remediation notes — 2026-10-06, итог20 принят в частичной границе
+
+Исторический body/ID/неопределённости выше сохранены. Ниже — отдельное сопоставление последующих решений и evidence, принятое координатором от имени пользователя в частичной границе. [Results20](<../AgentBridge Audit Remediation/20-final-acceptance.md#результаты>) — **частичная приёмка доступного локального объёма**, полный17–19 не завершён. Действующие решения — [Decisions](<../AgentBridge Audit Remediation/Decisions.md>), решения Q-003–005 не переоткрывались.
+
+| Вопрос | Последующее решение / фактический результат | Остаток |
+| --- | --- | --- |
+| ABQA-Q-001 | Исторически закрыт2026-10-05 организационным evidence | Сохранён закрытым |
+| ABQA-Q-002 | MSSQL/.NET10 primary, SQLite/PG сохранены, kits SQLServer win-x64/linux-x64/linux-arm64 и SQLite/PG win-x64 приняты B15/16. Windows11Pro26200/.NET10.0.12/SDK10.0.401 runtime loader/DI/BPE18 принят; Pi5 Ubuntu24.04.3/aarch64/SSH LAN предоставлен пользователем, dotnet отсутствует | **Частичный**. C17 отложен; MSSQL версия/edition/TLS/auth/own databases/server backup/restore paths/budgets/operations/cleanup не заданы. Linux x64 машина не задана; Pi installation/copy/run не выполнены. Deployed endpoint/model/account/budget19 отложены,31 not_run и harness не создан |
+| ABQA-Q-003 | Main authoritative, старые deltas исторические и не возвращают запрет compact; [workflow09](../../../openspec/README.md). Actual CLI1.14.1 final19/19,460 clauses/167 scenarios сохранены; повтор current19 strict20 passed | Решение и A workflow/B CLI приняты09; historical INFO2/current INFO6 archive collision отдельно. AB sync/archive не выполнялись validation-командой, runtime отдельно |
+| ABQA-Q-004 | Known nested malformed/duplicates → Validation до HTTP, shared JSON/SSE/compact reasoning validator; unknown/schema JSON сохранены. [10](<../AgentBridge Audit Remediation/10-nested-controls-contract.md#результаты>) принят A/B: before6 Success/calls1, after calls0;115 входит в313 | Решение реализовано локально; live19 T11/T12 не проверены. Historical ambiguity не повышена задним числом до дефекта |
+| ABQA-Q-005 | Единый FIFO original occurrences в AB и LB, wrong/ambiguous compact отказ до save без потери accepted window/history/replay. [11](<../AgentBridge Audit Remediation/11-repeated-call-pairing.md#результаты>) принят A/B: AB20 внутри183, LB120/120; actual commits обоих repo в Results20 | Deployed final payload/fitting/association19 T13–T16 не проверены. Focused LB archive11 по отдельному permission не global LB validation и не AB archive |
+
+Для оставшихся17–19 требуется определение и согласование собственных реальных ресурсов, версий/TLS/auth/операций/бюджетов/очистки и конкретного harness до actual runs. Разрешение всех тестовых команд/скриптов уже есть и не запрашивается повторно; оно не задаёт неизвестные БД/live endpoints или remote provisioning. No-replay не обещает external exactly-once. Notes не заменяют выполнение C/D и не разрешают запуск ресурсов.
