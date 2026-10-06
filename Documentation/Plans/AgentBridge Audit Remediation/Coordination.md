@@ -44,7 +44,7 @@
 | 14 | `01a11000-0820-75a2-a41e-82af991d066a` / `local` | Принят в A/B | Actual facade/full DI graph/options/scopes/overrides; final289/289,57facade; kits15–16/runtime17–19 открыты | AB `4354106234488d039f805aecbfd24cfbc18f2162` |
 | 15 | `01a11010-a2bc-7a81-b1a0-f618a3969b7d` / `local` | Принят в A/B | Five kits/resources/PE/ELF/XML/API,27/27; five external consumers; runtime18 открыт | AB `b0c81321b1a9cfe0b4c640a1413419088daae88d` |
 | 16 | `01a11040-5ad5-7d70-8347-cec38abd0ab2` / `local` | Принят в B | Fresh502/403/289;EF159;HTTP58 обеTFM;metadata27;fivekits/consumers | AB `b1e966445c70f30cad63cc5ba690808c75c7fd35` |
-| 17 | — | Не начат | Реальные ресурсы/разрешения не заданы | — |
+| 17 | `01a11050-269b-7aa0-b7ff-858753f157d8` / `local` | Подготовка A/B принята; C отложен пользователем | Opt-in fixtures/same-row ordinal controls; final310/310, first309/1 сохранён | AB `9ba43d7ffb449099948a846824d53cd6c9fee171` |
 | 18 | — | Не начат | Runtime environments/разрешения не заданы | — |
 | 19 | — | Не начат | Endpoint/бюджет/разрешения не заданы | — |
 | 20 | — | Не начат | Отчёт или блокер каждого00–19 | — |
@@ -58,6 +58,12 @@ Review15 выявил пропуск13 culture resource DLL Microsoft.Data.SqlCl
 Q-003–005 не открываются повторно без обнаруженного противоречия. Q-002: версии/редакция SQL Server, Ubuntu/runtime machines, permissions/TLS/server backup path, deployed endpoint/commit/exact models, бюджет и cleanup остаются ресурсами будущих17–19. Windows cross-build не доказывает Linux ARM64 runtime. Подозрение ABQA-002 не объявляется дефектом без различающего воспроизведения.
 
 ## Журнал действий
+
+- Подготовка17 принята после независимого source/Results/manifest/UTF8/diff review и проверки fresh final310/310. Initial deadline failure и focused8/8 сохранены, пересекающиеся suites не суммируются. Actual commit `9ba43d7ffb449099948a846824d53cd6c9fee171` независимо подтверждён git show: exact7-file manifest, без production/соседей/журнала. Index пуст, AB только Coordination; EF/HTTP clean, LB foreign .vs/ сохранена. C и неподготовленные обязательные cases остаются открытыми; пользователь отложил прямые проверки.17 завершил writes. Следующий18 выполняет разрешённый test consumer в доступной Windows среде; неизвестные Linux ресурсы не подменяются cross-build.
+
+- В чате17 actual userMessage `01a11051-5ebb-7382-a280-74359384e017` прямо ответил: «Подготовь fixtures, прямые тесты будут позже». Координатор независимо прочитал исходный вопрос/ответ; разрешение ресурса не выдумывается и повторно не спрашивается.17 продолжает подготовку/compile/isolated validation; C считается отложенным, а не выполненным.
+
+- Coordination16/current navigation/Decisions checkpoint сохранены `cc69ecc57d061fb22357de908af682cd4c10bc57`. Exact project path подтверждён list_projects; создан отдельный чат17 для доступной opt-in/compile подготовки, с запретом выдумывать SQL resources или объявлять C pass. Переданы hashes16/12–15/соседей, actual kits16 и полномочия test commands/scripts без повторного permission. Model gpt-6.1-sol/thinking medium/local переданы явно; tool вернул только threadId/hostId, actual settings не подтверждены. Один writer17; resource question относится к собственным БД/TLS/backup/cleanup, а не повторному согласованию решений.
 
 - Этап16 принят в B после независимого отчёта/actual commands53/fresh builds/7TRX rows-counters review,474source hashes и7output before/after совпадений, пяти kits/copies/generator/resource hashes,UTF8/diff check. Actual commit `b1e966445c70f30cad63cc5ba690808c75c7fd35` подтвердил manifest1 отчёта16; source/tests не менялись, index пуст, чужой Journal и LB .vs/ сохранены. Полные тестовые counts502/403/289,EF159,HTTP58 обеTFM,metadata27 не суммируются; runtime17–19 остаётся открытым.16 прекратил writes; координатор переходит к доступной подготовке17.
 
