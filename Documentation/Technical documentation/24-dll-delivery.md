@@ -1,124 +1,78 @@
 # Поставка DLL для .NET10
 
-Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Статус24: принят и закоммичен495e2b857bc36171ce97b82eb0fef77eeac593ea, compile/metadata проверены. [Команды, результаты, ошибки и manifest изменений](<../Plans/AgentBridge Initial Implementation/24-dll-delivery.md>). [Руководство25](25-usage-guide.md) реализовано и адресно проверено, этап25 принят координатором, full hash итоговой локальной фиксации сообщается отдельно.
+Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Текущий compile/metadata checkpoint — [Audit Remediation15](<../Plans/AgentBridge Audit Remediation/15-multiplatform-delivery.md#результаты>), 2026-10-06. Первоначальные [поставка24](<../Plans/AgentBridge Initial Implementation/24-dll-delivery.md>) и [consumer25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>) сохраняются как историческое evidence.
 
-## Граница комплекта
+## Комплекты и граница проверки
 
-Локальные каталоги от корня AgentBridge:
+Комплекты лежат в игнорируемом `artifacts/delivery/stage15-v2/<Provider>/<RID>`. Основной provider — `SqlServer`; `Sqlite` и `PostgreSql` сохранены. Промежуточные stage15 kits не включали satellites и сохранены только как before evidence.
 
-- `artifacts/delivery/stage24-win-x64/Sqlite`
-- `artifacts/delivery/stage24-win-x64/PostgreSql`
+| Provider | RID | Managed DLL в lib | Culture satellites | XML | Native |
+| --- | --- | --- | --- | --- | --- |
+| SqlServer | win-x64 | 64 | 13 | 57 | 3 PE AMD64 |
+| SqlServer | linux-x64 | 63 | 13 | 57 | 2 ELF64 little-endian x86-64 |
+| SqlServer | linux-arm64 | 63 | 13 | 57 | 1 ELF64 little-endian AArch64 |
+| Sqlite | win-x64 | 64 | 13 | 57 | 3 PE AMD64 |
+| PostgreSql | win-x64 | 64 | 13 | 57 | 3 PE AMD64 |
 
-Каждый комплект рассчитан на SDK-style `net10.0`, **win-x64**, framework-dependent приложение и установленный подходящий .NET10 runtime. Для WPF/ASP.NET Core приложение отдельно выбирает свой SDK/shared framework. .NET runtime, host, Serilog/sinks, pg_dump, secrets и приложение в комплект не входят. Другие RID, trimming, single-file и NativeAOT не проверялись; Windows native DLL нельзя переносить на другую ОС/архитектуру.
+Это SDK-style `net10.0`, Debug, framework-dependent DLL. Приложение устанавливает .NET10 runtime и выбирает свой SDK/shared framework; runtime/host, Serilog/sinks, secrets, сервер БД и приложение в комплект не входят. RID описывает приложение-клиент; Linux ARM64 не обещает SQL Server Engine на ARM64. SQLite/PostgreSQL для Linux этим checkpoint не подтверждены. Release, NativeAOT, trimming и single-file не проверялись.
 
 ```text
 <kit>/
   AgentBridge.Delivery.props
+  AgentBridge.Delivery.variant.props
   delivery.manifest.json
-  lib/                          39 managed DLL + 35 XML
-  native/win-x64/e_sqlite3.dll   1 native DLL
-  evidence/
-    AgentBridge.Delivery.deps.json
-    AgentBridge.BinaryConsumer.deps.json
-    consumer-references.json
+  lib/                                  managed DLL и доступные XML
+  native/<RID>/                         SDK-selected native assets
+  resources/<culture>/                  managed culture satellites
+  evidence/AgentBridge.Delivery.deps.json
 ```
 
-Manifest перечисляет79 файлов с SHA256/размером, assembly/file versions и package/project происхождением DLL; сам manifest —80-й файл, без рекурсивного self hash. Evidence содержит сведения локальной проверки, включая абсолютные локальные пути. Эти пути не участвуют в подключении приложения. `AgentBridge.Delivery.deps.json` — исходное evidence разрешения зависимостей, **не deps приложения**. Приложение создаёт свой deps стандартным Build; готовый consumer deps также только evidence.
+Manifest содержит RID/provider, framework/configuration, проверенную SDK version10.0.401, исходные Git revisions, SHA256 assets/generator и каждого файла, размеры, assembly/file versions и package/project provenance. Alias одной DLL, которую SDK также перечисляет как Reference, сохраняется отдельно и допускается лишь при совпадении kind/hash. Manifest не включает собственный hash; его hash записан в Results15. В manifest/props/deps нет абсолютных путей к Windows source tree; filename case и разделители переносимы. Raw project.assets/source snapshots остаются отдельным локальным evidence вне комплекта.
 
-## Полный состав managed DLL
+## Полная closure
 
-В таблице указаны имена без `.dll`. XML с тем же именем расположен рядом, кроме четырёх явно отмеченных файлов. В обеих поставках одинаковая closure; различается migrations DLL.
+Пять AgentBridge DLL: ядро, CodexLb, Persistence.EfCore, Integration и ровно одна выбранная `AgentBridge.Persistence.Migrations.<Provider>`. Собственная `AgentBridge.Delivery.dll`, Design/Roslyn/xUnit/testhost/PDB в комплект не входят.
 
-| DLL | Версия / роль |
-| --- | --- |
-| AgentBridge | 1.0.0.0; ядро, Application, offline tokenizer |
-| AgentBridge.CodexLb | 1.0.0.0; actual HttpClientLibrary transport |
-| AgentBridge.Persistence.EfCore | 1.0.0.0; общий EF adapter |
-| AgentBridge.Persistence.Migrations.Sqlite **либо** AgentBridge.Persistence.Migrations.PostgreSql | 1.0.0.0; выбранная текущая схема, включая durable journal/settings/provenance |
-| EFCoreLibrary | 0.0.5, assembly/file0.0.5.0; XML исходный проект не генерирует |
-| EFCoreLibrary.Maintenance | 1.0.0.0; общий coordinator |
-| EFCoreLibrary.Maintenance.Sqlite | 1.0.0.0; native backup adapter |
-| EFCoreLibrary.Maintenance.PostgreSql | 1.0.0.0; pg_dump adapter |
-| HttpClientLibrary | FileVersion0.0.0.5, AssemblyVersion1.0.0.0 |
-| Microsoft.ML.Tokenizers | package2.0.0 |
-| Microsoft.ML.Tokenizers.Data.O200kBase | package2.0.0; embedded dictionary |
-| Microsoft.ML.Tokenizers.Data.Cl100kBase | package2.0.0; embedded dictionary |
-| Google.Protobuf | package3.30.2; tokenizer dependency |
-| Microsoft.Bcl.AsyncInterfaces | package9.0.4 |
-| Microsoft.Bcl.HashCode | package6.0.0 |
-| Microsoft.Bcl.Memory | package10.0.4 |
-| Microsoft.Data.Sqlite | Microsoft.Data.Sqlite.Core10.0.11 |
-| Microsoft.EntityFrameworkCore | package10.0.11 |
-| Microsoft.EntityFrameworkCore.Abstractions | package10.0.11 |
-| Microsoft.EntityFrameworkCore.Relational | package10.0.11 |
-| Microsoft.EntityFrameworkCore.Sqlite | Microsoft.EntityFrameworkCore.Sqlite.Core10.0.11 |
-| Npgsql | package10.0.3 |
-| Npgsql.EntityFrameworkCore.PostgreSQL | package10.0.3 |
-| SQLitePCLRaw.batteries_v2 | bundle_e_sqlite3 2.1.12; XML в пакете отсутствует |
-| SQLitePCLRaw.core | package2.1.12; XML отсутствует |
-| SQLitePCLRaw.provider.e_sqlite3 | package2.1.12; XML отсутствует |
-| Microsoft.Extensions.Caching.Abstractions | package10.0.11 |
-| Microsoft.Extensions.Caching.Memory | package10.0.11 |
-| Microsoft.Extensions.Configuration | package10.0.3 |
-| Microsoft.Extensions.Configuration.Abstractions | package10.0.11 |
-| Microsoft.Extensions.Configuration.Binder | package10.0.3 |
-| Microsoft.Extensions.DependencyInjection | package10.0.11 |
-| Microsoft.Extensions.DependencyInjection.Abstractions | package10.0.11 |
-| Microsoft.Extensions.DependencyModel | package10.0.11 |
-| Microsoft.Extensions.Logging | package10.0.11 |
-| Microsoft.Extensions.Logging.Abstractions | package10.0.11 |
-| Microsoft.Extensions.Options | package10.0.11 |
-| Microsoft.Extensions.Options.ConfigurationExtensions | package10.0.3 |
-| Microsoft.Extensions.Primitives | package10.0.11 |
+Closure разрешает стандартный SDK Build [Delivery project](../../tests/Delivery/Build/AgentBridge.Delivery.csproj), который ссылается на Integration facade и выбранную migrations library. [Assemble-Delivery.ps1](../../tests/Delivery/Build/Assemble-Delivery.ps1) читает fresh RID-specific deps/assets/output, сверяет package/output hashes и генерирует комплект в новом каталоге; DLL/native не загружаются. Скрипт не запускается автоматически из Build. Перед каждым вариантом выполняется отдельный restore; runtime/native package assets не удаляются вручную.
 
-Native asset — `SQLitePCLRaw.lib.e_sqlite3/2.1.12`, исходный package path `runtimes/win-x64/native/e_sqlite3.dll`. Вместе с `batteries_v2`, provider и core он поставляется **в обоих** вариантах. Общий EF-адаптер уже имеет статические ссылки на оба provider/maintenance-модуля; выбор PostgreSQL не разрешает вручную удалять SQLite-зависимости. Он также не требует запуска SQLite при работе PostgreSQL. Разделение этих зависимостей — отдельное изменение архитектуры, не24.
+Общий EF adapter статически ссылается на SQLite/PostgreSQL/SQL Server и их maintenance-модули. Поэтому **все** kits содержат эти managed зависимости; выбор provider не делает комплект минимальным и не разрешает выкидывать соседние зависимости. Основные packages: EF10.0.11, Npgsql10.0.3, SqlClient6.1.6, SQLitePCLRaw2.1.12, tokenizers/data2.0.0, Microsoft.Extensions10.0.11/Configuration Binder и Options.ConfigurationExtensions10.0.3, HttpClientLibrary FileVersion0.0.0.5, EFCoreLibrary0.0.5. Дополнительные Azure/MSAL/IdentityModel/BCL dependencies перечислены в actual deps/manifest, а не подбираются вручную.
 
-MSBuild разрешил общие Microsoft.Extensions зависимости по общему графу, поэтому нужно копировать комплект целиком, не смешивая DLL из прежних builds. SQL Server/MySQL, EF Design, Roslyn, xUnit, testhost и служебная `AgentBridge.Delivery.dll` не поставляются. PDB не нужны для подключения и не включены.
+| Native source | win-x64 | linux-x64 | linux-arm64 |
+| --- | --- | --- | --- |
+| SQLitePCLRaw.lib.e_sqlite3/2.1.12 | e_sqlite3.dll | libe_sqlite3.so | libe_sqlite3.so |
+| Microsoft.Data.SqlClient.SNI.runtime/6.0.2 | Microsoft.Data.SqlClient.SNI.dll | Нет selected native asset | Нет selected native asset |
+| Microsoft.Identity.Client.NativeInterop/0.20.6 | msalruntime.dll | libmsalruntime.so | Нет selected native asset |
+
+SqlClient на Linux выбран из `runtimes/unix`, Windows — из `runtimes/win`; отсутствие Linux SNI DLL следует из actual SDK/package graph. Windows fallback не используется. Native MSAL/SQLite сохраняются ровно там, где их выбрал SDK. Package selection/PE/ELF checks не являются native loading, server/provider или authentication evidence.
 
 ## Бинарное подключение
 
-Скопировать выбранный комплект в каталог приложения, например `vendor/AgentBridge`. Импортировать поставляемый props **после PropertyGroup**:
+Скопируйте **полный** выбранный комплект, например в `vendor/AgentBridge/SqlServer/linux-x64`. RID приложения должен совпадать с generated variant props:
 
 ```xml
 <PropertyGroup>
   <TargetFramework>net10.0</TargetFramework>
-  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
 </PropertyGroup>
-<Import Project="vendor/AgentBridge/AgentBridge.Delivery.props" />
+<Import Project="vendor/AgentBridge/SqlServer/linux-x64/AgentBridge.Delivery.props" />
 ```
 
-Props использует только свой `MSBuildThisFileDirectory`: managed DLL становятся `Reference` с `Private=true`, XML копируются в output, native файл попадает в корень output как `e_sqlite3.dll`. Никакие пути к AgentBridge/EFCoreLibrary/HttpClientLibrary source tree и packages cache потребителю не нужны. `HintPath` на исходные проекты не используется. Не копировать только четыре AgentBridge DLL: у binary Reference нет NuGet-механизма восстановления транзитивных пакетов.
+Props использует свой `MSBuildThisFileDirectory`, импортирует generated RID/provider, подключает все managed DLL как `Reference Private=true`, доставляет XML и **все** native assets выбранного RID в корень output стандартными SDK items. При несовпадении RID Build завершается с понятной ошибкой. У binary Reference нет NuGet-восстановления транзитивных пакетов; нельзя копировать лишь пять AgentBridge DLL или смешивать kits/builds/RID. Потребитель формирует свой deps при обычном Build; supplied Delivery deps — evidence разрешения SDK graph, не deps приложения.
 
-Проверяемый [compile-only проект](../../tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj) принимает абсолютный `AgentBridgeDeliveryRoot` как параметр Build. Его [BinaryContractProbe](../../tests/Delivery/Consumer/BinaryContractProbe.cs) компилирует реальные DI/options/maintenance и публичные типы. Этап25 расширил consumer [регистрацией и public сценариями](25-usage-guide.md), проверенными с обоими комплектами. Это библиотека без entry point; методы не исполнялись. В приложении остаются logging, HttpClient lifecycle, IIndividualModelKeySource, ordered context providers, business source и права пользователя.
+Culture satellites `Microsoft.Data.SqlClient.resources.dll` копируются из `resources/<culture>/` в `<culture>/` consumer output стандартными SDK items, сохраняя cs/de/es/fr/it/ja/ko/pl/pt-BR/ru/tr/zh-Hans/zh-Hant и filename case. Они не становятся прямыми корневыми assembly references. SDK/package hashes, assembly culture/version/PE metadata и полная resources closure входят в manifest/checks; flattening запрещён.
+
+[Внешний compile-only Consumer](../../tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj) принимает `AgentBridgeDeliveryRoot` и явный `RuntimeIdentifier`; скопированные .cs/.csproj собираются вне всех repo с пятью kits. В нём нет ProjectReference/PackageReference/sourcepaths или entry point. [Регистрация](../../tests/Delivery/Consumer/SimpleRegistration.cs) использует actual `services.AddAgentBridge(configuration, httpClientFactory)`; app ILoggerFactory и client lifetime задаёт приложение, Individual source регистрируется до facade. [Полное руководство](25-usage-guide.md) и [facade](26-integration-registration.md) описывают эти обязанности.
 
 ## Конфигурация и внешние требования
 
-| Параметр | SQLite | PostgreSQL |
-| --- | --- | --- |
-| `DatabaseOptions.Provider` | `DatabaseProvider.SQLite` | `DatabaseProvider.PostgreSql` |
-| `ConnectionString` | Файловая БД; доступный каталог и права приложения | Сервер, database, user и параметры приложения; secret не в комплекте |
-| Migrations assembly | `AgentBridge.Persistence.Migrations.Sqlite` | `AgentBridge.Persistence.Migrations.PostgreSql` |
-| Native/сервер | Поставляемая x64 SQLite DLL, обычный filesystem main | Доступный PostgreSQL; SQLite assets сохраняются из-за общей closure |
-| Backup | Native SQLite backup API, без sqlite CLI | Отдельно установленный полный PostgreSQL client toolchain с pg_dump |
+`Database:Provider` и `Database:ConnectionString` обязательны; MSSQL выбирает `SqlServer` и migrations SqlServer. SQLite/PostgreSQL — явные альтернативы со своей migrations assembly, без fallback. Выбранные migrations и `__AgentBridgeMigrationsHistory` задаются runtime adapter. Наличие DLL и `AddAgentBridge` не запускают соединения, SQL, migrations, maintenance или cleanup.
 
-Сначала `AddDatabaseConfiguration`, затем `AddAgentBridgePersistence`. Provider обязателен, fallback на SQLite отсутствует. Runtime сам задаёт выбранную migrations identity и собственную history table `__AgentBridgeMigrationsHistory`; отсутствующая migrations DLL не заменяется общей сборкой. Наличие DLL не запускает подключение/миграции.
+Maintenance отдельно подключает `AddAgentBridgeDatabaseMaintenance(..., MaintenanceExecutionMode.SingleInitializer)`. App останавливает writes/DDL/другие экземпляры, предоставляет права/secrets/TLS, вызывает операцию и управляет retention. MSSQL backup path доступен **серверу БД**, не обязательно app filesystem. PostgreSQL требует отдельный toolchain/pg_dump с согласованным major, absolute paths и конечным cleanup timeout; для отдельного restore — совместимый pg_restore. SQLite требует обычный файловый main и соответствующие ограничения native backup. Подробности: [SQL Server](12-sql-server-provider.md), [maintenance](06-database-maintenance.md), [migrations](11-provider-migrations.md), [configuration](05-configuration-and-lifecycle.md).
 
-Maintenance подключается отдельным `AddAgentBridgeDatabaseMaintenance(..., MaintenanceExecutionMode.SingleInitializer)`. Обязательны абсолютный `BackupDirectory` и явный положительный `BackupRetentionPeriod`; cleanup/retention выполняет приложение. PostgreSQL дополнительно требует `PostgreSqlDumpExecutablePath` (абсолютный путь, без поиска PATH), `PostgreSqlServerMajorVersion` (10+, фактический major dump/server должен совпасть) и конечный положительный `PostgreSqlCleanupTimeout`.
+## XML и проверенное поведение
 
-PostgreSQL maintenance поддерживает стабильный прямой TCP endpoint и TLS `Disable` либо `VerifyFull` с CA; connection whitelist Npgsql/libpq ограничен actual EFCoreLibrary. Права CONNECT/backup и при явном создании CREATEDB/эквивалентные права предоставляет администратор. Backup custom-format относится к выбранной БД, не к global roles. `pg_dump.exe` и зависимые libpq/прочие DLL поставляет PostgreSQL toolchain, они не входят в AgentBridge. Для отдельной операции восстановления нужен совместимый `pg_restore`; текущий AgentBridge maintenance не предоставляет автоматический restore API.
+Все пять AgentBridge assembly имеют generated XML. Доступные XML зависимостей копируются из того же Build/package graph без преобразования; отсутствующая XML у зависимости не выдумывается. Generated `<inheritdoc/>` не разворачивается компилятором в текст: metadata-тесты разрешают actual interface/implementation по Roslyn и проверяют русский summary контракта. Подтверждены ContextTokenCounter/IContextTokenCounter, CodexLbModelCatalog/IModelCatalog и DialogReader/IDialogReader во всех пяти kits.
 
-SQLite maintenance ограничен обычным файловым main: не memory/URI/custom VFS/encryption/attachments/reparse points. Приложение останавливает writes/DDL/другие экземпляры, выделяет scope и явно вызывает `IDatabaseMaintenance<AgentBridgeContextKey>`; конфигурация и регистрация этого не делают. Детали: [maintenance](06-database-maintenance.md), [provider migrations](11-provider-migrations.md), [configuration](05-configuration-and-lifecycle.md). Процессы, серверы, БД и секреты в24 не использовались.
+Results15 фиксирует27 isolated metadata tests,0 failed/0 skipped: managed AssemblyRef closure/versions/tokenizer resources и culture satellites, manifest/hashes/SDK entries/case, native PE/ELF и wrong/mixed/missing controls, одинаковый public AgentBridge API/XML между MSSQL RID. Пять внешних consumers собраны с0 warnings/errors; DLL/XML/native/satellites output проверен побайтно. Исходники примеров и их методы не исполнялись.
 
-## XML и inheritdoc
-
-Все четыре выбранные AgentBridge assembly имеют соседние generated XML, также включены XML HttpClientLibrary и трёх maintenance-модулей. XML пакетов копируются из того же package/runtime asset каталога без преобразований; всего35 XML. EFCoreLibrary0.0.5 не включает `GenerateDocumentationFile` и многие её CRUD API не имеют source summary: описания для них не выдумываются, read-only библиотека не менялась. Три SQLitePCLRaw managed файла также не предоставляют XML.
-
-Компилятор C# сохраняет `<inheritdoc/>` в XML, **не разворачивает** его в текст. Шесть checks (по3 на комплект) читают Roslyn symbols и XML только из DLL-комплекта: `ContextTokenCounter → IContextTokenCounter`, `CodexLbModelCatalog → IModelCatalog`, `DialogReader → IDialogReader`. Проверяются типы, все методы соответствующего интерфейса, реальные metadata-связи, inheritdoc реализации и русский summary интерфейса. Контракты доступны без исходников, в том числе между сборками.
-
-Это не подтверждение автоматического показа унаследованного текста во всех IDE. IDE/documentation renderer должен поддерживать inheritdoc и разрешение интерфейсов по metadata; иначе читать описание через интерфейс. XML вручную не разворачивались и не редактировались.
-
-## Что подтверждено
-
-Оба комплекта собраны в Debug, .NET SDK10.0.401. Два отдельных внешних потребителя собраны с39 DLL комплекта и .NET reference pack; source/package references отсутствуют. SHA256 всех39 DLL совпадает с build output, package DLL/native — с исходным NuGet asset. Копирование39 managed DLL,35 XML и native DLL в output потребителя проверено побайтно.
-
-Два PE checks проверили closure AssemblyRef и достаточные assembly versions, отсутствие design/test assemblies, selected migrations, embedded tokenizer resources и формат native PE AMD64. Вместе с6 XML checks: **8 passed /0 failed /0 skipped**. Ни один из этих checks не выполняет AgentBridge, tokenizer или native code; runtime resolution, SQLite initialization, dump, DI runtime, HTTP и БД этими результатами не доказаны. Старые наборы23 не повторялись.
+Свежая общая union-регрессия относится к16. Actual Windows x64/Ubuntu x64/Linux ARM64 runtime/native/DI и app dependency conflicts — отдельный этап18; SQL/provider/backup/restore —17, live transport —19. Успешный Windows cross-build не закрывает ARM64 runtime gap.

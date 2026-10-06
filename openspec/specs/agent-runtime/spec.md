@@ -14,7 +14,7 @@
 
 - **WHEN** потребитель открывает руководство и исходники примера
 - **THEN** доступны реальные public типы и явные регистрации зависимостей приложения
-- **AND** успешная компиляция обоих бинарных вариантов отделена от исполнения модели, инструментов, БД и native runtime.
+- **AND** успешная компиляция выбранных provider/RID вариантов отделена от исполнения модели, инструментов, БД и native runtime.
 
 #### Scenario: Проверка правила — Проверяемое руководство бинарного потребителя
 
@@ -23,12 +23,12 @@
 
 ### Requirement: Компиляция примеров руководства
 
-Примеры C# MUST компилироваться с поставленными SQLite и PostgreSQL DLL вне репозитория без ProjectReference/PackageReference.
+Примеры C# MUST компилироваться с поставленными SQL Server DLL для win-x64/linux-x64/linux-arm64, а также с сохранёнными SQLite и PostgreSQL win-x64 DLL вне репозитория без ProjectReference/PackageReference.
 
 #### Scenario: Проверка правила — Компиляция примеров руководства
 
 - **WHEN** примеры вынесены за пределы репозитория
-- **THEN** они компилируются с SQLite и PostgreSQL DLL без project/package references.
+- **THEN** они компилируются с SQL Server DLL трёх RID и SQLite/PostgreSQL win-x64 DLL без project/package references.
 
 ### Requirement: Явные ограничения примеров
 
@@ -51,13 +51,41 @@
 
 ### Requirement: Автономный комплект DLL
 
-Поставка AgentBridge MUST содержать ядро, CodexLb-адаптер, общее EF-хранилище, выбранную SQLite/PostgreSQL migrations assembly и полную runtime closure для явно указанного RID, включая обязательные EFCoreLibrary/HttpClientLibrary, tokenizer data и native assets. Состав MUST фиксироваться manifest с версиями и SHA256. Поставка MUST NOT требовать путей к дереву исходников или NuGet-публикации AgentBridge.
+Поставка AgentBridge MUST содержать ядро, Integration facade, CodexLb-адаптер, общее EF-хранилище, выбранную SQL Server/SQLite/PostgreSQL migrations assembly и полную SDK runtime closure для явно указанного RID, включая EFCoreLibrary/HttpClientLibrary, tokenizer data и native assets. Состав MUST фиксироваться manifest с версиями и SHA256. Поставка MUST NOT требовать путей к дереву исходников или NuGet-публикации AgentBridge.
 
 #### Scenario: Компиляция бинарного потребителя
 
 - **WHEN** .NET10-потребитель и комплект скопированы за пределы дерева исходников
 - **THEN** потребитель компилируется только с бинарными ссылками на комплект, без ProjectReference и PackageReference
 - **AND** runtime/native файлы доставляются в output стандартной сборкой; compile-check не объявляется доказательством их загрузки.
+
+### Requirement: Платформенная поставка клиента
+
+SQL Server комплект MUST поддерживать win-x64/linux-x64/linux-arm64 как RID приложения-клиента с установленным .NET10 runtime. SDK-selected statically referenced managed/native dependencies и culture resources MUST сохраняться целиком без Windows fallback на Linux или flattening satellites.
+
+#### Scenario: Linux ARM64 клиент
+
+- **WHEN** комплект SQL Server linux-arm64 собирается и consumer компилируется на Windows
+- **THEN** selected native assets имеют ELF64 AArch64, Windows assets отсутствуют
+- **AND** actual Linux ARM64 runtime остаётся отдельной проверкой.
+
+### Requirement: Переносимые пути и native metadata
+
+Props/manifest/deps MUST использовать переносимые пути и точный filename case; несовпадение RID приложения и комплекта MUST отклоняться. Native PE AMD64 и ELF64 little-endian x86-64/AArch64 MUST различаться с managed metadata.
+
+#### Scenario: Несовместимый RID потребителя
+
+- **WHEN** приложение win-x64 импортирует комплект linux-arm64
+- **THEN** Build отклоняет несовпадение RID до успешной компиляции.
+
+### Requirement: Границы compile-only поставки
+
+Compile/metadata checks MUST NOT объявляться runtime/native loading, поддержкой SQL Server Engine ARM64, AOT/trimming/single-file или подтверждением SQLite/PostgreSQL Linux matrix.
+
+#### Scenario: Проверка ELF заголовка
+
+- **WHEN** isolated test прочитал ELF64 AArch64 без загрузки библиотеки
+- **THEN** подтверждена metadata-архитектура, actual native/runtime acceptance не заявляется.
 
 ### Requirement: Документация бинарных контрактов
 
@@ -70,7 +98,7 @@
 
 ### Requirement: Явные внешние требования поставки
 
-Документация MUST различать SQLite/PostgreSQL, выбранную migrations assembly, RID/native runtime, .NET10 runtime и внешние PostgreSQL dump-утилиты. Она MUST сохранять явную конфигурацию provider, SingleInitializer и отсутствие автоматического обслуживания при подключении DLL.
+Документация MUST различать SQL Server/SQLite/PostgreSQL, выбранную migrations assembly, RID/native runtime, .NET10 runtime, серверный MSSQL backup destination и внешние PostgreSQL dump-утилиты. Она MUST сохранять явную конфигурацию provider, SingleInitializer и отсутствие автоматического обслуживания при подключении DLL.
 
 #### Scenario: PostgreSQL backup
 

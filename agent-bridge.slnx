@@ -141,4 +141,12 @@
     <Project Path="tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj" />
     <Project Path="tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj" />
   </Folder>
+  <Folder Name="/Tests/Delivery/">
+    <File Path="tests/Delivery/AGENTS.md" />
+    <File Path="tests/Delivery/AgentBridge.Delivery.props" />
+    <File Path="tests/Delivery/Build/AgentBridge.Delivery.csproj" />
+    <File Path="tests/Delivery/Build/Assemble-Delivery.ps1" />
+    <File Path="tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj" />
+    <Project Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
     <OutputType>Library</OutputType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
@@ -11,7 +11,11 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../../adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
+    <ProjectReference Include="../../../adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
     <ProjectReference Include="../../../adapters/AgentBridge.Persistence.Migrations.$(DeliveryProvider)/AgentBridge.Persistence.Migrations.$(DeliveryProvider).csproj" />
   </ItemGroup>
+  <Target Name="ValidateDeliveryVariant" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(RuntimeIdentifier)' != 'win-x64' and '$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'linux-arm64'" Text="RuntimeIdentifier must explicitly select win-x64, linux-x64 or linux-arm64." />
+    <Error Condition="'$(DeliveryProvider)' != 'SqlServer' and '$(DeliveryProvider)' != 'Sqlite' and '$(DeliveryProvider)' != 'PostgreSql'" Text="DeliveryProvider must explicitly select SqlServer, Sqlite or PostgreSql." />
+  </Target>
 </Project>

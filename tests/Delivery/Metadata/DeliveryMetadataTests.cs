@@ -12,15 +12,19 @@ public class DeliveryMetadataTests
 {
     /// <summary>Все managed assembly references удовлетворяются комплектом либо .NET runtime; лишний tooling не поставляется.</summary>
     [Theory]
-    [InlineData("Sqlite")]
-    [InlineData("PostgreSql")]
-    public void ManagedClosureIsComplete(string provider)
+    [InlineData("SqlServer", "win-x64")]
+    [InlineData("SqlServer", "linux-x64")]
+    [InlineData("SqlServer", "linux-arm64")]
+    [InlineData("Sqlite", "win-x64")]
+    [InlineData("PostgreSql", "win-x64")]
+    public void ManagedClosureIsComplete(string provider, string rid)
     {
-        string directory = Path.Combine(GetRoot(), provider, "lib");
+        string directory = Path.Combine(GetRoot(), provider, rid, "lib");
         Dictionary<string, string> files = Directory.GetFiles(directory, "*.dll")
             .ToDictionary(path => Path.GetFileNameWithoutExtension(path), StringComparer.OrdinalIgnoreCase);
         Dictionary<string, string> framework = GetFrameworkFiles();
-        foreach (string file in files.Values)
+        string resourceDirectory = Path.Combine(GetRoot(), provider, rid, "resources");
+        foreach (string file in files.Values.Concat(Directory.GetFiles(resourceDirectory, "*.dll", SearchOption.AllDirectories)))
         {
             using FileStream stream = File.OpenRead(file);
             using PEReader pe = new(stream);
@@ -42,31 +46,36 @@ public class DeliveryMetadataTests
         Assert.DoesNotContain("Microsoft.EntityFrameworkCore.Design", files.Keys);
         Assert.DoesNotContain("Microsoft.CodeAnalysis", files.Keys);
         Assert.DoesNotContain("AgentBridge.Delivery", files.Keys);
+        Assert.Contains("AgentBridge.Integration", files.Keys);
         Assert.Contains("EFCoreLibrary.Maintenance.Sqlite", files.Keys);
         Assert.Contains("EFCoreLibrary.Maintenance.PostgreSql", files.Keys);
+        Assert.Contains("EFCoreLibrary.Maintenance.SqlServer", files.Keys);
+        Assert.Contains("Microsoft.Data.SqlClient", files.Keys);
         foreach (string name in new[] { "O200kBase", "Cl100kBase" })
         {
             using FileStream stream = File.OpenRead(files[$"Microsoft.ML.Tokenizers.Data.{name}"]);
             using PEReader pe = new(stream);
             Assert.NotEmpty(pe.GetMetadataReader().ManifestResources);
         }
-        using FileStream native = File.OpenRead(Path.Combine(GetRoot(), provider, "native", "win-x64", "e_sqlite3.dll"));
-        using PEReader nativePe = new(native);
-        Assert.False(nativePe.HasMetadata);
-        Assert.Equal(Machine.Amd64, nativePe.PEHeaders.CoffHeader.Machine);
+        string nativeDirectory = Path.Combine(GetRoot(), provider, rid, "native", rid);
+        string sqliteFile = rid == "win-x64" ? "e_sqlite3.dll" : "libe_sqlite3.so";
+        Assert.True(File.Exists(Path.Combine(nativeDirectory, sqliteFile)));
+        foreach (string nativeFile in Directory.GetFiles(nativeDirectory))
+        {
+            NativeAssetMetadata.Validate(File.ReadAllBytes(nativeFile), rid);
+        }
     }
 
     /// <summary>Потребитель находит русский summary интерфейса и inheritdoc реализации по metadata без исходников.</summary>
     [Theory]
-    [InlineData("Sqlite", "AgentBridge.Tokenization.ContextTokenCounter", "AgentBridge.Application.Ports.IContextTokenCounter")]
-    [InlineData("PostgreSql", "AgentBridge.Tokenization.ContextTokenCounter", "AgentBridge.Application.Ports.IContextTokenCounter")]
-    [InlineData("Sqlite", "AgentBridge.CodexLb.Models.CodexLbModelCatalog", "AgentBridge.Application.Ports.IModelCatalog")]
-    [InlineData("PostgreSql", "AgentBridge.CodexLb.Models.CodexLbModelCatalog", "AgentBridge.Application.Ports.IModelCatalog")]
-    [InlineData("Sqlite", "AgentBridge.Persistence.EfCore.Reading.DialogReader", "AgentBridge.Application.Ports.IDialogReader")]
-    [InlineData("PostgreSql", "AgentBridge.Persistence.EfCore.Reading.DialogReader", "AgentBridge.Application.Ports.IDialogReader")]
-    public void InheritdocContractIsAvailableFromBinaryMetadata(string provider, string implementationName, string contractName)
+    [InlineData("SqlServer", "win-x64")]
+    [InlineData("SqlServer", "linux-x64")]
+    [InlineData("SqlServer", "linux-arm64")]
+    [InlineData("Sqlite", "win-x64")]
+    [InlineData("PostgreSql", "win-x64")]
+    public void InheritdocContractIsAvailableFromBinaryMetadata(string provider, string rid)
     {
-        string directory = Path.Combine(GetRoot(), provider, "lib");
+        string directory = Path.Combine(GetRoot(), provider, rid, "lib");
         Dictionary<string, string> references = GetFrameworkFiles();
         foreach (string file in Directory.GetFiles(directory, "*.dll"))
         {
@@ -75,16 +84,24 @@ public class DeliveryMetadataTests
         CSharpCompilation compilation = CSharpCompilation.Create("DocumentationConsumer", references: references.Values.Select(file =>
             MetadataReference.CreateFromFile(file, documentation: File.Exists(Path.ChangeExtension(file, ".xml"))
                 ? XmlDocumentationProvider.CreateFromFile(Path.ChangeExtension(file, ".xml")) : null)));
-        INamedTypeSymbol implementation = Assert.IsAssignableFrom<INamedTypeSymbol>(compilation.GetTypeByMetadataName(implementationName));
-        INamedTypeSymbol contract = Assert.IsAssignableFrom<INamedTypeSymbol>(compilation.GetTypeByMetadataName(contractName));
-        Assert.Contains(implementation.AllInterfaces, item => SymbolEqualityComparer.Default.Equals(item, contract));
-        AssertRussianSummary(contract);
-        Assert.Contains("inheritdoc", implementation.GetDocumentationCommentXml());
-        foreach (IMethodSymbol method in contract.GetMembers().OfType<IMethodSymbol>())
+        foreach ((string implementationName, string contractName) in new[]
         {
-            AssertRussianSummary(method);
-            ISymbol target = Assert.IsAssignableFrom<ISymbol>(implementation.FindImplementationForInterfaceMember(method));
-            Assert.Contains("inheritdoc", target.GetDocumentationCommentXml());
+            ("AgentBridge.Tokenization.ContextTokenCounter", "AgentBridge.Application.Ports.IContextTokenCounter"),
+            ("AgentBridge.CodexLb.Models.CodexLbModelCatalog", "AgentBridge.Application.Ports.IModelCatalog"),
+            ("AgentBridge.Persistence.EfCore.Reading.DialogReader", "AgentBridge.Application.Ports.IDialogReader")
+        })
+        {
+            INamedTypeSymbol implementation = Assert.IsAssignableFrom<INamedTypeSymbol>(compilation.GetTypeByMetadataName(implementationName));
+            INamedTypeSymbol contract = Assert.IsAssignableFrom<INamedTypeSymbol>(compilation.GetTypeByMetadataName(contractName));
+            Assert.Contains(implementation.AllInterfaces, item => SymbolEqualityComparer.Default.Equals(item, contract));
+            AssertRussianSummary(contract);
+            Assert.Contains("inheritdoc", implementation.GetDocumentationCommentXml());
+            foreach (IMethodSymbol method in contract.GetMembers().OfType<IMethodSymbol>())
+            {
+                AssertRussianSummary(method);
+                ISymbol target = Assert.IsAssignableFrom<ISymbol>(implementation.FindImplementationForInterfaceMember(method));
+                Assert.Contains("inheritdoc", target.GetDocumentationCommentXml());
+            }
         }
     }
 

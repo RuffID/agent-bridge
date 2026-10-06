@@ -1,9 +1,14 @@
 <Project>
+  <Import Project="$(MSBuildThisFileDirectory)AgentBridge.Delivery.variant.props" />
   <ItemGroup>
-    <Reference Include="$(MSBuildThisFileDirectory)lib\*.dll">
+    <Reference Include="$(MSBuildThisFileDirectory)lib/*.dll">
       <Private>true</Private>
     </Reference>
-    <None Include="$(MSBuildThisFileDirectory)lib\*.xml" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="$(MSBuildThisFileDirectory)native\win-x64\e_sqlite3.dll" Link="e_sqlite3.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(MSBuildThisFileDirectory)lib/*.xml" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(MSBuildThisFileDirectory)resources/**/*.dll" Link="%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(MSBuildThisFileDirectory)native/$(AgentBridgeDeliveryRid)/*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <Target Name="ValidateAgentBridgeDeliveryRid" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(RuntimeIdentifier)' != '$(AgentBridgeDeliveryRid)'" Text="Application RuntimeIdentifier must match AgentBridgeDeliveryRid ($(AgentBridgeDeliveryRid))." />
+  </Target>
 </Project>

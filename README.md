@@ -61,6 +61,8 @@ builder.Services.AddAgentBridge(builder.Configuration,
 
 [Руководство с consumer исходниками и HTTP/admin примерами](<Documentation/Technical documentation/25-usage-guide.md>) · [SQL Server и maintenance](<Documentation/Technical documentation/12-sql-server-provider.md>) · [Техническая документация](<Documentation/Technical documentation/README.md>) · [Бизнес-логика](<Documentation/Business logic/README.md>).
 
-Фасад проверяется в локальной DI/options границе с fake HTTP без БД/hosting. Новые MSSQL DLL kits для win-x64/linux-x64/linux-arm64 и их external binary compilation относятся к этапам15/16; provider/runtime/live — к17–19. Старые SQLite/PostgreSQL kits не содержат новую Integration DLL. Linux ARM64 означает приложение-клиент, а не локальный SQL Server Engine.
+Текущие комплекты находятся в `artifacts/delivery/stage15-v2/SqlServer/{win-x64,linux-x64,linux-arm64}`; SQLite/PostgreSQL адресно проверены в `artifacts/delivery/stage15-v2/{Sqlite,PostgreSql}/win-x64`. Скопируйте полный комплект и импортируйте его `AgentBridge.Delivery.props`, задав совпадающий `RuntimeIdentifier`. [Состав, XML/native/resources, manifest и бинарное подключение](<Documentation/Technical documentation/24-dll-delivery.md>).
+
+Пять внешних compile-only consumers собраны без project/package references; metadata/PE/ELF проверки не исполняют библиотеку. Приложение устанавливает .NET10 runtime и проверяет свой dependency graph. Общая регрессия относится к16; provider/runtime/live — к17–19. Linux ARM64 означает приложение-клиент, а не локальный SQL Server Engine.
 
 [План исправлений и evidence](<Documentation/Plans/AgentBridge Audit Remediation/README.md>) · [Текущая спецификация](openspec/specs/agent-runtime/spec.md) · [Решение](agent-bridge.slnx)

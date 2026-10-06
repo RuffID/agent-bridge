@@ -4,22 +4,22 @@
 
 ## 1. Подключить комплект DLL
 
-Для current API требуется комплект с `AgentBridge.Integration.dll`, ядром, обоими адаптерами, полной runtime closure и выбранной migrations DLL (основной provider — SQL Server). Подготовка MSSQL/win-x64/linux-x64/linux-arm64 и external binary compilation относятся к Audit Remediation15/16 и ещё не подтверждены. Не смешивайте версии, RID и migrations assemblies. [Facade/lifetimes](26-integration-registration.md).
+Для current API требуется комплект с `AgentBridge.Integration.dll`, ядром, обоими адаптерами, полной runtime closure и выбранной migrations DLL (основной provider — SQL Server). [Audit Remediation15](<../Plans/AgentBridge Audit Remediation/15-multiplatform-delivery.md#результаты>) подготовил и compile-only проверил три MSSQL RID: `artifacts/delivery/stage15-v2/SqlServer/{win-x64,linux-x64,linux-arm64}`. SQLite/PostgreSQL адресно проверены только в `artifacts/delivery/stage15-v2/{Sqlite,PostgreSql}/win-x64`. Не смешивайте версии, RID и migrations assemblies. [Facade/lifetimes](26-integration-registration.md).
 
-Исторические комплекты `artifacts/delivery/stage24-win-x64/Sqlite` и `PostgreSql` содержали39 managed DLL,35 XML, native x64 SQLite, props и evidence/manifest для .NET10/win-x64/Debug. Они **не содержат новый facade** и не компилируют current UsageRegistration/SimpleRegistration. Ниже Import описывает прежний binary layout, а не готовый новый MSSQL kit; [поставка24](24-dll-delivery.md).
+Скопируйте полный комплект выбранного provider/RID в приложение. Generated variant props фиксирует RID; Import отклоняет несовпадение `RuntimeIdentifier`. [Состав и ограничения поставки](24-dll-delivery.md). Старые stage24 kits не содержат facade; их evidence сохраняется в историческом отчёте24.
 
 В SDK-style .NET10 проекте используйте бинарный Import, как в проверенном consumer:
 
 ```xml
 <PropertyGroup>
   <TargetFramework>net10.0</TargetFramework>
-  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-  <AgentBridgeDeliveryRoot>C:\MyApplication\vendor\AgentBridge\Sqlite</AgentBridgeDeliveryRoot>
+  <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+  <AgentBridgeDeliveryRoot>$(MSBuildProjectDirectory)/vendor/AgentBridge/SqlServer/linux-x64</AgentBridgeDeliveryRoot>
 </PropertyGroup>
 <Import Project="$(AgentBridgeDeliveryRoot)/AgentBridge.Delivery.props" />
 ```
 
-Путь здесь — пример абсолютного каталога приложения. Import подключает все managed DLL и доставляет XML/native стандартными SDK items. Для runtime нужен .NET10 и соответствующий хост приложения. PostgreSQL сервер/права/`pg_dump` в DLL не входят. Наличие SQLite native в PostgreSQL kit связано с общей статической dependency closure и не меняет выбранный provider. Для существующего приложения отдельно проверьте конфликты его package/runtime версий; compile-only consumer не доказывает их отсутствие.
+Import подключает managed DLL из lib и доставляет XML/native выбранного RID стандартными SDK items; satellites сохраняются в culture-каталогах output. Для runtime нужен .NET10 и соответствующий хост приложения. Сервер SQL Server/PostgreSQL, права и `pg_dump` в DLL не входят. Наличие SQLite assets во всех kits связано с общей статической dependency closure и не меняет выбранный provider. Для существующего приложения отдельно проверьте конфликты его package/runtime версий; compile-only consumer не доказывает их отсутствие.
 
 ## 2. Настроить options и зависимости приложения
 
@@ -108,7 +108,7 @@ Existing TurnId не исполняется повторно; restart не во�
 
 ## Границы подтверждения
 
-Current facade14/consumer source compilation и DI/options/fake HTTP evidence описаны в [Results14](<../Plans/AgentBridge Audit Remediation/14-simplified-registration.md#результаты>). Methods consumer не исполнялись, source compilation не является external binary kits15/16 или provider/runtime/live17–19. HTTP endpoints приложения ниже перенесены из прежнего README и проверены только статически; host/маршруты/auth не запускались. Следующие два абзаца фиксируют **историческое evidence этапа25**, включая тогдашнее отсутствие CLI; актуальный CLI checkpoint09 находится в [OpenSpec workflow](../../openspec/README.md).
+Current facade14/DI/options/fake HTTP evidence описано в [Results14](<../Plans/AgentBridge Audit Remediation/14-simplified-registration.md#результаты>). [Results15](<../Plans/AgentBridge Audit Remediation/15-multiplatform-delivery.md#результаты>) подтверждает external binary compilation всех текущих Consumer .cs с пятью kits вне репозиториев:0 warnings/errors, package/project assets0, совпадение copied DLL/XML/native hashes. Methods consumer не исполнялись; provider/runtime/live17–19 не подтверждены. HTTP endpoints приложения ниже перенесены из прежнего README и проверены только статически; host/маршруты/auth не запускались. Следующие два абзаца фиксируют **историческое evidence этапа25**, включая тогдашнее отсутствие CLI; актуальный CLI checkpoint09 находится в [OpenSpec workflow](../../openspec/README.md).
 
 Примеры скомпилированы с каждым kit вне репозитория,0 warnings/errors, по206 references=39 kit+167 framework; нет project/package references. Проверены копирование XML/native и metadata inheritdoc; generated XML хранит `<inheritdoc/>`, автоматическое разворачивание конкретной IDE не проверено. EFCoreLibrary CRUD не генерирует XML, три SQLitePCLRaw managed DLL также без XML.
 

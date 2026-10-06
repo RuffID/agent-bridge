@@ -1,6 +1,6 @@
 # Изолированные тесты
 
-- `Delivery/` проверяет поставку24: стандартная SDK-сборка runtime closure, отдельный compile-only потребитель без ProjectReference/PackageReference и isolated PE/XML metadata tests. Это не приложение; native/HTTP/БД не исполняются. Правила и расположение проектов — `Delivery/AGENTS.md`.
+- `Delivery/` проверяет текущую поставку Audit Remediation15: SDK runtime closure, external compile-only consumer без ProjectReference/PackageReference и isolated PE/ELF/XML/manifest tests. Три SQL Server RID и SQLite/PostgreSQL win-x64; native/HTTP/БД не исполняются. Правила — `Delivery/AGENTS.md`.
 
 - CrossComponentIntegrationTests23 соединяет actual AgentRunner/CodexLb/HttpClientLibrary/offline BPE с реальными SQLite/PostgreSQL через existing Integration fixtures. Persistence test project имеет дополнительный test-only ProjectReference на CodexLb; production зависимости не меняются. Эти проверки имеют Dependency=Database и не входят в isolated filter. Матрица/границы/команды — в отчёте23; HTTP всегда local handler/streams, без hosting.
 
