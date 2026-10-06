@@ -43,7 +43,7 @@
 | 13 | `01a10fe2-70b0-7f61-9106-872ae72fb500` / `local` | Принят в A/B | Explicit required presence/source modes/safe binding; final502/403/232 без пропусков; strict valid; runtime17–19 открыт | AB `9ed71c9e893a4ddc6148ccd09ea3508ce100e681` |
 | 14 | `01a11000-0820-75a2-a41e-82af991d066a` / `local` | Принят в A/B | Actual facade/full DI graph/options/scopes/overrides; final289/289,57facade; kits15–16/runtime17–19 открыты | AB `4354106234488d039f805aecbfd24cfbc18f2162` |
 | 15 | `01a11010-a2bc-7a81-b1a0-f618a3969b7d` / `local` | Принят в A/B | Five kits/resources/PE/ELF/XML/API,27/27; five external consumers; runtime18 открыт | AB `b0c81321b1a9cfe0b4c640a1413419088daae88d` |
-| 16 | — | Не начат | Свежая изолированная регрессия | — |
+| 16 | `01a11040-5ad5-7d70-8347-cec38abd0ab2` / `local` | Принят в B | Fresh502/403/289;EF159;HTTP58 обеTFM;metadata27;fivekits/consumers | AB `b1e966445c70f30cad63cc5ba690808c75c7fd35` |
 | 17 | — | Не начат | Реальные ресурсы/разрешения не заданы | — |
 | 18 | — | Не начат | Runtime environments/разрешения не заданы | — |
 | 19 | — | Не начат | Endpoint/бюджет/разрешения не заданы | — |
@@ -58,6 +58,10 @@ Review15 выявил пропуск13 culture resource DLL Microsoft.Data.SqlCl
 Q-003–005 не открываются повторно без обнаруженного противоречия. Q-002: версии/редакция SQL Server, Ubuntu/runtime machines, permissions/TLS/server backup path, deployed endpoint/commit/exact models, бюджет и cleanup остаются ресурсами будущих17–19. Windows cross-build не доказывает Linux ARM64 runtime. Подозрение ABQA-002 не объявляется дефектом без различающего воспроизведения.
 
 ## Журнал действий
+
+- Этап16 принят в B после независимого отчёта/actual commands53/fresh builds/7TRX rows-counters review,474source hashes и7output before/after совпадений, пяти kits/copies/generator/resource hashes,UTF8/diff check. Actual commit `b1e966445c70f30cad63cc5ba690808c75c7fd35` подтвердил manifest1 отчёта16; source/tests не менялись, index пуст, чужой Journal и LB .vs/ сохранены. Полные тестовые counts502/403/289,EF159,HTTP58 обеTFM,metadata27 не суммируются; runtime17–19 остаётся открытым.16 прекратил writes; координатор переходит к доступной подготовке17.
+
+- Coordination15 и current permission/Documentation AGENTS сохранены `a874c346c288c6b5b6343a59dea4a1220bd785f8`. После повторного exact project-path check создан чат16; единственный writer получает принятые hashes15/13/14/соседей и resource-closure correction. Model gpt-6.1-sol/thinking medium/local переданы явно; инструмент подтвердил только threadId/hostId, actual настройки не вернул. Test commands/scripts/helpers/targets/выделенные consumers разрешены пользователем без повторных вопросов; preflight/evidence/ограничения неизвестных ресурсов сохранены.
 
 - Прочитаны корневые и документационные AGENTS, README/Decisions/00 нового плана, действующая спецификация и итоговые источники аудита. Проверены точный project path и наличие отдельного docs-коммита подготовки. Производственный код и проверки B/C/D не запускались.
 - Журнал и solution item созданы отдельным коммитом AgentBridge `686a0dbb42e7d6baba24b71277b636f182550c3c`. Проверены117 solution paths (нет missing/duplicates), strict UTF-8/маркеры русского текста и staged diff/check. Первая XML-проверка неверно обработала пустые Folder.File; исправлена команда проверки, файлы не менялись из-за этой ошибки.
