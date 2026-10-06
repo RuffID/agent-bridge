@@ -1,6 +1,6 @@
 # Согласованные решения после аудита
 
-[Навигатор](README.md). Дата: 2026-10-06, Asia/Novosibirsk. Источник: ответы пользователя в обсуждении Q-002–005 и уточнение «обновить план и описание подключения». **На момент подготовки решений реализация и runtime-проверки не выполнялись.** Текущее исполнение и приёмка00–12 отражены в [навигаторе](README.md#принятые-локальные-результаты); Q-003–005 приняты в локальных границах09–11; provider12 принят в A/B; новое подключение13–15 и реальные проверки17–19 ещё предстоят.
+[Навигатор](README.md). Дата: 2026-10-06, Asia/Novosibirsk. Источник: ответы пользователя в обсуждении Q-002–005 и уточнение «обновить план и описание подключения». **На момент подготовки решений реализация и runtime-проверки не выполнялись.** Текущее исполнение и приёмка00–13 отражены в [навигаторе](README.md#принятые-локальные-результаты); Q-003–005 приняты в локальных границах09–11; provider12 и конфигурация13 приняты в A/B; facade14/kits15 и реальные проверки17–19 ещё предстоят.
 
 Документ дополняет исторический [OpenQuestions аудита](<../AgentBridge Quality Audit/OpenQuestions.md>). Старые результаты A и незапущенные B/C/D не переписываются. Решение о контракте не означает исправление кода или прохождение проверки.
 
@@ -49,6 +49,8 @@ AgentBridge до HTTP отклоняет неверные типы и повто
 ## Настройки и простое подключение
 
 **Результат12, 2026-10-06 (принят в A/B):** [Results12](12-sql-server-provider.md#результаты) и [provider API](<../../Technical documentation/12-sql-server-provider.md>) фиксируют явный SqlServer=2 при сохранении SQLite/PostgreSQL, отдельную generated initial schema и existing EFCoreLibrary maintenance с серверным backup destination. Actual commit `1c508a3dc3ac50d9a25487e968540b695759c07b`; disconnected model/DI/converter/generated checks211/211 и main strict прошли. SQL equality/CAS/journal/backup/restore17, kits15/16 и runtime18 остаются открытыми; версии/TLS/auth/server resources Q-002 ещё не определены. IConfiguration13/facade14 ещё предстоят.
+
+**Результат13, 2026-10-06 (принят в A/B):** [Results13](13-strict-configuration.md#результаты) фиксирует явные required keys, InstructionsSource/KeySource, safe binding и стандартный Options pipeline. Actual commit `9ed71c9e893a4ddc6148ccd09ea3508ce100e681`; fresh core502/502, transport403/403, persistence232/232 без Database и main strict прошли. Breaking migration описана в текущей [конфигурации](<../../Technical documentation/05-configuration-and-lifecycle.md>). Facade14/kits15–16 и provider/runtime/live17–19 остаются открытыми; исходные Decisions не изменены.
 
 Приложение создаёт и передаёт `IConfiguration` либо выбранный раздел. Оно само выбирает JSON-файлы, отдельный файл AgentBridge, environment variables, secret store и порядок объединения источников. Библиотека не открывает собственный config, не ищет `appsettings.json` и не хранит secrets.
 
