@@ -22,6 +22,7 @@
 - ResponseSseState собирает indexed items и partial text/function arguments/reasoning отдельно от raw response envelope. Непустой response.output авторитетен и заменяет собранный список; absent/empty допускает backfill. Полные items сохраняют unknown/opaque поля, output сортируется по protocol index. Invalid links/shape дают безопасный Rejected, partial data остаются в Failed.
 - Только response.completed с completed response, output либо collected items, без error подтверждает Completed. Failed/error имеют приоритет, incomplete/EOF не Completed. Server cancelled без caller cancellation не Canceled. При cancellation после canonical data возвращается Canceled; deadline после данных — Failed/Timeout. До данных действуют JSON правила OCE/typed timeout.
 - HttpStreamResponseResult освобождается через await using. Callbacks sequential awaited в вызывающем task, без background work; исключения callback (включая JsonException/OCE/HTTP) распространяются тем же объектом и исключаются из transport catches. Никаких callbacks после возврата; unexpected I/O не нормализовать. Continuation использует принятый JSON binding/allowlist без нового account policy.
+- После успешного EOF/disposal caller cancellation до canonical данных распространяется OCE с исходным caller token, как при отмене чтения. Comments/keepalive/[DONE] не являются данными; empty без отмены остаётся Incomplete. При наличии canonical данных сохраняются output/envelope/continuation, explicit Failed приоритетнее поздней отмены.
 
 ## Проверка
 

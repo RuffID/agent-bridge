@@ -111,7 +111,11 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
             }
             ModelResponse report = state.Report();
             if (report.Status == ModelResponseStatus.Failed) { return ServiceResult<ModelResponse>.Ok(report); }
-            if (caller.IsCancellationRequested) { return ServiceResult<ModelResponse>.Ok(state.Cancel()); }
+            if (caller.IsCancellationRequested)
+            {
+                if (!state.HasData) { caller.ThrowIfCancellationRequested(); }
+                return ServiceResult<ModelResponse>.Ok(state.Cancel());
+            }
             deadline.ThrowIfCancellationRequested();
             return ServiceResult<ModelResponse>.Ok(report);
         }

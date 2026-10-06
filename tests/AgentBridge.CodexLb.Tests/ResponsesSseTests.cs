@@ -238,6 +238,7 @@ public class ResponsesSseTests
     [Theory]
     [InlineData("")]
     [InlineData("data: [DONE]\n\n")]
+    [InlineData(": keepalive\nid: ignored\nretry: 5\n\ndata: [DONE]\n\n")]
     [InlineData("data: {\"type\":\"response.created\",\"response\":{\"status\":\"completed\",\"output\":[]}}\n\n")]
     [InlineData("data: {\"type\":\"response.completed\"}\n\n")]
     [InlineData("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\"}}\n\n")]
@@ -391,9 +392,12 @@ public class ResponsesSseTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task CancellationAndDeadlineWhileReading(bool partial, bool timeout)
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    public async Task CancellationAndDeadlineWhileReading(bool partial, bool timeout, bool comments = false)
     {
-        using Fixture fixture = new(partial ? Partial() : "", timeout: timeout ? TimeSpan.FromMilliseconds(250) : null);
+        using Fixture fixture = new(partial ? Partial() : comments ? ": keepalive\n\ndata: [DONE]\n\n" : "",
+            timeout: timeout ? TimeSpan.FromMilliseconds(250) : null);
         fixture.Stream.BlockAtEnd = true;
         using CancellationTokenSource caller = new();
         Task<ServiceResult<ModelResponse>> task = fixture.Generate(ct: caller.Token);
@@ -417,6 +421,7 @@ public class ResponsesSseTests
                     if (timeout) { Assert.Equal(ServiceErrorType.Timeout, result.Data.Error!.Type); }
                 }
             }
+            if (!partial) { Assert.Empty(fixture.Updates); }
             await AssertDisposed(fixture);
         }
         finally
@@ -424,6 +429,45 @@ public class ResponsesSseTests
             caller.Cancel();
             try { await task; } catch { /* Cleanup наблюдает task, не заменяя исходную assertion failure. */ }
         }
+    }
+
+    /// <summary>Успешный EOF/disposal до canonical данных сохраняет исходную отмену caller без callbacks.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData(": keepalive\nid: ignored\nretry: 5\n\ndata: [DONE]\n\n")]
+    public async Task EmptyEofCancellationOnSuccessfulDisposalUsesCallerToken(string body)
+    {
+        using Fixture fixture = new(body, 1);
+        using CancellationTokenSource caller = new();
+        fixture.Stream.OnDispose = caller.Cancel;
+        OperationCanceledException failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Generate(ct: caller.Token));
+        Assert.Equal(caller.Token, failure.CancellationToken);
+        Assert.Empty(fixture.Updates);
+        await AssertDisposed(fixture);
+    }
+
+    /// <summary>Canonical partial/terminal отчёт сохраняет output, envelope и continuation при отмене на disposal.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LateCancellationPreservesCanonicalEnvelopeAndContinuation(bool terminal)
+    {
+        string envelope = Event("{\"type\":\"response.created\",\"response\":{\"id\":\"resp-partial\",\"status\":\"in_progress\",\"output\":[],\"future\":true}}");
+        using Fixture fixture = new(envelope + Partial() + (terminal ? Terminal() : ""));
+        fixture.Handler.TurnState = "opaque-turn";
+        using CancellationTokenSource caller = new();
+        fixture.Stream.OnDispose = caller.Cancel;
+        ModelResponse report = (await fixture.Generate(ct: caller.Token)).Data!;
+        Assert.Equal(ModelResponseStatus.Canceled, report.Status);
+        Assert.Equal(2, report.Output.Count);
+        Assert.Equal("{\"id\":", report.Output[0].Content.GetProperty("arguments").GetString());
+        Assert.Equal("Привет", report.Output[1].Content.GetProperty("content")[0].GetProperty("text").GetString());
+        string id = terminal ? "resp-terminal" : "resp-partial";
+        Assert.Equal(id, report.Envelope!.Content.GetProperty("id").GetString());
+        Assert.Equal(id, report.Continuation!.Content.GetProperty("previous_response_id").GetString());
+        Assert.Equal("opaque-turn", report.Continuation.Content.GetProperty("headers").GetProperty("x-codex-turn-state").GetString());
+        Assert.Single(fixture.Updates);
+        await AssertDisposed(fixture);
     }
 
     /// <summary>Поздняя отмена после terminal/disposal сохраняет report; explicit failure приоритетнее.</summary>
