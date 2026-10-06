@@ -2,6 +2,8 @@
 
 [План](README.md) · [Решения](Decisions.md). Начало: 2026-10-06, Asia/Novosibirsk.
 
+Итог на 2026-10-06: **частичная приёмка доступного локального объёма**. Отдельные пользовательские чаты00–20 созданы последовательно;00–16 приняты в указанных A/B-границах,17 — подготовка A/B при отложенном C,18 — Windows loader/DI/BPE,19 — A readiness без C/D/harness. Документация20 принята и фактически закоммичена. Полный план не завершён; обязательные provider/Linux/live/crash проверки остаются открытыми. Все исполнители остановили writes. GitHub push/PR не выполнялись.
+
 ## Полномочия и порядок
 
 Текущее поручение пользователя разрешает реализацию этапов00–20, необходимые изменения и отдельные локальные коммиты после приёмки координатором. Формулировки плана о разрешении только подготовки описывают прежнее состояние и не отменяют это поручение. Исторические отчёты сохраняются.
@@ -11,6 +13,8 @@
 Исполнитель передаёт manifest, before/after evidence, точные проверки и ограничения без коммита. Координатор проверяет исходники и evidence, затем поручает адресный add/commit. Чужие изменения исключаются; `git add .` и `git add -A` запрещены. Push/PR и прочие запрещённые Git-операции не выполняются.
 
 Реальные БД/SQL, migrations tooling, Docker, приложения/hosting, deployment и live HTTP требуют отдельных разрешений с точными командами и ресурсами. Compile-check и изолированные тесты — по AGENTS и профильным скиллам. Этап00 — только статическая проверка A.
+
+Последующее прямое разрешение пользователя включает все тестовые команды/скрипты, helpers, tooling/MSBuild targets и выделенные test consumers без повторных запросов. Оно передано в задания15–20 и имеет приоритет над прежним permission-per-script правилом. Preflight/точные команды/evidence сохраняются; неизвестные реальные ресурсы, remote provisioning, бизнес-операции и cleanup этим разрешением не задаются.
 
 ## Исходное состояние
 
@@ -47,7 +51,7 @@
 | 17 | `01a11050-269b-7aa0-b7ff-858753f157d8` / `local` | Подготовка A/B принята; C отложен пользователем | Opt-in fixtures/same-row ordinal controls; final310/310, first309/1 сохранён | AB `9ba43d7ffb449099948a846824d53cd6c9fee171` |
 | 18 | `01a1105d-7671-7950-b7a9-4a060e70d30d` / `local` | Windows часть принята; Linux runtime открыт | Three Windows runtime64managed/3native each; five builds; negative guards | AB `801d9c2bfd694cc411747ed8003ca4cf5237e6b5` |
 | 19 | `01a1106a-1a93-7f02-b67b-59eabeea8258` / `local` | Подготовка A принята; C/D заблокирован | Matrix31notrun/35refs/rawduplicates/FIFO/resource card; harness отсутствует | AB `075c8e806967095a287be0ae3a724e6e5871f60b` |
-| 20 | — | Не начат | Отчёт или блокер каждого00–19 | — |
+| 20 | `01a11076-3834-7740-935d-2853986862c0` / `local` | Документация частичной приёмки принята | ABQA/Q/full hashes/links/history; current strict19valid, INFO6; C/D17–19 открыты | AB `b41c2706aaa9059ef3a3c7000c3e6f66e2647b11` |
 
 ## Вопросы и ограничения
 
@@ -58,6 +62,12 @@ Review15 выявил пропуск13 culture resource DLL Microsoft.Data.SqlCl
 Q-003–005 не открываются повторно без обнаруженного противоречия. Q-002: версии/редакция SQL Server, Ubuntu/runtime machines, permissions/TLS/server backup path, deployed endpoint/commit/exact models, бюджет и cleanup остаются ресурсами будущих17–19. Windows cross-build не доказывает Linux ARM64 runtime. Подозрение ABQA-002 не объявляется дефектом без различающего воспроизведения.
 
 ## Журнал действий
+
+- Итог20 принят только как документация частичной приёмки. Independent full7docs/source/evidence/UTF8/hashes/historical2prefixes/diff review завершён; preliminary ID drift R01–03/R06/T18–19 и ABQA007 deadline классификация исправлены в том же чате. Current strict19/19valid ERROR0/WARNING0, INFO6 archive collision отделены от historical INFO2; archive/sync не выполнялись. Actual docs commit `b41c2706aaa9059ef3a3c7000c3e6f66e2647b11` independently git show подтвердил exact7 manifest/201 additions/7 deletions, Journal исключён. Acceptance wording/docs-only verifier обновлены после приёмки, product/CLI не повторялись.20 прекратил writes; AB только отдельный Journal, index пуст, EF/HTTP clean, LB foreign .vs сохранена.
+
+- Для дальнейшего17 нужны отдельные MSSQL version/edition/EngineEdition/endpoint/TLS/auth/own source+restore DB/server backup paths/budgets/операции/identity cleanup и адресные existing-provider process/native ресурсы.18 Linux x64 machine не задана; Pi5 Ubuntu24.04.3/aarch64 по пользовательскому stdout, dotnet отсутствует, provisioning/copy/run не выполнены.19 endpoint отложен; required models/accounts/cost/process/storage/fault controllers/durable counter/cleanup и executable harness отсутствуют. Все31 сценария19 not_run. Эти блокеры не считаются дефектами или completed проверками; поздний ответ возобновляет работу в прежнем чате только после допуска координатора к checkout.
+
+- Coordination19 сохранён `673b14f6d66e0aea28324f3d6905d7eb0ede880c`. Exact local path повторно проверен list_projects; создан отдельный обязательный чат20. Model gpt-6.1-sol/thinking medium/local переданы явно; tool подтвердил только ID/host, actual settings не вернул. Задание содержит full implementation hashes00–19/соседей, partial17–19/user deferrals/ARM64 отсутствующий .NET, запрет historical rewrite и APPEND notes only. Все test commands разрешены;20 только docs/current navigation/датированные итоговые notes, Journal read-only.20 единственный executor writer, итог обязан сохранить незакрытые C/D.
 
 - Подготовка19 принята после independent matrix/data/sourceRefs35/manifest5/hash/UTF8/diff review:31 not_run, runAllowed=false, C/D не выполнены; executable harness/fault controller/durable counter не созданы. Actual docs commit `075c8e806967095a287be0ae3a724e6e5871f60b` независимо подтверждён git show:exact5, только docs/data/slnx. Shared writes19 остановлены, index пуст, AB только Journal, EF/HTTP clean, LB .vs сохранена. Следующий20 получает partial17–19 и обязан прямо назвать итог частичной приёмкой.
 
