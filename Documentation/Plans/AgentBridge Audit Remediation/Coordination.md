@@ -46,7 +46,7 @@
 | 16 | `01a11040-5ad5-7d70-8347-cec38abd0ab2` / `local` | Принят в B | Fresh502/403/289;EF159;HTTP58 обеTFM;metadata27;fivekits/consumers | AB `b1e966445c70f30cad63cc5ba690808c75c7fd35` |
 | 17 | `01a11050-269b-7aa0-b7ff-858753f157d8` / `local` | Подготовка A/B принята; C отложен пользователем | Opt-in fixtures/same-row ordinal controls; final310/310, first309/1 сохранён | AB `9ba43d7ffb449099948a846824d53cd6c9fee171` |
 | 18 | `01a1105d-7671-7950-b7a9-4a060e70d30d` / `local` | Windows часть принята; Linux runtime открыт | Three Windows runtime64managed/3native each; five builds; negative guards | AB `801d9c2bfd694cc411747ed8003ca4cf5237e6b5` |
-| 19 | — | Не начат | Endpoint/бюджет/разрешения не заданы | — |
+| 19 | `01a1106a-1a93-7f02-b67b-59eabeea8258` / `local` | Подготовка A принята; C/D заблокирован | Matrix31notrun/35refs/rawduplicates/FIFO/resource card; harness отсутствует | AB `075c8e806967095a287be0ae3a724e6e5871f60b` |
 | 20 | — | Не начат | Отчёт или блокер каждого00–19 | — |
 
 ## Вопросы и ограничения
@@ -58,6 +58,10 @@ Review15 выявил пропуск13 culture resource DLL Microsoft.Data.SqlCl
 Q-003–005 не открываются повторно без обнаруженного противоречия. Q-002: версии/редакция SQL Server, Ubuntu/runtime machines, permissions/TLS/server backup path, deployed endpoint/commit/exact models, бюджет и cleanup остаются ресурсами будущих17–19. Windows cross-build не доказывает Linux ARM64 runtime. Подозрение ABQA-002 не объявляется дефектом без различающего воспроизведения.
 
 ## Журнал действий
+
+- Подготовка19 принята после independent matrix/data/sourceRefs35/manifest5/hash/UTF8/diff review:31 not_run, runAllowed=false, C/D не выполнены; executable harness/fault controller/durable counter не созданы. Actual docs commit `075c8e806967095a287be0ae3a724e6e5871f60b` независимо подтверждён git show:exact5, только docs/data/slnx. Shared writes19 остановлены, index пуст, AB только Journal, EF/HTTP clean, LB .vs сохранена. Следующий20 получает partial17–19 и обязан прямо назвать итог частичной приёмкой.
+
+- Coordination18 сохранён `2d5bd40f60996d11b75cd7de896ee3654d795307`. После повторного exact list_projects path check создан чат19 с hashes03/04/06/10–18 и partial C/runtime границами. Model gpt-6.1-sol/thinking medium/local явно переданы, инструмент подтвердил только ID/host. Test scripts/commands разрешены; endpoint/provider checks уже отложены пользователем, повторный запрос ресурсов сейчас исключён.19 единственный writer готовит доступную контрольную матрицу, C/D не выдумывает.
 
 - Review18 принят только в доступной Windows loader/DI/BPE границе: full source/helper/manifest guards/Results/AGENTS,17 exact command logs SHA,710output и7source hashes independently совпали; UTF8/diff check пройдены. Run1 native enumeration bug сохранён как probe ошибка; run3 final, пересечения не суммируются. Actual commit `801d9c2bfd694cc411747ed8003ca4cf5237e6b5` git show подтвердил exact9 manifest. Linux runtime/production app graph/IDE/provider exports и операции17 остаются открытыми.18 прекратил writes; следующий19 готовит независимую матрицу при отложенном endpoint.
 
