@@ -3,6 +3,12 @@ using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Coordination;
 using EFCoreLibrary.Maintenance.Errors;
 using EFCoreLibrary.Maintenance.Models;
+using EFCoreLibrary.Maintenance.EfCore;
+using EFCoreLibrary.Maintenance.Processes;
+using EFCoreLibrary.Maintenance.Sqlite.Abstractions;
+using EFCoreLibrary.Maintenance.Sqlite.Backup;
+using EFCoreLibrary.EfCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -13,6 +19,140 @@ namespace AgentBridge.Persistence.EfCore.Tests;
 /// <summary>Явный API AgentBridge с настоящим библиотечным coordinator и fake provider/migration boundaries.</summary>
 public class DatabaseMaintenanceTests
 {
+    /// <summary>Public AB registration проецирует actual process/native primary и secondary без готовой fake ошибки.</summary>
+    [Theory][InlineData("process")][InlineData("native-unknown")][InlineData("native-code")]
+    public async Task ActualBackupCleanupProjectsSafePrimary(string path)
+    {
+        ProcessBoundary process = new();
+        BackupProcessRunner runner = new(process);
+        BackupSession session = new(path == "native-unknown");
+        FakeMaintenanceBoundary fake = new()
+        {
+            BackupAction = async budget =>
+            {
+                if (path == "process") await runner.RunAsync(new ProcessCommand(Path.GetFullPath("never-executed"), [], new Dictionary<string, string>()), budget, TimeSpan.FromMilliseconds(10));
+                else await SqliteBackupStepper.CopyAsync(session, budget);
+            }
+        };
+        using ServiceProvider root = Root(fake);
+        using IServiceScope scope = root.CreateScope();
+        try
+        {
+            MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout));
+            Assert.Equal(path == "native-code" ? MaintenanceError.BackupNotConfirmed : MaintenanceError.CleanupUnconfirmed, error.Code);
+            Assert.Equal(MaintenanceError.BackupFailed, error.PrimaryError);
+            Assert.DoesNotContain("synthetic-secret", error.ToString());
+            Assert.Null(error.InnerException);
+            Assert.DoesNotContain("migrate", fake.Calls);
+            Assert.Single(fake.Calls, call => call == "backup");
+            Assert.Equal("unpin", fake.Calls.Last());
+            if (path == "process") { Assert.Equal(1, process.Starts); Assert.Equal(1, runner.UnconfirmedCount); Assert.Equal(0, process.Disposals); }
+            else { Assert.Equal(1, session.Steps); Assert.Equal(1, session.Finishes); }
+            using IServiceScope next = root.CreateScope();
+            if (path != "native-code")
+            {
+                string[] calls = fake.Calls.ToArray();
+                Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout))).Code);
+                Assert.Equal(calls, fake.Calls);
+            }
+            else await Service(next).InspectAsync(Timeout);
+        }
+        finally
+        {
+            process.StopConfirmed = true;
+            await runner.RetryCleanupAsync(Timeout);
+        }
+    }
+
+    /// <inheritdoc cref="IBackupProcessFactory"/>
+    private class ProcessBoundary : IBackupProcessFactory, IBackupProcessHandle
+    {
+        private Task? completion;
+        public int Starts { get; private set; }
+        public int Disposals { get; private set; }
+        public bool StopConfirmed { get; set; }
+        /// <inheritdoc/>
+        public IBackupProcessHandle Start(ProcessCommand command) { Starts++; completion = Task.FromException(new IOException("synthetic-secret-pipe")); return this; }
+        /// <inheritdoc/>
+        public Task Completion => completion ?? throw new InvalidOperationException("Process не начат.");
+        /// <inheritdoc/>
+        public bool HasExited => StopConfirmed;
+        /// <inheritdoc/>
+        public ProcessResult Result => throw new InvalidOperationException("Неуспешный process не имеет результата.");
+        /// <inheritdoc/>
+        public void RequestStop() { }
+        /// <inheritdoc/>
+        public void Dispose() { Assert.True(StopConfirmed); Disposals++; }
+    }
+
+    /// <inheritdoc/>
+    private class BackupSession(bool unknown) : ISqliteBackupSession
+    {
+        public int Steps { get; private set; }
+        public int Finishes { get; private set; }
+        /// <inheritdoc/>
+        public int Step(int pages) { Steps++; return 10; }
+        /// <inheritdoc/>
+        public int Finish() { Finishes++; if (unknown) throw new IOException("synthetic-secret-finish"); return 10; }
+    }
+
+    /// <summary>Actual coordinator и EF lease сохраняют primary после ошибки CloseConnectionAsync.</summary>
+    [Theory]
+    [InlineData("typed", false)][InlineData("typed", true)]
+    [InlineData("caller", false)][InlineData("caller", true)]
+    [InlineData("deadline", false)][InlineData("deadline", true)]
+    [InlineData("success", false)][InlineData("success", true)]
+    public async Task ActualPinCleanupPreservesPrimary(string failure, bool cleanupFails)
+    {
+        using CancellationTokenSource caller = new();
+        using FakePinnedConnection connection = new() { FailClose = cleanupFails };
+        using DbContext context = new(new DbContextOptionsBuilder()
+            .UseSqlite(connection).Options);
+        EfMigrationOperations<AgentBridgeContextKey> migrations = new(
+            new EfDbContextAdapter<DbContext, AgentBridgeContextKey>(context));
+        FakeMaintenanceBoundary fake = new() { PinFactory = migrations.PinAsync, Pending = failure == "success" ? [] : ["pending"] };
+        if (failure == "typed") fake.ChangeReceipt = receipt => receipt with { TargetIdentity = "wrong" };
+        if (failure is "caller" or "deadline") fake.BackupAction = async budget =>
+        {
+            if (failure == "caller") caller.Cancel();
+            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, budget.Token);
+        };
+        using ServiceProvider root = Root(fake);
+        using IServiceScope scope = root.CreateScope();
+        Exception? error = await Record.ExceptionAsync(() => Service(scope).UpdateExistingAsync(
+            failure == "deadline" ? TimeSpan.FromSeconds(1) : Timeout, caller.Token));
+        MaintenanceError? primary = failure switch
+        {
+            "typed" => MaintenanceError.BackupNotConfirmed,
+            "caller" => MaintenanceError.Cancelled,
+            "deadline" => MaintenanceError.DeadlineExceeded,
+            _ => null
+        };
+        if (cleanupFails)
+        {
+            MaintenanceException cleanup = Assert.IsType<MaintenanceException>(error);
+            Assert.Equal(MaintenanceError.CleanupUnconfirmed, cleanup.Code);
+            Assert.Equal(primary, cleanup.PrimaryError);
+        }
+        else if (failure == "caller") Assert.Equal(caller.Token, Assert.IsType<OperationCanceledException>(error).CancellationToken);
+        else if (primary.HasValue) Assert.Equal(primary, Assert.IsType<MaintenanceException>(error).Code);
+        else Assert.Null(error);
+        Assert.Equal(1, connection.Closes);
+        Assert.DoesNotContain("migrate", fake.Calls);
+        Assert.DoesNotContain("synthetic-secret", error?.ToString() ?? "");
+        Assert.Null(error?.InnerException);
+        connection.FailClose = false;
+        fake.BackupAction = null;
+        if (cleanupFails)
+        {
+            string[] calls = fake.Calls.ToArray();
+            using IServiceScope next = root.CreateScope();
+            Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout))).Code);
+            Assert.Equal(calls, fake.Calls);
+        }
+        else await Service(scope).InspectAsync(Timeout);
+    }
+
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
     /// <summary>Отказ pending после успешных CREATE/binding блокирует waiter и новый DI scope до provider I/O.</summary>

@@ -34,6 +34,8 @@ public class FakeMaintenanceBoundary : IDatabaseMaintenanceProvider<AgentBridgeC
     public bool Pinned { get; private set; }
     /// <summary>Неизвестное завершение очистки сессии.</summary>
     public bool FailCleanup { get; set; }
+    /// <summary>Получает actual EF pin с подставным DbConnection без БД.</summary>
+    public Func<CancellationToken, Task<IAsyncDisposable>>? PinFactory { get; set; }
     /// <summary>Имитирует pending после незавершённого обновления.</summary>
     public bool KeepPending { get; set; }
 
@@ -78,12 +80,13 @@ public class FakeMaintenanceBoundary : IDatabaseMaintenanceProvider<AgentBridgeC
     }
 
     /// <inheritdoc/>
-    public Task<IAsyncDisposable> PinAsync(CancellationToken ct)
+    public async Task<IAsyncDisposable> PinAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         Calls.Add("pin");
         Pinned = true;
-        return Task.FromResult<IAsyncDisposable>(new Pin(this));
+        IAsyncDisposable? inner = PinFactory is null ? null : await PinFactory(ct);
+        return new Pin(this, inner);
     }
 
     /// <inheritdoc/>
@@ -107,15 +110,15 @@ public class FakeMaintenanceBoundary : IDatabaseMaintenanceProvider<AgentBridgeC
     }
 
     /// <inheritdoc/>
-    private class Pin(FakeMaintenanceBoundary owner) : IAsyncDisposable
+    private class Pin(FakeMaintenanceBoundary owner, IAsyncDisposable? inner) : IAsyncDisposable
     {
         /// <inheritdoc/>
-        public ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             owner.Calls.Add("unpin");
             owner.Pinned = false;
+            if (inner is not null) await inner.DisposeAsync();
             if (owner.FailCleanup) throw new MaintenanceException(MaintenanceError.CleanupUnconfirmed);
-            return ValueTask.CompletedTask;
         }
     }
 }
