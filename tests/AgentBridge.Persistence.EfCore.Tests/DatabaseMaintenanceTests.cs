@@ -15,6 +15,109 @@ public class DatabaseMaintenanceTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
 
+    /// <summary>Отказ pending после успешных CREATE/binding блокирует waiter и новый DI scope до provider I/O.</summary>
+    [Theory]
+    [InlineData("typed")]
+    [InlineData("raw")]
+    [InlineData("caller")]
+    [InlineData("deadline")]
+    public async Task InitializationDiscoveryFailureBlocksWaitingAndFreshScopes(string failure)
+    {
+        using CancellationTokenSource caller = new();
+        TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        FakeMaintenanceBoundary fake = new() { Exists = false };
+        bool failed = false;
+        fake.PendingAction = async token =>
+        {
+            if (failed) return;
+            failed = true;
+            Assert.True(fake.Pinned);
+            entered.TrySetResult();
+            await release.Task;
+            if (failure == "caller") { caller.Cancel(); token.ThrowIfCancellationRequested(); }
+            if (failure == "deadline") await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, token);
+            if (failure == "raw") throw new InvalidOperationException("synthetic-secret-driver");
+            throw new MaintenanceException(MaintenanceError.ConnectionFailed);
+        };
+        MaintenanceTestLogger logger = new();
+        using ServiceProvider root = Root(fake, logger);
+        using IServiceScope firstScope = root.CreateScope();
+        using IServiceScope waiterScope = root.CreateScope();
+        Task<DatabaseMaintenanceResult> first = Service(firstScope).InitializeNewAsync(
+            failure == "deadline" ? TimeSpan.FromSeconds(1) : Timeout, caller.Token);
+        Task<DatabaseInspection>? waiter = null;
+        try
+        {
+            await entered.Task.WaitAsync(Timeout);
+            Assert.Equal(["inspect", "create", "inspect", "pin", "inspect", "pending"], fake.Calls);
+            waiter = Service(waiterScope).InspectAsync(Timeout);
+            Assert.False(waiter.IsCompleted);
+            release.TrySetResult();
+            Exception? error = await Record.ExceptionAsync(() => first);
+            MaintenanceError expected = failure == "caller" ? MaintenanceError.Cancelled :
+                failure == "deadline" ? MaintenanceError.DeadlineExceeded : MaintenanceError.ConnectionFailed;
+            if (failure == "caller") Assert.Equal(caller.Token, Assert.IsType<OperationCanceledException>(error).CancellationToken);
+            else Assert.Equal(expected, Assert.IsType<MaintenanceException>(error).Code);
+            Assert.DoesNotContain("synthetic-secret", error!.ToString());
+            MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() => waiter);
+            Assert.Equal(MaintenanceError.GatePoisoned, blocked.Code);
+            Assert.False(fake.Pinned);
+            Assert.Equal(["inspect", "create", "inspect", "pin", "inspect", "pending", "unpin"], fake.Calls);
+            string[] calls = fake.Calls.ToArray();
+            using IServiceScope fresh = root.CreateScope();
+            Assert.Equal(MaintenanceError.GatePoisoned,
+                (await Assert.ThrowsAsync<MaintenanceException>(() => Service(fresh).InspectAsync(Timeout))).Code);
+            Assert.Equal(calls, fake.Calls);
+            IReadOnlyDictionary<string, object?> diagnostic = logger.Events.First();
+            Assert.Equal(MaintenanceStage.Discovery, diagnostic["Stage"]);
+            Assert.Equal(expected, diagnostic["Code"]);
+            Assert.All(logger.Exceptions, Assert.Null);
+            Assert.DoesNotContain("synthetic-secret", string.Join(" ", logger.Events.SelectMany(item => item.Values)));
+        }
+        finally
+        {
+            release.TrySetResult();
+            await Record.ExceptionAsync(() => first);
+            if (waiter is not null) await Record.ExceptionAsync(() => waiter);
+        }
+    }
+
+    /// <summary>Успешные режимы обслуживания оставляют общий gate доступным новому scope.</summary>
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task SuccessfulChangeAllowsFreshScope(bool initialize, bool pending)
+    {
+        FakeMaintenanceBoundary fake = new() { Exists = !initialize, Pending = pending ? ["synthetic-migration"] : [] };
+        using ServiceProvider root = Root(fake);
+        using (IServiceScope first = root.CreateScope())
+        {
+            DatabaseMaintenanceResult result = initialize ? await Service(first).InitializeNewAsync(Timeout) : await Service(first).UpdateExistingAsync(Timeout);
+            Assert.Equal(initialize ? MaintenanceOutcome.Initialized : pending ? MaintenanceOutcome.Migrated : MaintenanceOutcome.Unchanged, result.Outcome);
+        }
+        using IServiceScope fresh = root.CreateScope();
+        Assert.True((await Service(fresh).InspectAsync(Timeout)).Exists);
+        Assert.False(fake.Pinned);
+    }
+
+    /// <summary>Ранний отказ initialization до CREATE не запрещает последующее явное обслуживание.</summary>
+    [Fact]
+    public async Task PreCreateFailureAllowsFreshScope()
+    {
+        FakeMaintenanceBoundary fake = new() { Exists = false, InspectionAction = _ => throw new MaintenanceException(MaintenanceError.PermissionDenied) };
+        using ServiceProvider root = Root(fake);
+        using (IServiceScope first = root.CreateScope())
+            Assert.Equal(MaintenanceError.PermissionDenied,
+                (await Assert.ThrowsAsync<MaintenanceException>(() => Service(first).InitializeNewAsync(Timeout))).Code);
+        Assert.Equal(["inspect"], fake.Calls);
+        fake.InspectionAction = null;
+        using IServiceScope fresh = root.CreateScope();
+        Assert.Equal(MaintenanceOutcome.Initialized, (await Service(fresh).InitializeNewAsync(Timeout)).Outcome);
+    }
+
     /// <summary>Inspection возвращает pending без backup, create или migrate.</summary>
     [Theory]
     [InlineData(true)]
@@ -274,10 +377,11 @@ public class DatabaseMaintenanceTests
             second.ServiceProvider.GetRequiredService<SingleInitializerGate>(), second.ServiceProvider.GetRequiredService<ILogger<DatabaseMaintenance<AgentBridgeContextKey>>>());
         Task<DatabaseInspection> active = Service(first).InspectAsync(Timeout);
         using CancellationTokenSource waiter = new();
+        Task<DatabaseInspection>? waiting = null;
         try
         {
             await entered.Task.WaitAsync(Timeout);
-            Task<DatabaseInspection> waiting = secondService.InspectAsync(Timeout, waiter.Token);
+            waiting = secondService.InspectAsync(Timeout, waiter.Token);
             Assert.False(waiting.IsCompleted);
             Assert.Empty(secondFake.Calls);
             waiter.Cancel();
@@ -288,8 +392,11 @@ public class DatabaseMaintenanceTests
         finally
         {
             release.TrySetResult();
-            await active;
+            waiter.Cancel();
+            await Record.ExceptionAsync(() => active);
+            if (waiting is not null) await Record.ExceptionAsync(() => waiting);
         }
+        await active;
         await secondService.InspectAsync(Timeout);
         Assert.Contains("inspect", secondFake.Calls);
     }

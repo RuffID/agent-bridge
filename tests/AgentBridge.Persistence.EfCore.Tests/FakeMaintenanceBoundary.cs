@@ -26,6 +26,8 @@ public class FakeMaintenanceBoundary : IDatabaseMaintenanceProvider<AgentBridgeC
     public Func<MaintenanceBudget, Task>? BackupAction { get; set; }
     /// <summary>Управляемый partial failure migration.</summary>
     public Func<CancellationToken, Task>? MigrationAction { get; set; }
+    /// <summary>Управляемый отказ discovery или verification с успешным cleanup.</summary>
+    public Func<CancellationToken, Task>? PendingAction { get; set; }
     /// <summary>Управляемое повреждение receipt.</summary>
     public Func<DatabaseBackupReceipt, DatabaseBackupReceipt>? ChangeReceipt { get; set; }
     /// <summary>Признак удержания подставной EF-сессии.</summary>
@@ -85,12 +87,13 @@ public class FakeMaintenanceBoundary : IDatabaseMaintenanceProvider<AgentBridgeC
     }
 
     /// <inheritdoc/>
-    public Task<IReadOnlyList<string>> PendingAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<string>> PendingAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         Calls.Add("pending");
         if (!Pinned) throw new InvalidOperationException("Pending требует удержанную fake session.");
-        return Task.FromResult(Pending);
+        if (PendingAction is not null) await PendingAction(ct);
+        return Pending;
     }
 
     /// <inheritdoc/>
