@@ -1,6 +1,6 @@
 # Конфигурация, жизненный цикл и проверка
 
-SQL Server добавлен Audit Remediation12 как явный Database.Provider=SqlServer без default/fallback. Backup.SqlServerBackupDirectory задаёт серверный absolute path, Backup.BackupRetentionPeriod — положительный app-owned retention; host BackupDirectory не требуется для MSSQL. Строгая configuration boundary Audit Remediation13 описана ниже; отдельная facade14 ещё предстоит. [Provider API](12-sql-server-provider.md).
+SQL Server добавлен Audit Remediation12 как явный Database.Provider=SqlServer без default/fallback. Backup.SqlServerBackupDirectory задаёт серверный absolute path, Backup.BackupRetentionPeriod — положительный app-owned retention; host BackupDirectory не требуется для MSSQL. Строгая configuration boundary Audit Remediation13 описана ниже; [отдельная facade14](26-integration-registration.md) предоставляет стандартную composition. [Provider API](12-sql-server-provider.md).
 
 ## Конфигурация
 
