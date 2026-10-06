@@ -10,6 +10,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**;**\bin\**;**\obj\**;**\artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Delivery/Consumer/SqlServerRegistration.cs" Link="Consumer/SqlServerRegistration.cs" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
@@ -19,5 +20,6 @@
     <ProjectReference Include="../../adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj" />
+    <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.SqlServer/AgentBridge.Persistence.Migrations.SqlServer.csproj" />
   </ItemGroup>
 </Project>

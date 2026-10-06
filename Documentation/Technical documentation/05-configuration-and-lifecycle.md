@@ -1,5 +1,7 @@
 # Конфигурация, жизненный цикл и проверка
 
+SQL Server добавлен Audit Remediation12 как явный Database.Provider=SqlServer без default/fallback. Backup.SqlServerBackupDirectory задаёт серверный absolute path, Backup.BackupRetentionPeriod — положительный app-owned retention; host BackupDirectory не требуется для MSSQL. [Текущий provider API](12-sql-server-provider.md) не заменяет предстоящую строгую IConfiguration конфигурацию13 и отдельную facade14.
+
 ## Конфигурация
 
 Привязка настроек выполняется в composition root подключающего приложения через групповые DI-расширения. Прикладные сценарии получают типизированные options, а не `IConfiguration`.

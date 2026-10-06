@@ -1,5 +1,9 @@
 # Проверка БД, бэкап, миграции и очистка
 
+## Текущее подключение SQL Server
+
+Audit Remediation12 подключает Microsoft SQL Server вместе с сохранёнными SQLite/PostgreSQL. AddAgentBridgeDatabaseMaintenance выбирает existing SqlServerMaintenanceProvider/общий coordinator EFCoreLibrary; runtime DI не выполняет операции. Для MSSQL обязательны SqlServerBackupDirectory на сервере БД и положительный BackupRetentionPeriod; локальный app BackupDirectory не используется. EngineEdition2/3/4, ConnectRetryCount=0/direct endpoint, native COPY_ONLY/CHECKSUM/HEADERONLY/VERIFYONLY и server receipt остаются библиотечным контрактом. Приложение явно задаёт SingleInitializer, TLS/auth и остановку writes/DDL/всех экземпляров, retention и cleanup. [Текущий API и ограничения](12-sql-server-provider.md); actual CRUD/migrations/backup/restore ещё требуют17. Исторические числа тестов ниже не являются evidence MSSQL.
+
 ## Принятое решение
 
 AgentBridge использует тот же функциональный порядок обслуживания, что AquaByte-Ledger: проверить подключение, определить pending migrations, создать резервную копию существующей БД, применить миграции. Ошибка подключения, backup или migration не маскируется и не превращается в успешный startup.

@@ -68,7 +68,7 @@ public class DatabaseConfigurationTests
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Provider"] = "SqlServer",
+            ["Provider"] = "UnsupportedProvider",
             ["ConnectionString"] = "synthetic-connection-secret"
         }).Build();
         ServiceCollection services = new();

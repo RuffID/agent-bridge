@@ -1,5 +1,9 @@
 # Provider-specific схема AgentBridge
 
+## Текущее дополнение SQL Server и settings
+
+На 2026-10-06 общий контекст содержит шесть таблиц, включая DialogSettings; nullable SettingsJson/SelectedModel и ToolAttemptsJson появились последующими SQLite/PostgreSQL migrations. Audit Remediation12 добавил отдельный SQL Server library target/startup/factory и generated InitialAgentBridgeSchema `20261006060948`, содержащую все шесть таблиц, пять FK,23 checks,3 indices. Runtime/factory identity — AgentBridgeMigrationsAssemblies.SQLSERVER и __AgentBridgeMigrationsHistory. Подробности current mapping/maintenance и границы actual17: [SQL Server](12-sql-server-provider.md). Разделы ниже сохраняют evidence первоначального этапа11 и не являются текущим числом таблиц или свежим прогоном.
+
 Этап 11: **Реализован и принят; запрещённые проверки пропущены**. После разрешения пользователя «Разрешаю обе команды генерации» однократно созданы InitialAgentBridgeSchema, designer и snapshot для SQLite/PostgreSQL. Явный startup/backup подключён этапом 12; generated артефакты при этом не изменены и не генерировались повторно. [Maintenance API](06-database-maintenance.md#подключение-agentbridge-этапа-12).
 
 ## Реализованные проекты и API

@@ -9,6 +9,8 @@ using EFCoreLibrary.Maintenance.Sqlite.Abstractions;
 using EFCoreLibrary.Maintenance.Sqlite.Backup;
 using EFCoreLibrary.Maintenance.Sqlite.Options;
 using EFCoreLibrary.Maintenance.Sqlite.Providers;
+using EFCoreLibrary.Maintenance.SqlServer.Options;
+using EFCoreLibrary.Maintenance.SqlServer.Providers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -62,6 +64,8 @@ public static class DatabaseMaintenanceRegistrationExtensions
                     new DumpOptions(backup.PostgreSqlDumpExecutablePath!, backup.BackupDirectory!,
                         backup.PostgreSqlServerMajorVersion!.Value.ToString(CultureInfo.InvariantCulture), backup.PostgreSqlCleanupTimeout!.Value),
                     provider.GetRequiredService<IBackupProcessRunner>()),
+                DatabaseProvider.SqlServer => new SqlServerMaintenanceProvider<AgentBridgeContextKey>(migrations, commands,
+                    new SqlServerMaintenanceOptions(backup.SqlServerBackupDirectory!)),
                 _ => throw new MaintenanceException(MaintenanceError.Configuration)
             };
         });

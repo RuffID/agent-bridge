@@ -112,6 +112,7 @@
     <File Path="Documentation/Technical documentation/09-application-ports.md" />
     <File Path="Documentation/Technical documentation/10-scenario-unit-of-work.md" />
     <File Path="Documentation/Technical documentation/11-provider-migrations.md" />
+    <File Path="Documentation/Technical documentation/12-sql-server-provider.md" />
     <File Path="Documentation/Technical documentation/13-model-catalog-and-keys.md" />
     <File Path="Documentation/Technical documentation/14-responses-json-adapter.md" />
     <File Path="Documentation/Technical documentation/15-responses-sse-adapter.md" />
@@ -131,6 +132,7 @@
     <Project Path="adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.Migrations.SqlServer/AgentBridge.Persistence.Migrations.SqlServer.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="tests/AgentBridge.Tests/AgentBridge.Tests.csproj" />

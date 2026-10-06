@@ -35,8 +35,13 @@ public static class PersistenceRegistrationExtensions
                         .MigrationsAssembly(AgentBridgeMigrationsAssemblies.POSTGRESQL)
                         .MigrationsHistoryTable(AgentBridgeMigrationsHistory.TABLE_NAME));
                     break;
+                case DatabaseProvider.SqlServer:
+                    builder.UseSqlServer(options.ConnectionString, sqlServer => sqlServer
+                        .MigrationsAssembly(AgentBridgeMigrationsAssemblies.SQLSERVER)
+                        .MigrationsHistoryTable(AgentBridgeMigrationsHistory.TABLE_NAME));
+                    break;
                 default:
-                    throw new InvalidOperationException("Требуется явный провайдер SQLite/PostgreSQL.");
+                    throw new InvalidOperationException("Требуется явный провайдер SQLite/PostgreSQL/SQL Server.");
             }
             builder.EnableSensitiveDataLogging(false);
         });

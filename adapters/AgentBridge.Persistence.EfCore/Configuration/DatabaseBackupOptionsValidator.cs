@@ -11,7 +11,17 @@ public class DatabaseBackupOptionsValidator(IOptions<DatabaseOptions> database) 
     {
         ArgumentNullException.ThrowIfNull(options);
         List<string> errors = [];
-        if (!IsAbsolutePath(options.BackupDirectory))
+        if (database.Value.Provider == DatabaseProvider.SqlServer)
+        {
+            string? path = options.SqlServerBackupDirectory;
+            if (string.IsNullOrWhiteSpace(path) || path.Any(char.IsControl)
+                || !(path.StartsWith('/') || path.StartsWith("\\\\", StringComparison.Ordinal)
+                    || (path.Length > 2 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] == '\\')))
+            {
+                errors.Add("Backup.SqlServerBackupDirectory должен быть абсолютным путём на сервере SQL Server.");
+            }
+        }
+        else if (!IsAbsolutePath(options.BackupDirectory))
         {
             errors.Add("Backup.BackupDirectory должен быть корректным абсолютным путём.");
         }

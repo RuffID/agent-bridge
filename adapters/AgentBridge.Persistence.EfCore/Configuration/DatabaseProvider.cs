@@ -4,8 +4,11 @@ namespace AgentBridge.Persistence.EfCore.Configuration;
 public enum DatabaseProvider
 {
     /// <summary>SQLite, только при явном выборе приложения.</summary>
-    SQLite,
+    SQLite = 0,
 
     /// <summary>PostgreSQL, только при явном выборе приложения.</summary>
-    PostgreSql
+    PostgreSql = 1,
+
+    /// <summary>Microsoft SQL Server, только при явном выборе приложения.</summary>
+    SqlServer = 2
 }

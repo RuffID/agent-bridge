@@ -8,4 +8,7 @@ public static class AgentBridgeMigrationsAssemblies
 
     /// <summary>Сборка миграций PostgreSQL; не используется при выборе SQLite.</summary>
     public const string POSTGRESQL = "AgentBridge.Persistence.Migrations.PostgreSql";
+
+    /// <summary>Отдельная сборка миграций Microsoft SQL Server.</summary>
+    public const string SQLSERVER = "AgentBridge.Persistence.Migrations.SqlServer";
 }

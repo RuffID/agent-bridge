@@ -773,24 +773,24 @@ AgentBridge MUST проверять точный ID модели, supported_in_a
 
 ### Requirement: Раздельные миграции выбранного провайдера
 
-AgentBridge MUST предоставлять независимые SQLite/PostgreSQL migrations assemblies и snapshots для одного общего AgentBridgeDbContext. Runtime и design-time MUST выбирать одну и ту же устойчивую identity по provider. Эти проекты MUST владеть только таблицами AgentBridge и MUST NOT добавлять host или зависимости в Domain/Application. Design-time factory MUST создавать контекст без открытия соединения, SQL, применения схемы или чтения секретов приложения.
+AgentBridge MUST предоставлять независимые SQLite/PostgreSQL/SQL Server migrations assemblies и snapshots для одного общего AgentBridgeDbContext. Runtime и design-time MUST выбирать одну и ту же устойчивую identity по provider. Эти проекты MUST владеть только таблицами AgentBridge и MUST NOT добавлять host или зависимости в Domain/Application. Design-time factory MUST создавать контекст без открытия соединения, SQL, применения схемы или чтения секретов приложения.
 
 #### Scenario: Изолированная история миграций
 
-- **WHEN** SQLite или PostgreSQL options создаются runtime регистрацией либо design-time factory
+- **WHEN** SQLite, PostgreSQL или SQL Server options создаются runtime регистрацией либо design-time factory
 - **THEN** provider history repository получает имя __AgentBridgeMigrationsHistory
 - **AND** выбор истории не меняет snapshot или схему mapped таблиц.
 
 #### Scenario: Создание модели для выбранного провайдера
 
-- **WHEN** tooling использует SQLite или PostgreSQL target/startup проект
+- **WHEN** tooling использует SQLite, PostgreSQL или SQL Server target/startup проект
 - **THEN** factory создаёт общий AgentBridgeDbContext с выбранным provider и его отдельной migrations assembly
 - **AND** runtime выбирает ту же assembly identity.
 
 #### Scenario: Сохранение принятых границ схемы
 
 - **WHEN** создаётся provider-specific модель
-- **THEN** сохраняются только собственные таблицы, составные keys/FK, cascade, UTC ticks, BINARY/C collation и expiry/Id index
+- **THEN** сохраняются только собственные таблицы, составные keys/FK, единственные cascade paths, UTC ticks, ordinal owner (BINARY/C для SQLite/PostgreSQL либо varbinary UTF-16 code units для SQL Server) и expiry/Id index
 - **AND** owner-list index и таблицы подключающего приложения не добавляются.
 
 #### Scenario: Проверка правила — Раздельные миграции выбранного провайдера
@@ -946,13 +946,23 @@ AgentBridge MUST предоставлять C#-библиотеку для SDK-s
 
 ### Requirement: Настраиваемое хранение диалогов
 
-AgentBridge MUST сохранять диалоги и необходимое состояние контекста в БД. Провайдер БД и параметры подключения MUST задаваться конфигурацией подключающего приложения. SQLite и PostgreSQL MUST поддерживаться как опциональные провайдеры общего хранилища; SQLite MUST NOT быть обязательным выбором. Ядро MUST NOT зависеть от конкретной БД.
+AgentBridge MUST сохранять диалоги и необходимое состояние контекста в БД. Провайдер БД и параметры подключения MUST задаваться конфигурацией подключающего приложения. SQL Server MUST поддерживаться как основной сценарий внедрения при явном выборе; SQLite и PostgreSQL MUST сохраняться как опциональные провайдеры общего хранилища; SQLite MUST NOT быть обязательным выбором. Ядро MUST NOT зависеть от конкретной БД.
 
 #### Scenario: Выбор БД
 
-- **WHEN** приложение настраивает SQLite или PostgreSQL как хранилище AgentBridge
+- **WHEN** приложение настраивает SQLite, PostgreSQL или SQL Server как хранилище AgentBridge
 - **THEN** диалоги сохраняются через выбранный провайдер
 - **AND** замена провайдера не требует изменения бизнес-логики агента.
+
+### Requirement: Unicode и ordinal mapping SQL Server
+
+Для SQL Server строковые payload/journal/settings/provenance MUST использовать Unicode nvarchar(max) без нормализации. OwnerId MUST сохранять ordinal identity как обратимые UTF-16 code units в varbinary(max), включая trailing spaces и непарные суррогаты, без MaxLength/trim/replacement. UTC MUST храниться bigint ticks. Provider-specific checks MUST сохранять nullable lifecycle и nonempty semantics без зависимости от QUOTED_IDENTIFIER или SQL Server string padding.
+
+#### Scenario: Ordinal owner SQL Server
+
+- **WHEN** owner отличается case, завершающим пробелом либо UTF-16 code unit
+- **THEN** converter и binary token сохраняют различие без нормализации
+- **AND** disconnected metadata/parameter проверки не объявляются доказательством server equality/CAS.
 
 ### Requirement: Формат общего EF-хранилища
 
@@ -966,7 +976,7 @@ Persistence-модель MUST отделяться от доменного аг�
 
 #### Scenario: Выбор общего контекста
 
-- **WHEN** приложение явно выбирает SQLite или PostgreSQL
+- **WHEN** приложение явно выбирает SQLite, PostgreSQL или SQL Server
 - **THEN** DI регистрирует один scoped-контекст через AddEfCoreContext и AddEfCoreBaseRepositories
 - **AND** регистрация не открывает БД, не запускает migrations и не выбирает SQLite при отсутствии настройки.
 
@@ -1373,7 +1383,7 @@ AgentBridge MUST проверять активное compact окно и неп�
 
 ### Requirement: Явное подключение обслуживания AgentBridge
 
-EF-адаптер AgentBridge MUST регистрировать scoped `IDatabaseMaintenance<AgentBridgeContextKey>` через общий coordinator EFCoreLibrary и выбирать только SQLite/PostgreSQL по DatabaseOptions. SingleInitializer MUST задаваться явно.
+EF-адаптер AgentBridge MUST регистрировать scoped `IDatabaseMaintenance<AgentBridgeContextKey>` через общий coordinator EFCoreLibrary и выбирать SQLite/PostgreSQL/SQL Server по DatabaseOptions без automatic fallback. SingleInitializer MUST задаваться явно.
 
 #### Scenario: Подключение без обслуживания
 
@@ -1383,7 +1393,7 @@ EF-адаптер AgentBridge MUST регистрировать scoped `IDatabas
 
 #### Scenario: Проверка правила — Явное подключение обслуживания AgentBridge
 
-- **WHEN** приложение выбрало SQLite или PostgreSQL и SingleInitializer
+- **WHEN** приложение выбрало SQLite, PostgreSQL или SQL Server и SingleInitializer
 - **THEN** scoped maintenance зарегистрирован через общий coordinator.
 
 ### Requirement: Регистрация maintenance без побочных операций
@@ -1406,7 +1416,7 @@ EF-адаптер AgentBridge MUST регистрировать scoped `IDatabas
 
 ### Requirement: Явные настройки backup
 
-AgentBridge MUST требовать абсолютный backup directory и явно заданный положительный срок хранения backup без значения по умолчанию. Для PostgreSQL MUST требоваться абсолютный путь pg_dump, явный major сервера 10+ и конечный положительный cleanup timeout. Настройки MUST проверяться локально до maintenance I/O без раскрытия значений в ошибках.
+AgentBridge MUST требовать положительный backup retention без default. SQLite/PostgreSQL MUST требовать абсолютный локальный backup directory. PostgreSQL MUST требовать абсолютный pg_dump path, server major10+ и конечный положительный cleanup timeout. Настройки MUST проверяться локально до I/O без раскрытия значений.
 
 #### Scenario: Срок backup не выбран
 
@@ -1419,6 +1429,16 @@ AgentBridge MUST требовать абсолютный backup directory и я�
 - **WHEN** backup retention не задан или pg_dump settings недопустимы
 - **THEN** локальная проверка отклоняет настройки до I/O без раскрытия значений.
 
+### Requirement: Серверный каталог SQL Server backup
+
+SQL Server MUST требовать отдельный SqlServerBackupDirectory на сервере БД независимо от ОС приложения. Локальный BackupDirectory MUST NOT подменять серверный destination. Absolute Unix/Windows drive/UNC формы MUST проверяться без файловой системы app host; доступ service account, retention и cleanup MUST обеспечиваться приложением/оператором.
+
+#### Scenario: Linux server backup из Windows приложения
+
+- **WHEN** Windows приложение задаёт абсолютный Unix SqlServerBackupDirectory
+- **THEN** options не требуют существования этого пути на app host
+- **AND** server доступность и восстановимость не заявляются по локальной форме или receipt.
+
 ### Requirement: Владение backup retention и артефактом
 
 Backup retention MUST оставаться обязанностью приложения и MUST NOT запускать purge или подменяться expiry диалогов. Format, scope, receipt, private workspace и защита от перезаписи MUST делегироваться EFCoreLibrary.
@@ -1430,7 +1450,7 @@ Backup retention MUST оставаться обязанностью прилож
 
 ### Requirement: Backup и migrations через EFCoreLibrary
 
-AgentBridge MUST предоставлять вызываемую приложением операцию обслуживания схемы: check → backup существующей БД при pending migrations → migrate. Backup-возможности SQLite/PostgreSQL MUST строиться на развиваемом контракте EFCoreLibrary; прямой SQL Server backup в AgentBridge MUST NOT служить заменой этой зависимости. Ошибка обязательного backup MUST останавливать migration. Подключение DLL MUST NOT само по себе запускать обслуживание.
+AgentBridge MUST предоставлять вызываемую приложением операцию обслуживания схемы: check → backup существующей БД при pending migrations → migrate. Backup-возможности SQLite/PostgreSQL/SQL Server MUST строиться на развиваемом контракте EFCoreLibrary; прямой SQL Server backup в AgentBridge MUST NOT служить заменой этой зависимости. Ошибка обязательного backup MUST останавливать migration. Подключение DLL MUST NOT само по себе запускать обслуживание.
 
 #### Scenario: Обновление существующей БД
 
@@ -1464,7 +1484,7 @@ AgentBridge MUST предоставлять вызываемую приложе�
 
 ### Requirement: Подтверждение backup и владение ресурсами
 
-EFCoreLibrary MUST предоставлять расширяемый реляционный контракт и отдельные optional реализации SQLite, PostgreSQL, SQL Server и MySQL. Набор providers AgentBridge MUST оставаться SQLite/PostgreSQL.
+EFCoreLibrary MUST предоставлять расширяемый реляционный контракт и отдельные optional реализации SQLite, PostgreSQL, SQL Server и MySQL. Набор providers AgentBridge MUST включать SQLite/PostgreSQL/SQL Server. SQL Server maintenance MUST использовать существующий optional module EFCoreLibrary с EngineEdition2/3/4 и прямым endpoint/ConnectRetryCount=0; Azure SQL/MI/Synapse и Engine ARM64 MUST NOT объявляться поддержанными по этому контракту.
 
 #### Scenario: Неизвестное завершение backup
 
@@ -1483,7 +1503,7 @@ EFCoreLibrary MUST предоставлять расширяемый реляц�
 #### Scenario: Проверка правила — Подтверждение backup и владение ресурсами
 
 - **WHEN** приложение подключает AgentBridge provider
-- **THEN** выбирается SQLite/PostgreSQL из расширяемых optional модулей EFCoreLibrary.
+- **THEN** явно выбирается SQLite/PostgreSQL/SQL Server из расширяемых optional модулей EFCoreLibrary.
 
 ### Requirement: Подтверждённый receipt перед migration
 

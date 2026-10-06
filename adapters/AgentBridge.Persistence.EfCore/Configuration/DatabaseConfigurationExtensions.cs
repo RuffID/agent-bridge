@@ -29,7 +29,7 @@ public static class DatabaseConfigurationExtensions
     private static void Validate(OptionsBuilder<DatabaseOptions> builder) => builder
         .Validate(options => options.Provider.HasValue, "Database.Provider обязателен; провайдер выбирает приложение.")
         .Validate(options => !options.Provider.HasValue || Enum.IsDefined(options.Provider.Value),
-            "Database.Provider не поддержан локальным контрактом SQLite/PostgreSQL.")
+            "Database.Provider не поддержан локальным контрактом SQLite/PostgreSQL/SQL Server.")
         .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "Database.ConnectionString обязателен.")
         .ValidateOnStart();
 }

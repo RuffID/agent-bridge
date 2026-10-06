@@ -3,6 +3,7 @@ using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.Migrations.PostgreSql;
 using AgentBridge.Persistence.Migrations.Sqlite;
+using AgentBridge.Persistence.Migrations.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -20,7 +21,8 @@ public class ProviderDesignTimeTests
     [Theory]
     [InlineData(DatabaseProvider.SQLite, "Microsoft.EntityFrameworkCore.Sqlite", "BINARY", "INTEGER")]
     [InlineData(DatabaseProvider.PostgreSql, "Npgsql.EntityFrameworkCore.PostgreSQL", "C", "bigint")]
-    public void RuntimeAndFactoryShareProviderSchema(DatabaseProvider selected, string providerName, string collation, string ticksType)
+    [InlineData(DatabaseProvider.SqlServer, "Microsoft.EntityFrameworkCore.SqlServer", null, "bigint")]
+    public void RuntimeAndFactoryShareProviderSchema(DatabaseProvider selected, string providerName, string? collation, string ticksType)
     {
         IDesignTimeDbContextFactory<AgentBridgeDbContext> factory = CreateFactory(selected);
         using AgentBridgeDbContext design = factory.CreateDbContext([]);
@@ -43,7 +45,7 @@ public class ProviderDesignTimeTests
             RelationalOptionsExtension relational = RelationalOptionsExtension.Extract(configured.GetService<IDbContextOptions>());
             Assert.Equal("__AgentBridgeMigrationsHistory", relational.MigrationsHistoryTableName);
             Assert.Null(relational.MigrationsHistoryTableSchema);
-            Assert.Equal(selected == DatabaseProvider.SQLite ? "SqliteHistoryRepository" : "NpgsqlHistoryRepository",
+            Assert.Equal(selected switch { DatabaseProvider.SQLite => "SqliteHistoryRepository", DatabaseProvider.PostgreSql => "NpgsqlHistoryRepository", DatabaseProvider.SqlServer => "SqlServerHistoryRepository", _ => throw new ArgumentOutOfRangeException(nameof(selected)) },
                 configured.GetService<IHistoryRepository>().GetType().Name);
         }
         Assert.Equal(typeof(AgentBridgeDbContext), design.GetType());
@@ -76,6 +78,7 @@ public class ProviderDesignTimeTests
     [Theory]
     [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
+    [InlineData(DatabaseProvider.SqlServer)]
     public void FactoryRejectsForwardedArguments(DatabaseProvider selected)
     {
         IDesignTimeDbContextFactory<AgentBridgeDbContext> factory = CreateFactory(selected);
@@ -89,14 +92,15 @@ public class ProviderDesignTimeTests
     [Theory]
     [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
+    [InlineData(DatabaseProvider.SqlServer)]
     public void GeneratedSnapshotAndDesignerMatchCurrentSchema(DatabaseProvider selected)
     {
         using AgentBridgeDbContext context = CreateFactory(selected).CreateDbContext([]);
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
         Assert.NotNull(assembly.ModelSnapshot);
-        Assert.Equal(3, assembly.Migrations.Count);
+        Assert.Equal(selected == DatabaseProvider.SqlServer ? 1 : 3, assembly.Migrations.Count);
         KeyValuePair<string, TypeInfo> registered = assembly.Migrations.OrderBy(pair => pair.Key).Last();
-        Assert.EndsWith("_AddDialogSettings", registered.Key);
+        Assert.EndsWith(selected == DatabaseProvider.SqlServer ? "_InitialAgentBridgeSchema" : "_AddDialogSettings", registered.Key);
         Migration migration = assembly.CreateMigration(registered.Value, context.Database.ProviderName!);
         IModelRuntimeInitializer initializer = context.GetService<IModelRuntimeInitializer>();
         IModel snapshotModel = initializer.Initialize(assembly.ModelSnapshot.Model, designTime: true);
@@ -112,6 +116,7 @@ public class ProviderDesignTimeTests
     {
         DatabaseProvider.SQLite => new SqliteAgentBridgeDbContextFactory(),
         DatabaseProvider.PostgreSql => new PostgreSqlAgentBridgeDbContextFactory(),
+        DatabaseProvider.SqlServer => new SqlServerAgentBridgeDbContextFactory(),
         _ => throw new ArgumentOutOfRangeException(nameof(selected))
     };
 }

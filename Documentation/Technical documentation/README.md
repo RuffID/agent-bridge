@@ -15,6 +15,7 @@
 | [Прикладные контракты](09-application-ports.md) | Независимые порты, результаты lifecycle, канонические снимки и короткие сценарии хранения |
 | [Сценарные Unit of Work](10-scenario-unit-of-work.md) | Write ports, общий scope EFCoreLibrary, Domain Restore, guards и ограничения атомарности |
 | [Provider migrations](11-provider-migrations.md) | Отдельные сборки/factories, runtime identity, tooling, подготовленная модель и блокер генерации |
+| [Microsoft SQL Server](12-sql-server-provider.md) | Явный provider, Unicode/binary owner mapping, migrations/maintenance и границы actual17 |
 | [Каталог моделей и ключи](13-model-catalog-and-keys.md) | Application source, per-call доступ, dynamic capabilities, проверка model/effort/input budget и безопасные снимки |
 | [JSON Responses](14-responses-json-adapter.md) | Public DI/gateway, canonical controls/items/envelope, bound continuation, safe errors, deadline/caller/disposal |
 | [SSE Responses](15-responses-sse-adapter.md) | Fragmented/multiline framing, partial/terminal canonical state, callback ownership, cancellation/disposal и изолированные проверки |
