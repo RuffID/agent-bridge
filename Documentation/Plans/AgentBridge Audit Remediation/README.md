@@ -1,8 +1,8 @@
 # Исправление проблем аудита AgentBridge
 
-Статус на 2026-10-06, Asia/Novosibirsk: **00 принят в A;01–07 приняты в локальной A/B-границе;08 принят в A;09 принят в A workflow/B CLI;10 принят в A/B;11–20 не начаты**. MSSQL/мультиплатформенное подключение и строгая конфигурация согласованы, но ещё не реализованы.
+Статус на 2026-10-06, Asia/Novosibirsk: **00 принят в A;01–07 приняты в локальной A/B-границе;08 принят в A;09 принят в A workflow/B CLI;10–11 приняты в A/B;12–20 не начаты**. MSSQL/мультиплатформенное подключение и строгая конфигурация согласованы, но ещё не реализованы.
 
-План основан на [реестре ABQA-001–010](<../AgentBridge Quality Audit/Findings.md>), [итоге аудита15](<../AgentBridge Quality Audit/15-final-reconciliation.md>) и [согласованных решениях](Decisions.md). Исторический аудит подтвердил пять дефектов кода статически;01–05 исправили их и получили локальное B evidence. ABQA-002 воспроизведено и исправлено в B ownership/error границе06; S2 остаётся предварительной, deployment connection leak не доказана. ABQA-010 закрыт в обоих исходных местах локальным evidence07. Общая регрессия16, C/D17–19 и implementation Q-005 ещё предстоят;09 принят в A workflow/B CLI,10 принят в A/B по Q-004, live Q-004–005 остаётся19. Исторические [вопросы аудита](<../AgentBridge Quality Audit/OpenQuestions.md>) не переписываются. Нормативные изменения по согласованным решениям синхронизируются с [OpenSpec](../../../openspec/specs/agent-runtime/spec.md) в соответствующих этапах.
+План основан на [реестре ABQA-001–010](<../AgentBridge Quality Audit/Findings.md>), [итоге аудита15](<../AgentBridge Quality Audit/15-final-reconciliation.md>) и [согласованных решениях](Decisions.md). Исторический аудит подтвердил пять дефектов кода статически;01–05 исправили их и получили локальное B evidence. ABQA-002 воспроизведено и исправлено в B ownership/error границе06; S2 остаётся предварительной, deployment connection leak не доказана. ABQA-010 закрыт в обоих исходных местах локальным evidence07. Общая регрессия16 и C/D17–19 ещё предстоят;09 принят в A workflow/B CLI,10–11 приняты в A/B по Q-004–005, live Q-004–005 остаётся19. Исторические [вопросы аудита](<../AgentBridge Quality Audit/OpenQuestions.md>) не переписываются. Нормативные изменения по согласованным решениям синхронизируются с [OpenSpec](../../../openspec/specs/agent-runtime/spec.md) в соответствующих этапах.
 
 ## Границы исполнения
 
@@ -59,8 +59,8 @@
 | ABQA-009 | 03,16,19 | Cleanup exception наблюдаем, подтверждённые записи сохранены, replay отсутствует |
 | ABQA-010 | 07,16 | Начатые задачи завершены и await при успешном и раннем выходе |
 | Q-002 | 00,12–19 | MSSQL/ОС/RID приняты; версии и реальные ресурсы уточняются до запуска |
-| Q-004 | 10,19 | Решение принято: known validation до HTTP; implementation/live evidence ещё требуется |
-| Q-005 | 11,19 | Решение принято: FIFO/явный отказ; final subset evidence ещё требуется |
+| Q-004 | 10,19 | Known validation до HTTP принят в A/B10; live evidence ещё требуется19 |
+| Q-005 | 11,19 | FIFO/явный отказ и final subset приняты в A/B11; deployed/live evidence ещё требуется19 |
 
 Q-001 уже закрыт организационным evidence аудита; новый этап создания чатов не требуется. План не создаёт отдельные чаты и не разрешает сообщения в них.
 
@@ -80,6 +80,7 @@ Q-001 уже закрыт организационным evidence аудита; 
 | [07 / ABQA-010](07-gated-test-cleanup.md#результаты) | Оба исходных gated tests завершают/await tasks на normal и early exit | B test lifecycle; production hang/leak не заявлены |
 | [09 / ABQA-003/004](09-openspec-reconciliation.md#результаты) | Q-003 закреплён в [workflow](../../../openspec/README.md); normative clauses/scenarios сохранены, actual CLI1.14.1 final main + original18 strict19 passed/0 failed | A workflow/B CLI приняты; ABQA-003/004 закрыты в этих границах; INFO2 archive collision отдельно; sync/archive/runtime не исполнялись |
 | [10 / Q-004](10-nested-controls-contract.md#результаты) | Known nested shapes/duplicates → Validation до HTTP; unknown/schema JSON сохранены | Принят в локальных A/B границах; actual gateway/HTTP library с fake handler; live —19; исходный audit не повышен |
+| [11 / Q-005](11-repeated-call-pairing.md#результаты) | FIFO occurrences в AgentBridge/codex-lb; wrong/ambiguous compact отклонён до save без replay | Принят в A/B; actual compactor и pure public request preparation; deployed/live —19 |
 
 ## Проверки и запись результатов
 
