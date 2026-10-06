@@ -2,13 +2,36 @@
 
 ### Requirement: Проверяемое руководство бинарного потребителя
 
-Руководство AgentBridge MUST предоставлять короткий вход и последовательность бинарного подключения, DI/options, создания диалога, нового run, инструментов, exact model/effort, shared/individual keys, status/expiry и bounded cleanup. Примеры C# MUST компилироваться с поставленными SQLite и PostgreSQL DLL вне репозитория без ProjectReference/PackageReference. Обязанности приложения, настраиваемые retention/soft bytes/token thresholds и ограничения typed failure/cancellation/Unknown/no-replay MUST быть явными. Compile-only методы MUST NOT исполняться ради этой проверки или объявляться runtime evidence.
+Руководство AgentBridge MUST предоставлять короткий вход и последовательность бинарного подключения, DI/options, создания диалога, нового run, инструментов, exact model/effort, shared/individual keys, status/expiry и bounded cleanup.
 
 #### Scenario: Потребитель читает пример нового обращения
 
 - **WHEN** потребитель открывает руководство и исходники примера
 - **THEN** доступны реальные public типы и явные регистрации зависимостей приложения
 - **AND** успешная компиляция обоих бинарных вариантов отделена от исполнения модели, инструментов, БД и native runtime.
+
+#### Scenario: Проверка правила — Проверяемое руководство бинарного потребителя
+
+- **WHEN** потребитель подключает библиотеку и начинает run
+- **THEN** руководство показывает последовательность подключения и основных сценариев.
+
+### Requirement: Компиляция примеров руководства
+
+Примеры C# MUST компилироваться с поставленными SQLite и PostgreSQL DLL вне репозитория без ProjectReference/PackageReference.
+
+#### Scenario: Проверка правила — Компиляция примеров руководства
+
+- **WHEN** примеры вынесены за пределы репозитория
+- **THEN** они компилируются с SQLite и PostgreSQL DLL без project/package references.
+
+### Requirement: Явные ограничения примеров
+
+Обязанности приложения, настраиваемые retention/soft bytes/token thresholds и ограничения typed failure/cancellation/Unknown/no-replay MUST быть явными. Compile-only методы MUST NOT исполняться ради этой проверки или объявляться runtime evidence.
+
+#### Scenario: Проверка правила — Явные ограничения примеров
+
+- **WHEN** потребитель оценивает compile-only проверку
+- **THEN** обязанности приложения и ограничения видны; методы не исполняются и runtime успех не заявлен.
 
 ### Requirement: Честное закрытие первоначального плана
 

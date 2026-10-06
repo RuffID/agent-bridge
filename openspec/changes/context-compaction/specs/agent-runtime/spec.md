@@ -26,7 +26,7 @@ Compact MUST сохранять правила безопасных HTTP оши�
 
 ### Requirement: Сохраняемый префикс и фиксированный полный запрос
 
-Прикладной compact MUST использовать только активное окно и следующий непрерывный terminal prefix, включая0. InProgress и последующий хвост, provider items и новый несохранённый input MUST оставаться вне сохраняемого окна. Полный request MUST учитывать их при threshold/budget и после замены окна; providers MUST вызываться один раз на сценарий. Instructions/tools/controls MUST сохраняться в полном generation request. Compact MUST использовать отдельную проекцию поддержанных controls без tools. Известные неполные function pairs MUST отклоняться до отправки, без удаления данных.
+Прикладной compact MUST использовать только активное окно и следующий непрерывный terminal prefix, включая0. InProgress и последующий хвост, provider items и новый несохранённый input MUST оставаться вне сохраняемого окна. Полный request MUST учитывать их при threshold/budget и после замены окна; providers MUST вызываться один раз на сценарий.
 
 #### Scenario: Завершённая история с текущим хвостом
 
@@ -34,9 +34,23 @@ Compact MUST сохранять правила безопасных HTTP оши�
 - **THEN** compact получает только активное окно и ещё не покрытый первый turn
 - **AND** следующий полный request содержит provider, новый compact output, второй turn и новый input ровно по одному разу.
 
+#### Scenario: Проверка правила — Сохраняемый префикс и фиксированный полный запрос
+
+- **WHEN** история имеет terminal prefix и InProgress хвост
+- **THEN** compact получает только сохраняемый prefix, полный budget учитывает хвост и фиксированные providers.
+
+### Requirement: Проекция controls и проверка compact input
+
+Instructions/tools/controls MUST сохраняться в полном generation request. Compact MUST использовать отдельную проекцию поддержанных controls без tools. Известные неполные function pairs MUST отклоняться до отправки, без удаления данных.
+
+#### Scenario: Проверка правила — Проекция controls и проверка compact input
+
+- **WHEN** полный generation request содержит tools и неполную function pair
+- **THEN** tools остаются в generation projection, compact input с неполной парой отклоняется.
+
 ### Requirement: Ограниченное принятие compact
 
-Сценарий MUST проверять exact settings, считать полный request и запускать compact при estimate >= threshold. Unknown estimate MUST NOT заменяться KnownTokens либо прошлым usage. Число проходов MUST ограничиваться MaxPasses; known non-reduction MUST останавливать проходы без принятия увеличенного окна. Валидный Completed кандидат с unknown full estimate MUST сохраняться и возвращать UnknownBudget без дальнейших проходов или разрешения генерации. Пустой output при непустой compact history MUST отклоняться без сохранения. Успех SaveAsync MUST предшествовать активации. Save MUST получать исходный token либо результат предыдущего save и свежий UTC; now >= expiry, stale token, incomplete/failed/canceled и ошибки MUST сохранять последнее успешно принятое окно без retry. Внешний I/O MUST завершаться вне write UoW. Исходная история и fixed expiry MUST сохраняться. Compact payload MUST проходить отдельную проверку input budget перед HTTP. Статус отчёта MUST NOT объявляться разрешением generation без отдельного full-request guard.
+Сценарий MUST проверять exact settings, считать полный request и запускать compact при estimate >= threshold. Unknown estimate MUST NOT заменяться KnownTokens либо прошлым usage. Число проходов MUST ограничиваться MaxPasses; known non-reduction MUST останавливать проходы без принятия увеличенного окна.
 
 #### Scenario: Неизвестный opaque бюджет
 
@@ -48,3 +62,35 @@ Compact MUST сохранять правила безопасных HTTP оши�
 
 - **WHEN** первый проход сохранён, а второй завершился ошибкой либо потерял актуальность
 - **THEN** активным остаётся окно первого прохода, ошибка сохраняется без автоматического повторения.
+
+#### Scenario: Проверка правила — Ограниченное принятие compact
+
+- **WHEN** known estimate достиг threshold, а проход не уменьшил окно
+- **THEN** число проходов ограничено MaxPasses, увеличенный кандидат не принимается.
+
+### Requirement: Принятие compact при неизвестном бюджете
+
+Валидный Completed кандидат с unknown full estimate MUST сохраняться и возвращать UnknownBudget без дальнейших проходов или разрешения генерации. Пустой output при непустой compact history MUST отклоняться без сохранения.
+
+#### Scenario: Проверка правила — Принятие compact при неизвестном бюджете
+
+- **WHEN** Completed кандидат имеет unknown full estimate
+- **THEN** он сохраняется как UnknownBudget без нового прохода и разрешения генерации; пустой кандидат для непустой истории отвергается.
+
+### Requirement: Сохранение и активация compact окна
+
+Успех SaveAsync MUST предшествовать активации. Save MUST получать исходный token либо результат предыдущего save и свежий UTC; now >= expiry, stale token, incomplete/failed/canceled и ошибки MUST сохранять последнее успешно принятое окно без retry. Внешний I/O MUST завершаться вне write UoW. Исходная история и fixed expiry MUST сохраняться.
+
+#### Scenario: Проверка правила — Сохранение и активация compact окна
+
+- **WHEN** первое окно сохранено, следующий кандидат стал stale или expired
+- **THEN** сохранённое окно остаётся активным, история и fixed expiry не меняются.
+
+### Requirement: Отдельный бюджет compact и генерации
+
+Compact payload MUST проходить отдельную проверку input budget перед HTTP. Статус отчёта MUST NOT объявляться разрешением generation без отдельного full-request guard.
+
+#### Scenario: Проверка правила — Отдельный бюджет compact и генерации
+
+- **WHEN** compact payload укладывается в input budget
+- **THEN** это не заменяет full-request guard перед generation.

@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Начните с [руководства потребителя](<Technical documentation/25-usage-guide.md>): бинарные ссылки, DI/options и проверенные C# сценарии. [Карта evidence00–25](<Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>) содержит результаты принятой реализации и явно отмечает непроверенные окружения. OpenSpec CLI отсутствует, validation не выполнена, changes не архивированы.
+AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Начните с [руководства потребителя](<Technical documentation/25-usage-guide.md>): бинарные ссылки, DI/options и проверенные C# сценарии. [Карта evidence00–25](<Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>) содержит результаты принятой реализации и явно отмечает непроверенные окружения. [OpenSpec workflow](../openspec/README.md) закрепляет приоритет main над историческими deltas. Фактические final strict results09: main и18 changes проходят, ERROR0/WARNING0; этап09 принят в A workflow/B CLI, archive INFO2 отдельно, changes не архивированы.
 
 ## Бизнес-логика
 
@@ -56,4 +56,4 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 [Аудит качества AgentBridge](<Plans/AgentBridge Quality Audit/README.md>) — статический проход 00–15 завершён с ограничениями; общий аудит A/B/C/D частичный. [Реестр](<Plans/AgentBridge Quality Audit/Findings.md>) содержит находки и пределы их доказательств.
 
-[Исправление проблем аудита AgentBridge](<Plans/AgentBridge Audit Remediation/README.md>) — этап00 принят в A, исправления01–07 приняты в локальной A/B-границе; [сверка описаний08](<Plans/AgentBridge Audit Remediation/08-documentation-alignment.md>) принята в A. [Q-003–005 согласованы](<Plans/AgentBridge Audit Remediation/Decisions.md>); работы09–15, включая MSSQL, строгую конфигурацию, единую регистрацию и win-x64/linux-x64/linux-arm64, ещё предстоят. Общая регрессия16 и реальные проверки17–19 не закрыты.
+[Исправление проблем аудита AgentBridge](<Plans/AgentBridge Audit Remediation/README.md>) — этап00 принят в A, исправления01–07 приняты в локальной A/B-границе; [сверка описаний08](<Plans/AgentBridge Audit Remediation/08-documentation-alignment.md>) принята в A. [Q-003–005 согласованы](<Plans/AgentBridge Audit Remediation/Decisions.md>); [workflow/CLI09](<Plans/AgentBridge Audit Remediation/09-openspec-reconciliation.md>) принят в A workflow/B CLI. Работы10–15, включая MSSQL, строгую конфигурацию, единую регистрацию и win-x64/linux-x64/linux-arm64, ещё предстоят. Общая регрессия16 и реальные проверки17–19 не закрыты.

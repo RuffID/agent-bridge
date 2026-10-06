@@ -4,8 +4,6 @@
 
 AgentBridge MUST предоставлять независимые SQLite/PostgreSQL migrations assemblies и snapshots для одного общего AgentBridgeDbContext. Runtime и design-time MUST выбирать одну и ту же устойчивую identity по provider. Эти проекты MUST владеть только таблицами AgentBridge и MUST NOT добавлять host или зависимости в Domain/Application. Design-time factory MUST создавать контекст без открытия соединения, SQL, применения схемы или чтения секретов приложения.
 
-Runtime и design-time MUST явно выбирать отдельную служебную историю `__AgentBridgeMigrationsHistory` и MUST NOT использовать общий ledger `__EFMigrationsHistory` подключающего приложения. Служебная история EF MUST оставаться отдельной от пяти mapped таблиц диалога и MUST NOT добавляться как persistence entity в модель AgentBridge.
-
 #### Scenario: Изолированная история миграций
 
 - **WHEN** SQLite или PostgreSQL options создаются runtime регистрацией либо design-time factory
@@ -29,3 +27,17 @@ Runtime и design-time MUST явно выбирать отдельную слу�
 - **WHEN** создаётся provider-specific модель
 - **THEN** сохраняются составные keys/FK, cascade, UTC ticks, BINARY/C collation и expiry/Id index
 - **AND** owner-list index и таблицы подключающего приложения не добавляются.
+
+#### Scenario: Проверка правила — Раздельные миграции выбранного провайдера
+
+- **WHEN** design-time factory создаёт выбранный provider context
+- **THEN** assembly identity совпадает с runtime, соединение и host не запускаются.
+
+### Requirement: Отдельная служебная история миграций
+
+Runtime и design-time MUST явно выбирать отдельную служебную историю `__AgentBridgeMigrationsHistory` и MUST NOT использовать общий ledger `__EFMigrationsHistory` подключающего приложения. Служебная история EF MUST оставаться отдельной от пяти mapped таблиц диалога и MUST NOT добавляться как persistence entity в модель AgentBridge.
+
+#### Scenario: Проверка правила — Отдельная служебная история миграций
+
+- **WHEN** runtime и design-time выбирают ledger
+- **THEN** используется __AgentBridgeMigrationsHistory отдельно от mapped сущностей и ledger приложения.

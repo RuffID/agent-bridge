@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Documentation/">
+    <File Path="openspec/README.md" />
     <File Path="Documentation/AGENTS.md" />
     <File Path="Documentation/README.md" />
   </Folder>
@@ -31,6 +32,8 @@
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/07-gated-test-cleanup.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/08-documentation-alignment.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/09-openspec-reconciliation.md" />
+    <File Path="Documentation/Plans/AgentBridge Audit Remediation/09-openspec-cli-evidence.json" />
+    <File Path="Documentation/Plans/AgentBridge Audit Remediation/09-openspec-clause-map.json" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/10-nested-controls-contract.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/11-repeated-call-pairing.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/12-sql-server-provider.md" />

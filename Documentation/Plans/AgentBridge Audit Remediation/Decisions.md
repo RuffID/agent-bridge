@@ -20,6 +20,12 @@
 
 **Неоднозначность Q-003 согласована.** В этапе09 нужно закрепить это в актуальном описании workflow, проверить доступным разрешённым CLI main и исходные18 changes, отдельно подготовить безопасное завершение старых заданий. CLI evidence ABQA-003 и actual синхронизация ABQA-004 пока не закрыты; архивирование автоматически не разрешено.
 
+**Результат09, 2026-10-06:** [actual workflow](../../../openspec/README.md) закрепляет приоритет main и сохранение historical18 без повторного запрета compact. [Results09](09-openspec-reconciliation.md#результаты) и [CLI evidence](09-openspec-cli-evidence.json) содержат фактические version/help и strict main/all18 до/после grammar fixes. Final strict5 passed/14 failed; ABQA-003 остаётся открытым. ABQA-004 проверен в A workflow; sync/rename/archive не исполнялись, archive readiness не заявлена. Исходное решение Q-003 не изменено.
+
+**Продолжение09 после промежуточного review:** координатор разрешил устранить length warnings структурным разделением с сохранением каждого положения и старых сценариев. [Clause map](09-openspec-clause-map.json) подтверждает460 исходных предложений66 блоков в15 specs; first names и исторические compact Unsupported сохранены. Новый final strict main/all18:19 Exit0, ERROR0/WARNING0; INFO2 о collision отдельно. Предыдущие5/14 остаются evidence промежуточного состояния. Полное CLI evidence получено, окончательная приёмка09/commit ожидаются; archive/runtime по-прежнему не проверены.
+
+**Окончательная приёмка09:** координатор от имени пользователя принял A workflow/B CLI после независимого final19/0, hashes/clauses/scenarios/delta/UTF-8 review. ABQA-003 закрыт в CLI boundary; ABQA-004 принят по Q-003 workflow. Archive INFO2/readiness и runtime остаются отдельными границами. Поручен локальный commit exact manifest24 без Coordination; исторические checkpoints выше сохранены.
+
 ## Q-004 — Известные вложенные controls
 
 AgentBridge до HTTP отклоняет неверные типы и повторные поля известных вложенных настроек с `Validation`. Например, известный `reasoning.summary` должен соответствовать его согласованной форме; число вместо строки/null и duplicate known `summary` не уходят на сервер.
