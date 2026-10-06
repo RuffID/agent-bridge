@@ -517,6 +517,200 @@ public class ResponsesSseTests
         AssertSafe(fixture.Log.Text);
     }
 
+    /// <summary>Callback primary сохраняет identity/stack даже при ошибке cleanup actual wrapper.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CallbackPrimarySurvivesThrowingCleanup(bool cleanupFails)
+    {
+        using Fixture fixture = new(Partial());
+        InvalidOperationException primary = new("callback-primary");
+        fixture.Stream.DisposalFailure = cleanupFails ? new IOException("cleanup-secondary") : null;
+        Exception? actual = await Record.ExceptionAsync(() => fixture.Generate((_, _) => throw primary));
+        Assert.Same(primary, actual);
+        Assert.Contains(nameof(CallbackPrimarySurvivesThrowingCleanup), actual!.StackTrace);
+        if (cleanupFails) { Assert.Same(fixture.Stream.DisposalFailure, Assert.Single(CleanupErrors(primary))); }
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Ошибка чтения сохраняется через gateway с actual library и fake handler.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReadPrimarySurvivesThrowingCleanup(bool cleanupFails)
+    {
+        using Fixture fixture = new("");
+        IOException primary = new("read-primary");
+        fixture.Stream.EndFailure = primary;
+        fixture.Stream.DisposalFailure = cleanupFails ? new IOException("cleanup-secondary") : null;
+        Exception? actual = await Record.ExceptionAsync(() => fixture.Generate());
+        Assert.Same(primary, actual);
+        if (cleanupFails) { Assert.Same(fixture.Stream.DisposalFailure, Assert.Single(CleanupErrors(primary))); }
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Неверный JSON не подменяется ошибкой освобождения локального потока.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task JsonPrimarySurvivesThrowingCleanup(bool cleanupFails)
+    {
+        using Fixture fixture = new("{");
+        fixture.Handler.MediaType = "application/json";
+        fixture.Stream.DisposalFailure = cleanupFails ? new IOException("cleanup-secondary") : null;
+        if (cleanupFails)
+        {
+            JsonException primary = await Assert.ThrowsAnyAsync<JsonException>(() =>
+                fixture.Gateway.GenerateAsync(fixture.Call, Request(), new ModelAccess(KEY)));
+            IReadOnlyList<Exception> errors = CleanupErrors(primary);
+            Assert.Equal(2, errors.Count);
+            Assert.All(errors, error => Assert.Same(fixture.Stream.DisposalFailure, error));
+        }
+        else
+        {
+            ServiceResult<ModelResponse> result = await fixture.Gateway.GenerateAsync(fixture.Call, Request(), new ModelAccess(KEY));
+            Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
+        }
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Standalone disposal любого caught типа сохраняет identity даже при canceled caller.</summary>
+    [Theory]
+    [InlineData("default-cancel", false)]
+    [InlineData("other-cancel", false)]
+    [InlineData("caller-cancel", false)]
+    [InlineData("json", false)]
+    [InlineData("http", false)]
+    [InlineData("default-cancel", true)]
+    [InlineData("other-cancel", true)]
+    [InlineData("caller-cancel", true)]
+    [InlineData("json", true)]
+    [InlineData("http", true)]
+    public async Task CleanupOnlyKeepsOriginalExceptionAcrossTransports(string kind, bool json)
+    {
+        using Fixture fixture = new(json ? "{\"status\":\"completed\",\"output\":[]}" : Terminal());
+        using CancellationTokenSource caller = new();
+        using CancellationTokenSource other = new();
+        Exception cleanup = kind switch
+        {
+            "default-cancel" => new OperationCanceledException(),
+            "other-cancel" => new OperationCanceledException(other.Token),
+            "caller-cancel" => new OperationCanceledException(caller.Token),
+            "json" => new JsonException("cleanup-json"),
+            _ => new HttpRequestFailedException(new("https://fixture.invalid"), HttpStatusCode.BadRequest, "cleanup", "cleanup")
+        };
+        fixture.Stream.OnDispose = caller.Cancel;
+        fixture.Stream.DisposalFailure = cleanup;
+        Exception? actual = await Record.ExceptionAsync(() => json
+            ? fixture.Gateway.GenerateAsync(fixture.Call, Request(), new ModelAccess(KEY), cancellationToken: caller.Token)
+            : fixture.Generate(ct: caller.Token));
+        Assert.Same(cleanup, actual);
+        Assert.Contains(nameof(FragmentedStream), actual!.StackTrace);
+        // Повторный throw того же cleanup объекта не создаёт secondary/self-reference.
+        Assert.Empty(CleanupErrors(cleanup));
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.False(fixture.Handler.Content.Completed);
+        Assert.False(fixture.Stream.DisposalCompleted);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Callback caught-типы сохраняют primary identity при одновременно отменённом caller.</summary>
+    [Theory]
+    [InlineData("json")]
+    [InlineData("http")]
+    [InlineData("cancel")]
+    [InlineData("decoder")]
+    public async Task CallbackCaughtTypeAndCancellationSurviveCleanup(string kind)
+    {
+        using Fixture fixture = new(Partial());
+        using CancellationTokenSource caller = new();
+        Exception primary = kind switch
+        {
+            "json" => new JsonException("primary-json"),
+            "http" => new HttpRequestFailedException(new("https://fixture.invalid"), HttpStatusCode.BadRequest, "primary", "primary"),
+            "cancel" => new OperationCanceledException(caller.Token),
+            _ => new DecoderFallbackException("primary-decoder")
+        };
+        fixture.Stream.DisposalFailure = new IOException("cleanup");
+        Exception? actual = await Record.ExceptionAsync(() => fixture.Generate((_, _) =>
+        {
+            caller.Cancel();
+            throw primary;
+        }, caller.Token));
+        Assert.Same(primary, actual);
+        Assert.Same(fixture.Stream.DisposalFailure, Assert.Single(CleanupErrors(primary)));
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Возвращает согласованный immutable cleanup снимок без журналирования исключений.</summary>
+    private static IReadOnlyList<Exception> CleanupErrors(Exception primary)
+    {
+        IReadOnlyList<Exception> errors = Assert.IsAssignableFrom<IReadOnlyList<Exception>>(primary.Data["HttpClientLibrary.CleanupExceptions"]);
+        IList<Exception> collection = Assert.IsAssignableFrom<IList<Exception>>(errors);
+        Assert.True(collection.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() => collection.Add(new Exception()));
+        return errors;
+    }
+
+    /// <summary>Повторное использование одного primary/cleanup объекта сохраняет origin без self-reference.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReusedJsonExceptionKeepsCleanupOrigin(bool cleanupFails)
+    {
+        using Fixture fixture = new("");
+        JsonException primary = new("same-instance-read-and-cleanup");
+        fixture.Stream.EndFailure = primary;
+        fixture.Stream.DisposalFailure = cleanupFails ? primary : null;
+        if (cleanupFails)
+        {
+            Exception? actual = await Record.ExceptionAsync(() =>
+                fixture.Gateway.GenerateAsync(fixture.Call, Request(), new ModelAccess(KEY)));
+            Assert.Same(primary, actual);
+            Assert.Empty(CleanupErrors(primary));
+            Assert.Contains(nameof(FragmentedStream.ReadAsync), primary.StackTrace);
+        }
+        else
+        {
+            ServiceResult<ModelResponse> result = await fixture.Gateway.GenerateAsync(fixture.Call, Request(), new ModelAccess(KEY));
+            Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
+            Assert.Null(primary.Data["HttpClientLibrary.CleanupExceptions"]);
+        }
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
+    /// <summary>Чтение JSON/SSE сохраняет IOException даже при late caller cancellation и cleanup отказе.</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ReadAndCleanupFailuresKeepPrimaryDespiteLateCaller(bool json, bool cancelCaller)
+    {
+        using Fixture fixture = new("");
+        using CancellationTokenSource caller = new();
+        IOException primary = new("read-primary");
+        fixture.Stream.EndFailure = primary;
+        fixture.Stream.DisposalFailure = new OperationCanceledException();
+        if (cancelCaller) { fixture.Stream.OnDispose = caller.Cancel; }
+        Exception? actual = await Record.ExceptionAsync(() => json
+            ? fixture.Gateway.GenerateAsync(fixture.Call, Request(), new ModelAccess(KEY), cancellationToken: caller.Token)
+            : fixture.Generate(ct: caller.Token));
+        Assert.Same(primary, actual);
+        Assert.Contains(nameof(FragmentedStream), primary.StackTrace);
+        Assert.Equal(json ? 2 : 1, CleanupErrors(primary).Count);
+        Assert.All(CleanupErrors(primary), error => Assert.Same(fixture.Stream.DisposalFailure, error));
+        Assert.Equal(cancelCaller, caller.IsCancellationRequested);
+        Assert.True(fixture.Handler.Content!.Disposed);
+        Assert.False(fixture.Handler.Content.Completed);
+        Assert.Equal(1, fixture.Handler.Calls);
+    }
+
     /// <summary>SSE и JSON используют один binding; новый отсутствующий id не возвращает старый anchor.</summary>
     [Fact]
     public async Task ContinuationCrossTransportAndMissingId()
@@ -657,8 +851,9 @@ public class ResponsesSseTests
     private class TrackingContent(Stream stream) : StreamContent(stream)
     {
         internal bool Disposed;
+        internal bool Completed;
         /// <inheritdoc/>
-        protected override void Dispose(bool disposing) { Disposed = true; base.Dispose(disposing); }
+        protected override void Dispose(bool disposing) { Disposed = true; base.Dispose(disposing); Completed = true; }
     }
     /// <summary>Локальный fragmented stream с детерминированным EOF/I/O/cancellation и disposal.</summary>
     private class FragmentedStream(string text, int fragment) : Stream
@@ -667,7 +862,9 @@ public class ResponsesSseTests
         private int position;
         internal bool BlockAtEnd;
         internal bool Disposed;
+        internal bool DisposalCompleted;
         internal Exception? EndFailure;
+        internal Exception? DisposalFailure;
         internal Action? OnDispose;
         internal readonly TaskCompletionSource Blocked = new(TaskCreationOptions.RunContinuationsAsynchronously);
         /// <summary>Вносит неверный UTF-8 byte только в локальную fixture.</summary>
@@ -701,7 +898,9 @@ public class ResponsesSseTests
         protected override void Dispose(bool disposing)
         {
             if (!Disposed) { Disposed = true; OnDispose?.Invoke(); }
+            if (DisposalFailure is not null) { throw DisposalFailure; }
             base.Dispose(disposing);
+            DisposalCompleted = true;
         }
     }
     /// <inheritdoc/>

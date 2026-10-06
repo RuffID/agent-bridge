@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text;
+using System.Runtime.ExceptionServices;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
@@ -17,6 +18,8 @@ namespace AgentBridge.CodexLb.Responses;
 /// <remarks>Callback выбирает SSE, null сохраняет JSON. Caller cancellation приоритетнее локального deadline.</remarks>
 public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOptions> options) : IModelGateway
 {
+    private const string CLEANUP_DATA_KEY = "HttpClientLibrary.CleanupExceptions";
+
     /// <inheritdoc/>
     public async Task<ServiceResult<ModelResponse>> GenerateAsync(ApplicationCallContext call, ModelRequest request,
         ModelAccess access, Func<ModelStreamUpdate, CancellationToken, ValueTask>? onUpdate = null,
@@ -65,19 +68,19 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
             deadline.Token.ThrowIfCancellationRequested();
             return ServiceResult<ModelResponse>.Ok(report);
         }
-        catch (HttpRequestFailedException failure)
+        catch (HttpRequestFailedException failure) when (!HasCleanupFailure(failure))
         {
             return ServiceResult<ModelResponse>.Fail(ResponseErrorReader.Read(failure));
         }
-        catch (JsonException)
+        catch (JsonException failure) when (!HasCleanupFailure(failure))
         {
             return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Rejected, "Получен некорректный JSON-ответ модели."));
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException failure) when (!HasCleanupFailure(failure) && cancellationToken.IsCancellationRequested)
         {
             throw new OperationCanceledException(cancellationToken);
         }
-        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        catch (OperationCanceledException failure) when (!HasCleanupFailure(failure) && deadline.IsCancellationRequested)
         {
             return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Timeout, "Истёк срок ожидания модели."));
         }
@@ -92,7 +95,10 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
         bool callbackFailed = false;
         try
         {
-            await using (HttpStreamResponseResult response = await http.SendStreamAsync(transport, linked))
+            HttpStreamResponseResult response = await http.SendStreamAsync(transport, linked);
+            Exception? primary = null;
+            ExceptionDispatchInfo? primaryDispatch = null;
+            try
             {
                 await foreach ((string? eventName, string data) in SseEventReader.ReadAsync(response.Body, linked))
                 {
@@ -109,6 +115,13 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
                     linked.ThrowIfCancellationRequested();
                 }
             }
+            catch (Exception failure) { primary = failure; primaryDispatch = ExceptionDispatchInfo.Capture(failure); throw; }
+            finally
+            {
+                try { await response.DisposeAsync(); }
+                catch (Exception cleanup) when (primary is not null) { AttachCleanupFailure(primary, cleanup); }
+                primaryDispatch?.Throw();
+            }
             ModelResponse report = state.Report();
             if (report.Status == ModelResponseStatus.Failed) { return ServiceResult<ModelResponse>.Ok(report); }
             if (caller.IsCancellationRequested)
@@ -119,21 +132,21 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
             deadline.ThrowIfCancellationRequested();
             return ServiceResult<ModelResponse>.Ok(report);
         }
-        catch (HttpRequestFailedException failure) when (!callbackFailed)
+        catch (HttpRequestFailedException failure) when (!callbackFailed && !HasCleanupFailure(failure))
         {
             return ServiceResult<ModelResponse>.Fail(ResponseErrorReader.Read(failure));
         }
-        catch (Exception failure) when (!callbackFailed && failure is JsonException or DecoderFallbackException)
+        catch (Exception failure) when (!callbackFailed && !HasCleanupFailure(failure) && failure is JsonException or DecoderFallbackException)
         {
             ServiceError error = new(ServiceErrorType.Rejected, "Получен некорректный SSE-ответ модели.");
             return state.HasData ? ServiceResult<ModelResponse>.Ok(state.Fail(error)) : ServiceResult<ModelResponse>.Fail(error);
         }
-        catch (OperationCanceledException) when (!callbackFailed && caller.IsCancellationRequested)
+        catch (OperationCanceledException failure) when (!callbackFailed && !HasCleanupFailure(failure) && caller.IsCancellationRequested)
         {
             if (state.HasData) { return ServiceResult<ModelResponse>.Ok(state.Cancel()); }
             throw new OperationCanceledException(caller);
         }
-        catch (OperationCanceledException) when (!callbackFailed && deadline.IsCancellationRequested)
+        catch (OperationCanceledException failure) when (!callbackFailed && !HasCleanupFailure(failure) && deadline.IsCancellationRequested)
         {
             ServiceError error = new(ServiceErrorType.Timeout, "Истёк срок ожидания модели.");
             return state.HasData ? ServiceResult<ModelResponse>.Ok(state.Fail(error)) : ServiceResult<ModelResponse>.Fail(error);
@@ -178,21 +191,39 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
             deadline.Token.ThrowIfCancellationRequested();
             return ServiceResult<ModelResponse>.Ok(report);
         }
-        catch (HttpRequestFailedException failure)
+        catch (HttpRequestFailedException failure) when (!HasCleanupFailure(failure))
         {
             return ServiceResult<ModelResponse>.Fail(ResponseErrorReader.Read(failure));
         }
-        catch (JsonException)
+        catch (JsonException failure) when (!HasCleanupFailure(failure))
         {
             return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Rejected, "Получен некорректный JSON-ответ compact."));
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException failure) when (!HasCleanupFailure(failure) && cancellationToken.IsCancellationRequested)
         {
             throw new OperationCanceledException(cancellationToken);
         }
-        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        catch (OperationCanceledException failure) when (!HasCleanupFailure(failure) && deadline.IsCancellationRequested)
         {
             return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Timeout, "Истёк срок ожидания compact."));
         }
+    }
+
+    /// <summary>Combined failure не нормализуется с потерей secondary cleanup.</summary>
+    private static bool HasCleanupFailure(Exception failure)
+        => failure.Data[CLEANUP_DATA_KEY] is IReadOnlyList<Exception>;
+
+    /// <summary>Сохраняет identity primary и отдельный неизменяемый список cleanup failures.</summary>
+    private static void AttachCleanupFailure(Exception primary, Exception cleanup)
+    {
+        if (ReferenceEquals(primary, cleanup))
+        {
+            if (!HasCleanupFailure(primary)) { primary.Data[CLEANUP_DATA_KEY] = new List<Exception>().AsReadOnly(); }
+            return;
+        }
+        List<Exception> errors = primary.Data[CLEANUP_DATA_KEY] is IReadOnlyList<Exception> previous
+            ? new(previous) : [];
+        errors.Add(cleanup);
+        primary.Data[CLEANUP_DATA_KEY] = errors.AsReadOnly();
     }
 }

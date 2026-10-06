@@ -257,6 +257,20 @@ Callbacks MUST вызываться последовательно и ожида
 - **WHEN** callback бросает JsonException
 - **THEN** вызывающий получает тот же exception после освобождения потока без synthetic server error и следующих callbacks.
 
+### Requirement: Ошибки освобождения HTTP
+
+При primary и cleanup failure владеющая граница MUST пытаться выполнить remaining cleanup и распространять тот же primary exception с сохранённым stack. `Exception.Data["HttpClientLibrary.CleanupExceptions"]` MUST содержать immutable список наблюдённых ошибок cleanup, отличных от самого primary, в порядке наблюдения. Повторения одного secondary на разных boundaries допустимы; повторный throw самого primary MUST NOT создавать self-reference. Presence списка, включая empty standalone cleanup origin, MUST исключать нормализацию этой ошибки в ServiceResult/отмену/Timeout для JSON/SSE/compact. Cleanup-only MUST распространяться исходным объектом независимо типа/token. Исключения/Data MUST NOT публиковаться как safe UI/log payload. Повторный Dispose/DisposeAsync wrapper после первой попытки MUST ничего не делать, включая повтор после отказа; no-op MUST NOT означать успешное освобождение.
+
+#### Scenario: Primary и secondary
+
+- **WHEN** callback либо чтение JSON/SSE бросает primary, а cleanup бросает другой exception
+- **THEN** primary identity/stack сохраняются, secondary доступен immutable снимком и не исчезает при typed normalization.
+
+#### Scenario: Standalone cleanup и повторная попытка
+
+- **WHEN** cleanup-only exception имеет тип OCE/JsonException/HttpRequestFailedException
+- **THEN** его identity сохраняется независимо caller/deadline; повторный wrapper disposal не повторяет failed cleanup и не подтверждает освобождение.
+
 ### Requirement: Каноническая JSON генерация Responses
 
 JSON gateway MUST отправлять canonical base-prefix POST /v1/responses через HttpClientLibrary с per-call ModelAccess и stream=false/store=false. Model/instructions/exact effort, ordered canonical input и полные function definitions MUST сохраняться. Поддержанные параметры MUST иметь независимый снимок; mandatory fields и effort MUST NOT переопределяться. Unknown top-level controls MUST давать Unsupported до HTTP, malformed/duplicate controls — Validation. Default include reasoning.encrypted_content MUST добавляться только при отсутствии explicit include. Output MUST сохранять порядок/unknown/opaque поля отдельно от полного envelope/continuation. Completed MUST требовать status=completed, output array и отсутствие explicit error; HTTP 2xx/видимый текст MUST NOT заменять это подтверждение. Failed/incomplete/unknown lifecycle MUST сохранять известный output/envelope.

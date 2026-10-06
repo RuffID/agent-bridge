@@ -51,3 +51,13 @@ RetentionPeriod определяет срок жизни от создания �
 Будущая общая регистрация относится к отдельному интеграционному слою, зависимому от ядра и адаптеров. Она собирает standard options/DI без HTTP/БД/hosting, миграций, собственного расписания или logger. Ядро не получает зависимости от ASP.NET Core и конкретных адаптеров. Authentication, owner/business authorization, индивидуальные keys, инструменты и собственные context providers остаются у приложения.
 
 Плановые этапы12–15 реализуют MSSQL, строгую configuration boundary, короткую регистрацию и три RID. Их создание не является разрешением начать кодирование, generated migrations, builds или real integration.
+
+## HTTP disposal06 — согласование 2026-10-06
+
+После локального различающего воспроизведения пользователь в чате исполнителя06 явно согласовал: при двойном отказе распространяется тот же первичный Exception с сохранённым stack, secondary cleanup exceptions доступны через `Exception.Data["HttpClientLibrary.CleanupExceptions"]` как неизменяемый список. Cleanup-only распространяется исходным exception. Все владеющие cleanup boundaries пытаются завершиться; попытка не является доказательством успешного освобождения.
+
+Если primary обычно нормализуется в ServiceResult, при наличии cleanup failure он распространяется вместе с Data, чтобы secondary не исчезла. Это касается JSON/SSE/compact gateway. Без cleanup failure прежние caller/deadline/Failed правила сохраняются; callback primary сохраняет identity, включая OCE и caught transport-типы.
+
+Наличие immutable списка служит marker disposal origin; empty означает standalone cleanup без secondary. Новый public type/API/key и self-reference не добавляются. Повторный throw того же primary объекта не является отдельной secondary причиной; уже имеющийся snapshot сохраняется. Исключения и Data не являются безопасным UI/log payload, сообщения и stack не логируются.
+
+Повторный Dispose/DisposeAsync wrapper после первой попытки — no-op, включая повтор после ошибки; это не подтверждение успешного освобождения и не автоматический retry. Состояние реализации и exact before/after evidence находятся в [06](06-http-disposal.md); согласование само по себе не является приёмкой06 или доказательством deployment connection leak.

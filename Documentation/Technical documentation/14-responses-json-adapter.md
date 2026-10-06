@@ -43,6 +43,8 @@ Reader сохраняет output как отдельные независимы�
 
 GenerationTimeout ограничивает отправку и чтение; gateway owns deadline/linked CTS, HttpClientLibrary owns request/response/stream. До получения полного отчёта caller cancellation распространяется OCE с исходным caller token. После полного отчёта поздняя отмена возвращает Canceled с тем же output/envelope/continuation. Полученный explicit typed HTTP/model/JSON failure сохраняет приоритет. Caller приоритетнее deadline; только локальный deadline даёт Timeout. Неожиданные I/O и cancellation без подтверждённого источника распространяются, без retry.
 
+Согласованный [disposal06](<../Plans/AgentBridge Audit Remediation/06-http-disposal.md>) сохраняет исходный primary при ошибке освобождения JSON body/response. `Exception.Data["HttpClientLibrary.CleanupExceptions"]` содержит immutable secondary список; presence, включая empty standalone origin, исключает JSON/caller/deadline нормализацию в ServiceResult. Cleanup-only распространяется исходным объектом независимо типа/token. Повторный throw того же primary не создаёт self-reference. Exception/Data не являются безопасным UI/log payload; без cleanup failure правила результата/отмены выше сохраняются.
+
 ## Continuation
 
 Снимок содержит `adapter="codex-lb-json-v1"`, SHA-256 binding однозначно сериализованных dialog/owner/agent/endpoint/key и отдельные previous_response_id/headers. Ключ не сохраняется; turnId исключён, чтобы следующий turn того же диалога мог продолжиться. Binding защищает от случайного смешивания trusted application data, не доказывает upstream account ownership и не является авторизацией. codex-lb сохраняет серверную ответственность за account routing.
