@@ -60,6 +60,46 @@ public class DialogWritePortsTests
         Assert.Equal(token.Revision, fixture.Roots.Persisted[0].Revision);
     }
 
+    /// <summary>Loader отклоняет context-only mismatch до staging/save; корректные штатные времена разрешают следующий compact.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ContextOnlyChronologyIsValidatedBeforeWrite(bool corrupt)
+    {
+        FakeWriteFixture fixture = new();
+        DialogWriteToken token = await fixture.CreateAsync();
+        DateTimeOffset contextTime = FakeWriteFixture.NOW.AddMinutes(1);
+        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token, contextTime), token, 0,
+            Response(ModelResponseStatus.Completed))).Data!;
+        DialogRecord root = Assert.Single(fixture.Roots.Persisted);
+        Assert.Equal(contextTime, root.LastChangedAtUtc);
+        Assert.Equal(contextTime, Assert.Single(fixture.Contexts.Persisted).CreatedAtUtc);
+        if (corrupt) { root.LastChangedAtUtc = FakeWriteFixture.NOW.AddMinutes(2); }
+        fixture.Session.Events.Clear();
+        Task<ServiceResult<DialogWriteToken>> write = fixture.ContextWriter.SaveAsync(
+            FakeWriteFixture.Access(token, FakeWriteFixture.NOW.AddMinutes(3)), token, 0, Response(ModelResponseStatus.Completed));
+        if (corrupt)
+        {
+            await Assert.ThrowsAsync<ArgumentException>(() => write);
+            Assert.Equal(["begin", "rollback", "dispose", "clear"], fixture.Session.Events);
+            Assert.Equal(token.Revision, root.Revision);
+            Assert.Equal(FakeWriteFixture.NOW.AddMinutes(2), root.LastChangedAtUtc);
+            Assert.Equal(contextTime, Assert.Single(fixture.Contexts.Persisted).CreatedAtUtc);
+            Assert.Empty(fixture.Roots.Repository.Updated);
+            Assert.Empty(fixture.Contexts.Repository.Created);
+        }
+        else
+        {
+            Assert.True((await write).Success);
+            Assert.Equal(2, fixture.Roots.Persisted[0].Revision);
+            Assert.Equal(FakeWriteFixture.NOW.AddMinutes(3), fixture.Roots.Persisted[0].LastChangedAtUtc);
+            Assert.Equal(2, fixture.Contexts.Persisted.Count);
+        }
+        Assert.Empty(fixture.Turns.Persisted);
+        Assert.Equal(FakeWriteFixture.NOW.AddDays(1), fixture.Roots.Persisted[0].ExpiresAtUtc);
+        Assert.Equal(" User:Б ", fixture.Roots.Persisted[0].OwnerId);
+    }
+
     /// <summary>Begin/append/finish сохраняют input, все lifecycle reports и независимые envelope/continuation.</summary>
     [Theory]
     [InlineData(ModelResponseStatus.Completed)]
