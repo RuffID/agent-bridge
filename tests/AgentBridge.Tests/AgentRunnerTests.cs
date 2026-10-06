@@ -453,16 +453,180 @@ public class AgentRunnerTests
     }
 
     /// <summary>Успешный save перед Dispose failure остаётся принятой проекцией; дальнейшие writes не повторяются.</summary>
-    [Fact]
-    public async Task SuccessfulWriteThenScopeDisposeFailureBlocksFurtherWrites()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SuccessfulWriteThenScopeDisposeFailureBlocksFurtherWrites(bool cancelCaller)
     {
+        using CancellationTokenSource caller = new();
         Probe probe = new() { ThrowScopeAt = "append" };
+        probe.AfterDispose = kind => { if (kind == "append" && cancelCaller) caller.Cancel(); };
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
-        Assert.Same(probe.ScopeException, await Assert.ThrowsAsync<IOException>(() => RunAsync(root, Request(probe))));
+        Assert.Same(probe.ScopeException, await Assert.ThrowsAsync<IOException>(() => RunAsync(root, Request(probe), caller.Token)));
         Assert.Equal(2, probe.Dialog.Token.Revision);
         Assert.Single(probe.Dialog.Turns[0].ModelSteps);
         Assert.Equal(new[] { "begin", "append" }, probe.Events);
+        Assert.Equal(0, probe.Actions);
+    }
+
+    /// <summary>Cleanup checkpoint проходит actual executor; его нормализация отмены не скрывает исходную OCE scope.</summary>
+    [Theory]
+    [InlineData("default")]
+    [InlineData("other")]
+    [InlineData("caller")]
+    public async Task CheckpointCleanupCancellationRemainsUnexpected(string tokenKind)
+    {
+        using CancellationTokenSource caller = new();
+        using CancellationTokenSource other = new();
+        CancellationToken token = tokenKind switch { "caller" => caller.Token, "other" => other.Token, _ => default };
+        OperationCanceledException cleanup = new("checkpoint cleanup", token);
+        Probe probe = new() { ThrowScopeAt = "start", ScopeException = cleanup };
+        ModelResponse response = ModelResponse.Completed([Call("accepted")]);
+        probe.Responses.Enqueue(response);
+        probe.AfterDispose = kind => { if (kind == "start") caller.Cancel(); };
+        ServiceCollection services = Services(probe);
+        services.AddSingleton<ObservedExecutor>(provider => new(new ToolExecutor(
+            provider.GetRequiredService<IToolRegistry>(), provider.GetRequiredService<TimeProvider>())));
+        services.AddSingleton<IToolExecutor>(provider => provider.GetRequiredService<ObservedExecutor>());
+        await using ServiceProvider root = services.BuildServiceProvider();
+        Exception? observed = await Record.ExceptionAsync(() => RunAsync(root, Request(probe), caller.Token));
+        Assert.Equal(3, probe.Dialog.Token.Revision);
+        StoredModelStep accepted = Assert.Single(probe.Dialog.Turns[0].ModelSteps);
+        Assert.Same(response, accepted.Response);
+        Assert.Equal(ToolAttemptState.Started, Assert.Single(accepted.ToolAttempts).State);
+        Assert.Equal(new[] { "begin", "append", "start" }, probe.Events);
+        Assert.Equal(1, probe.Generations);
+        Assert.Equal(0, probe.Actions);
+        Assert.Equal(1, probe.Reads);
+        ToolExecutionBatch last = root.GetRequiredService<ObservedExecutor>().Session!.LastResult!;
+        ToolExecutionResult attempt = Assert.Single(last.Results);
+        Assert.Equal(accepted.StepId, attempt.Identity.StepId);
+        Assert.Equal(ToolExecutionStatus.NotStarted, attempt.Status);
+        Assert.Empty(last.Outputs);
+        Assert.False(last.CanContinue);
+        Assert.Same(cleanup, observed);
+        Assert.Contains(nameof(Store.DisposeAsync), cleanup.StackTrace);
+    }
+
+    /// <summary>Cleanup-only OCE чтения не становится штатной отменой до создания session.</summary>
+    [Fact]
+    public async Task ReadCleanupCancellationRemainsUnexpected()
+    {
+        using CancellationTokenSource caller = new();
+        OperationCanceledException cleanup = new("read cleanup", caller.Token);
+        Probe probe = new() { ThrowScopeAt = "read", ScopeException = cleanup };
+        probe.AfterDispose = kind => { if (kind == "read") caller.Cancel(); };
+        await using ServiceProvider root = Services(probe).BuildServiceProvider();
+        Assert.Same(cleanup, await Assert.ThrowsAsync<OperationCanceledException>(() => RunAsync(root, Request(probe), caller.Token)));
+        Assert.Equal(0, probe.Dialog.Token.Revision);
+        Assert.Empty(probe.Events);
+        Assert.Equal(0, probe.Generations);
+    }
+
+    /// <summary>Cleanup-only отмена после принятого Append остаётся исходной ошибкой при любом токене и caller flag.</summary>
+    [Theory]
+    [InlineData("default", true)]
+    [InlineData("other", true)]
+    [InlineData("caller", true)]
+    [InlineData("default", false)]
+    [InlineData("other", false)]
+    [InlineData("caller", false)]
+    public async Task AppendCleanupCancellationRemainsUnexpected(string tokenKind, bool cancelCaller)
+    {
+        using CancellationTokenSource caller = new();
+        using CancellationTokenSource other = new();
+        CancellationToken token = tokenKind switch { "caller" => caller.Token, "other" => other.Token, _ => default };
+        OperationCanceledException cleanup = new("cleanup only", token);
+        Probe probe = new() { ThrowScopeAt = "append", ScopeException = cleanup };
+        ModelResponse response = ModelResponse.Completed([Call("accepted")]);
+        probe.Responses.Enqueue(response);
+        probe.AfterDispose = kind => { if (kind == "append" && cancelCaller) caller.Cancel(); };
+        await using ServiceProvider root = Services(probe).BuildServiceProvider();
+        AgentRunResult? returned = null;
+        Exception? observed = await Record.ExceptionAsync(async () => returned = await RunAsync(root, Request(probe), caller.Token));
+        // Сначала проверяется подтверждённая запись и отсутствие повтора даже на дефектном before пути.
+        Assert.Equal(2, probe.Dialog.Token.Revision);
+        StoredModelStep accepted = Assert.Single(Assert.Single(probe.Dialog.Turns).ModelSteps);
+        Assert.Same(response, accepted.Response);
+        Assert.Equal(DialogTurnStatus.InProgress, probe.Dialog.Turns[0].Status);
+        Assert.Equal(new[] { "begin", "append" }, probe.Events);
+        Assert.Equal(1, probe.Generations);
+        Assert.Equal(0, probe.Actions);
+        Assert.Equal(1, probe.Reads);
+        Assert.Equal(1, probe.AppendDisposals);
+        if (returned is not null)
+        {
+            Assert.Equal(AgentRunStatus.Canceled, returned.Status);
+            Assert.False(returned.TerminalSaved);
+            Assert.Null(returned.Error);
+            Assert.Equal(probe.Dialog.Token, returned.Token);
+            Assert.Same(response, Assert.Single(returned.Turn!.ModelSteps).Response);
+        }
+        Assert.Same(cleanup, observed);
+        Assert.Contains(nameof(Store.DisposeAsync), cleanup.StackTrace);
+    }
+
+    /// <summary>Успешный cleanup допускает штатную caller отмену с accepted step/token и единственной terminal записью.</summary>
+    [Fact]
+    public async Task AppendSuccessfulCleanupKeepsOrdinaryCallerCancellation()
+    {
+        using CancellationTokenSource caller = new();
+        Probe probe = new();
+        ModelResponse response = ModelResponse.Completed([Call("accepted")]);
+        probe.Responses.Enqueue(response);
+        probe.AfterDispose = kind => { if (kind == "append") caller.Cancel(); };
+        await using ServiceProvider root = Services(probe).BuildServiceProvider();
+        AgentRunResult result = await RunAsync(root, Request(probe), caller.Token);
+        Assert.Equal(AgentRunStatus.Canceled, result.Status);
+        Assert.True(result.TerminalSaved);
+        Assert.Null(result.Error);
+        Assert.Equal(probe.Dialog.Token, result.Token);
+        Assert.Equal(3, result.Token!.Revision);
+        Assert.Same(response, result.LastResponse);
+        Assert.Same(response, Assert.Single(result.Turn!.ModelSteps).Response);
+        Assert.Equal(DialogTurnStatus.Canceled, result.Turn.Status);
+        Assert.Equal(new[] { "begin", "append", "finish" }, probe.Events);
+        Assert.Equal(1, probe.Generations);
+        Assert.Equal(0, probe.Actions);
+        Assert.Equal(1, probe.Reads);
+        // DI отслеживает Store и alias write port; успешный Dispose вызывается для обоих registrations.
+        Assert.Equal(2, probe.AppendDisposals);
+    }
+
+    /// <summary>Operation-only отмена остаётся штатной, а primary+cleanup сохраняются вместе даже при canceled caller.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AppendOperationCancellationPreservesPrimaryAndCleanup(bool failCleanup)
+    {
+        using CancellationTokenSource caller = new();
+        OperationCanceledException primary = new("operation", caller.Token);
+        OperationCanceledException cleanup = new("cleanup", caller.Token);
+        Probe probe = new() { ThrowWrite = "append", WriteException = primary,
+            ThrowScopeAt = failCleanup ? "append" : null, ScopeException = cleanup };
+        probe.Responses.Enqueue(ModelResponse.Completed([Call("unaccepted")]));
+        probe.AfterDispose = kind => { if (kind == "append") caller.Cancel(); };
+        await using ServiceProvider root = Services(probe).BuildServiceProvider();
+        if (failCleanup)
+        {
+            AggregateException observed = await Assert.ThrowsAsync<AggregateException>(() => RunAsync(root, Request(probe), caller.Token));
+            Assert.Equal(new Exception[] { primary, cleanup }, observed.InnerExceptions);
+            Assert.Contains("Store.Write", primary.StackTrace);
+            Assert.Contains(nameof(Store.DisposeAsync), cleanup.StackTrace);
+        }
+        else
+        {
+            AgentRunResult result = await RunAsync(root, Request(probe), caller.Token);
+            Assert.Equal(AgentRunStatus.Canceled, result.Status);
+            Assert.False(result.TerminalSaved);
+            Assert.Equal(probe.Dialog.Token, result.Token);
+            Assert.Empty(result.Turn!.ModelSteps);
+        }
+        Assert.Equal(1, probe.Dialog.Token.Revision);
+        Assert.Empty(probe.Dialog.Turns[0].ModelSteps);
+        Assert.Equal(new[] { "begin", "append" }, probe.Events);
+        Assert.Equal(1, probe.Generations);
         Assert.Equal(0, probe.Actions);
     }
 
@@ -503,6 +667,20 @@ public class AgentRunnerTests
     private static string? Type(CanonicalModelItem item) => item.Content.TryGetProperty("type", out JsonElement type) ? type.GetString() : null;
     private static ServiceResult<ToolOutput> Success() => ServiceResult<ToolOutput>.Ok(new(JsonSerializer.SerializeToElement(new { result = "confirmed" })));
 
+    /// <inheritdoc/>
+    private class ObservedExecutor(IToolExecutor actual) : IToolExecutor
+    {
+        /// <summary>Сессия actual executor для наблюдения public LastResult без доступа к внутреннему state runner.</summary>
+        public ToolExecutionSession? Session { get; private set; }
+        /// <inheritdoc/>
+        public ToolExecutionSession CreateSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset expiresAtUtc,
+            IEnumerable<string> selectedToolNames, ToolExecutionLimits limits, IToolExecutionCheckpoint? checkpoint = null) =>
+            Session = actual.CreateSession(call, token, expiresAtUtc, selectedToolNames, limits, checkpoint);
+        /// <inheritdoc/>
+        public Task<ServiceResult<ToolExecutionBatch>> ExecuteAsync(ToolExecutionSession session, StoredModelStep step,
+            CancellationToken cancellationToken = default) => actual.ExecuteAsync(session, step, cancellationToken);
+    }
+
     private class Probe
     {
         public Clock Clock { get; } = new();
@@ -524,6 +702,8 @@ public class AgentRunnerTests
         public bool Deleted;
         public bool LargeToolOutputBudget;
         public Action<string>? AfterWrite;
+        public Action<string?>? AfterDispose;
+        public int AppendDisposals;
         public Func<ToolInvocation, CancellationToken, Task<ServiceResult<ToolOutput>>> Action = (_, _) => Task.FromResult(Success());
         public Func<Task<ServiceResult<ModelResponse>>> Compact = () => Task.FromResult(ServiceResult<ModelResponse>.Ok(ModelResponse.Completed([Message("small")])));
         public Probe() => Dialog = new(new(Call.DialogId, Guid.NewGuid(), 0), Call.OwnerId, NOW, NOW.AddDays(1), 0, [], null);
@@ -593,8 +773,13 @@ public class AgentRunnerTests
             return Task.FromResult(ServiceResult<DialogWriteToken>.Ok(next));
         }
         /// <inheritdoc/>
-        public ValueTask DisposeAsync() => probe.ThrowScopeAt is not null && probe.ThrowScopeAt == _lastKind
-            ? ValueTask.FromException(probe.ScopeException) : ValueTask.CompletedTask;
+        public ValueTask DisposeAsync()
+        {
+            if (_lastKind == "append") probe.AppendDisposals++;
+            probe.AfterDispose?.Invoke(_lastKind);
+            if (probe.ThrowScopeAt is not null && probe.ThrowScopeAt == _lastKind) throw probe.ScopeException;
+            return ValueTask.CompletedTask;
+        }
         private void Change(Guid turnId, DialogWriteToken token, IEnumerable<CanonicalModelItem> items, IEnumerable<StoredModelStep> steps, DialogTurnStatus? status = null) =>
             probe.Replace(probe.Dialog.Turns.Select(turn => turn.Id != turnId ? turn : new StoredDialogTurn(turn.Id, turn.Sequence, status ?? turn.Status, turn.Items.Concat(items), turn.ModelSteps.Concat(steps), turn.Settings)), token);
         private void Attempt(Guid turnId, Guid stepId, StoredToolAttempt attempt, DialogWriteToken token) =>

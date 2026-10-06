@@ -27,6 +27,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
         AgentRunSession? session = null;
         ModelResponse? lastResponse = null;
         ToolExecutionBatch? lastTools = null;
+        Exception? scopeCleanupFailure = null;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -44,7 +45,8 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                 return Report(AgentRunStatus.Failed, new(ServiceErrorType.Validation, "Выбор инструментов содержит повторы или неизвестные имена."));
             ServiceResult<DialogSnapshot> read = await AgentRunScope.ExecuteAsync(scopes,
                 provider => provider.GetRequiredService<IDialogReader>().ReadAsync(
-                    new(request.Call.DialogId, request.Call.OwnerId, time.GetUtcNow()), cancellationToken));
+                    new(request.Call.DialogId, request.Call.OwnerId, time.GetUtcNow()), cancellationToken),
+                cleanup => scopeCleanupFailure = cleanup);
             if (!read.Success) return Report(AgentRunStatus.Failed, read.Error!);
             DialogSnapshot dialog = read.Data!;
             if (!dialog.OwnerId.Equals(request.Call.OwnerId)) return Report(AgentRunStatus.Failed, new(ServiceErrorType.Forbidden, "Диалог недоступен владельцу."));
@@ -70,7 +72,8 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             int historyCount = (dialog.ActiveContext?.Items.Count ?? 0) + dialog.Turns.Where(turn => turn.Sequence > through).Sum(turn => turn.Items.Count);
             CanonicalModelItem[] providerItems = prepared.Data!.Input.Take(prepared.Data.Input.Count - historyCount - request.Input.Count).ToArray();
             ContextBuilder frozen = new([new FrozenProvider(providerItems)]);
-            session = new(scopes, request.Call, dialog, time, TurnModelSettings.From(settings));
+            session = new(scopes, request.Call, dialog, time, TurnModelSettings.From(settings),
+                cleanup => scopeCleanupFailure = cleanup);
             ServiceResult<DialogWriteToken> begun = await session.BeginAsync(request.Input, cancellationToken);
             if (!begun.Success) return Report(AgentRunStatus.Failed, begun.Error!);
             ToolExecutionSession toolSession = executor.CreateSession(request.Call, session.Snapshot.Token, dialog.ExpiresAtUtc,
@@ -152,12 +155,15 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                 if (batch.Results.Count == 0) return await FinishAsync(AgentRunStatus.Completed);
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && scopeCleanupFailure is null)
         {
             return await FinishAsync(AgentRunStatus.Canceled);
         }
         catch (Exception primary)
         {
+            // Executor может нормализовать отмену worker в caller OCE; origin установлен владеющим scope, а не токеном.
+            if (primary is OperationCanceledException && scopeCleanupFailure is OperationCanceledException)
+                primary = scopeCleanupFailure;
             try { await FinishAsync(AgentRunStatus.Interrupted, new(ServiceErrorType.Conflict, "Обращение прервано.")); }
             catch (Exception cleanup) { throw new AggregateException("Ошибка run и finalization.", primary, cleanup); }
             ExceptionDispatchInfo.Capture(primary).Throw();

@@ -9,7 +9,7 @@ namespace AgentBridge.Application;
 /// <inheritdoc cref="IToolExecutionCheckpoint"/>
 /// <remarks>Владеет успешными tokens одного run; scopes короткие и serialized, неизвестная запись блокирует дальнейшие writes.</remarks>
 internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallContext call, DialogSnapshot original,
-    TimeProvider time, TurnModelSettings settings) : IToolExecutionCheckpoint, IDialogContextWriter, IDisposable
+    TimeProvider time, TurnModelSettings settings, Action<Exception> onCleanupFailure) : IToolExecutionCheckpoint, IDialogContextWriter, IDisposable
 {
     private readonly SemaphoreSlim _writes = new(1, 1);
     private readonly List<StoredDialogTurn> _turns = [.. original.Turns];
@@ -105,7 +105,7 @@ internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallConte
                     _token = result.Data!;
                     accepted();
                     return result;
-                });
+                }, onCleanupFailure);
             }
             catch
             {
