@@ -27,5 +27,6 @@
 | [Очистка истёкших диалогов](22-expired-dialog-cleanup.md) | Явный bounded пакет, отдельные scopes/fresh UTC, partial/canceled/unknown и existing guards/cascade |
 | [Поставка DLL](24-dll-delivery.md) | .NET10/win-x64, полный состав SQLite/PostgreSQL, XML/inheritdoc, бинарные ссылки и внешние требования |
 | [Подключение и использование](25-usage-guide.md) | Проверяемые C# примеры DI/config/dialog/tools, ключи/модели, status/expiry/cleanup и обязанности приложения |
+| [Стандартная регистрация](26-integration-registration.md) | Actual Integration facade, required logger/source/factory, lifetimes/overrides/повтор и отсутствие I/O |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

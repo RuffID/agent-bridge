@@ -4,7 +4,9 @@
 
 ## 1. Подключить комплект DLL
 
-Выберите один полный комплект `artifacts/delivery/stage24-win-x64/Sqlite` либо `PostgreSql` и перенесите его целиком в каталог поставки приложения. Каждый содержит39 managed DLL,35 XML, native x64 SQLite, props и evidence/manifest. Комплекты относятся к .NET10/win-x64/Debug. Не смешивайте версии, RID и migrations assemblies. Подробности состава и внешних требований: [поставка24](24-dll-delivery.md).
+Для current API требуется комплект с `AgentBridge.Integration.dll`, ядром, обоими адаптерами, полной runtime closure и выбранной migrations DLL (основной provider — SQL Server). Подготовка MSSQL/win-x64/linux-x64/linux-arm64 и external binary compilation относятся к Audit Remediation15/16 и ещё не подтверждены. Не смешивайте версии, RID и migrations assemblies. [Facade/lifetimes](26-integration-registration.md).
+
+Исторические комплекты `artifacts/delivery/stage24-win-x64/Sqlite` и `PostgreSql` содержали39 managed DLL,35 XML, native x64 SQLite, props и evidence/manifest для .NET10/win-x64/Debug. Они **не содержат новый facade** и не компилируют current UsageRegistration/SimpleRegistration. Ниже Import описывает прежний binary layout, а не готовый новый MSSQL kit; [поставка24](24-dll-delivery.md).
 
 В SDK-style .NET10 проекте используйте бинарный Import, как в проверенном consumer:
 
@@ -21,14 +23,9 @@
 
 ## 2. Настроить options и зависимости приложения
 
-[UsageRegistration.AddUsageGuide](../../tests/Delivery/Consumer/UsageRegistration.cs) показывает реальную регистрацию:
+[SimpleRegistration](../../tests/Delivery/Consumer/SimpleRegistration.cs) вызывает actual `services.AddAgentBridge(configuration, httpClientFactory)` из `AgentBridge.Integration`. Это одна standard composition: strict options13, scoped persistence/transport/context/runner/settings/cleanup, diagnostics/tools/tokenizer/guard. Базовый Shared режим работает без пустых business классов и сохраняет обычную историю.
 
-1. `AddAgentBridgeConfiguration` получает раздел `AgentBridge` с группами `Agent`, `Retention`, `Compaction`.
-2. `AddCodexLbConfiguration` получает `CodexLb`; `AddDatabaseConfiguration` — `Database`. Provider обязателен.
-3. `AddAgentBridgePersistence` регистрирует scoped хранилище. `AddAgentBridgeDiagnostics` подключает ILogger, сохраняя pipeline приложения.
-4. Приложение явно передаёт фабрики `IIndividualModelKeySource`, управляемого `HttpClient`, **упорядоченного** списка `IContextProvider` и scoped бизнес-сервиса примера. `ContextBuilder` регистрируется явно: `AddAgentBridgeRunner` не создаёт его или providers.
-5. `AddCodexLbResponses` подключает каталог/access/settings reader и JSON/SSE/compact gateway через actual HttpClientLibrary. Повторно подключать `AddCodexLbModelCatalog` не требуется.
-6. `AddAgentBridgeTool`, `AddAgentBridgeTokenization`, `AddAgentBridgeCompaction`, `AddAgentBridgeRunner`, `AddAgentBridgeSettings`, `AddAgentBridgeDialogCleanup` подключают отдельные сценарии без их запуска.
+[UsageRegistration.AddUsageGuide](../../tests/Delivery/Consumer/UsageRegistration.cs) показывает advanced app wrapper: individual source, explicit ordered ContextBuilder и scoped business service/tool регистрируются перед тем же фасадом. ILoggerFactory регистрируется приложением **до** wrapper/facade. Individual mode без заранее зарегистрированного источника отклоняется options validation, source не разрешается из root при проверке старта. [App-owned HTTP registration, disposal/lifetimes/overrides/повтор](26-integration-registration.md); app callback получает borrowed client, его lifetime обеспечивает приложение. Low-level модульные API остаются доступны для advanced composition, но не вызываются повторно после фасада.
 
 Пример формы configuration (endpoint, модель и путь условные; доступность model/effort проверяется каталогом):
 
@@ -45,11 +42,11 @@
     "Model": "gpt-5", "ReasoningEffort": "medium",
     "GenerationTimeout": "00:03:00", "CompactTimeout": "00:03:00"
   },
-  "Database": { "Provider": "SQLite", "ConnectionString": "Data Source=C:\\MyApplication\\data\\agent-bridge.db" }
+  "Database": { "Provider": "SqlServer" }
 }
 ```
 
-Для PostgreSQL замените provider на `PostgreSql` и предоставьте реальную строку подключения через secret configuration приложения; поставьте выбранную PostgreSQL migrations DLL. `CodexLb:SharedApiKey` также приходит из secret store/configuration, а не из коммитимого примера. Строки подключения, ключи, raw headers/body и canonical payload не выводятся в logs/UI.
+`Database:ConnectionString` для своего SQL Server с согласованными authentication/TLS приходит из secret configuration приложения; выбранная migrations DLL — SqlServer. SQLite/PostgreSQL остаются явными альтернативами с собственной configuration/migrations identity. `CodexLb:SharedApiKey` также приходит из secret store/configuration, а не из коммитимого примера. Строки подключения, ключи, raw headers/body и canonical payload не выводятся в logs/UI.
 
 Все операционные значения задаются явно; пропуск больше не получает прежний default. Для миграции выберите InstructionsSource=Configuration/PerRequest и KeySource=Shared/Individual. В Shared общий ключ обязателен, индивидуальный сохраняет приоритет; Individual не применяет общий fallback. PerRequest требует инструкции каждого run. `RetentionPeriod` положителен и фиксирует expiry при создании; новая конфигурация не пересчитывает старые сроки. `SoftContentLimitBytes` положителен, даёт предупреждение при `bytes >= limit`, не запрещает запись и не вызывает cleanup. `TokenThreshold` положителен, explicit `InputTokenReserve >= 0`, `MaxPasses > 0`. Проверенный threshold+reserve должен укладываться в **input_context_window**. [Полный options API и breaking migration](05-configuration-and-lifecycle.md), [бюджет/tokenizer](07-tokenizer-and-settings.md).
 
@@ -59,7 +56,7 @@ Logging/Serilog provider и его redaction настраивает прилож
 
 Регистрация не создаёт БД и не применяет migrations. Перед пользовательскими обращениями приложение подготавливает хранилище через [явный maintenance API](06-database-maintenance.md#подключение-agentbridge-этапа-12). Проверенный [BinaryContractProbe.Register](../../tests/Delivery/Consumer/BinaryContractProbe.cs) содержит `AddAgentBridgeDatabaseMaintenance(backup, MaintenanceExecutionMode.SingleInitializer)`; `UsageRegistration` намеренно оставляет maintenance отдельной процедурой приложения.
 
-Обязательны абсолютный backup directory и явный положительный backup retention. Для PostgreSQL — полный установленный toolchain, абсолютный pg_dump path, совпадающий server/dump major и конечный cleanup timeout. SingleInitializer требует остановки других экземпляров/writes/DDL приложением. В отдельном scope явно выбираются `InspectAsync`, `InitializeNewAsync` либо `UpdateExistingAsync` с timeout/отменой. Ошибка подключения не означает отсутствующую БД; автоматического restore/fallback нет. Cleanup диалогов и retention backup — разные операции приложения.
+При явном подключении maintenance обязательны provider-specific backup destination и положительный retention. MSSQL использует `SqlServerBackupDirectory` на сервере БД, не путь ASP.NET Core host; [actual SQL Server API](12-sql-server-provider.md) и [compile-only SqlServerRegistration](../../tests/Delivery/Consumer/SqlServerRegistration.cs). SQLite использует абсолютный локальный backup directory; PostgreSQL — также installed toolchain/absolute pg_dump/matching major/конечный cleanup timeout. SingleInitializer требует остановки других экземпляров/writes/DDL приложением. В отдельном scope явно выбираются `InspectAsync`, `InitializeNewAsync` либо `UpdateExistingAsync` с timeout/отменой. Ошибка подключения не означает отсутствующую БД; автоматического restore/fallback нет. Cleanup диалогов и retention backup — разные операции приложения. При disabled maintenance его backup options/schedule не требуются фасадом.
 
 ## 4. Ключи, каталог и выбор model/effort
 
@@ -111,6 +108,169 @@ Existing TurnId не исполняется повторно; restart не во�
 
 ## Границы подтверждения
 
+Current facade14/consumer source compilation и DI/options/fake HTTP evidence описаны в [Results14](<../Plans/AgentBridge Audit Remediation/14-simplified-registration.md#результаты>). Methods consumer не исполнялись, source compilation не является external binary kits15/16 или provider/runtime/live17–19. HTTP endpoints приложения ниже перенесены из прежнего README и проверены только статически; host/маршруты/auth не запускались. Следующие два абзаца фиксируют **историческое evidence этапа25**, включая тогдашнее отсутствие CLI; актуальный CLI checkpoint09 находится в [OpenSpec workflow](../../openspec/README.md).
+
 Примеры скомпилированы с каждым kit вне репозитория,0 warnings/errors, по206 references=39 kit+167 framework; нет project/package references. Проверены копирование XML/native и metadata inheritdoc; generated XML хранит `<inheritdoc/>`, автоматическое разворачивание конкретной IDE не проверено. EFCoreLibrary CRUD не генерирует XML, три SQLitePCLRaw managed DLL также без XML.
 
 Runtime/DI/options execution, SQLite native loading из комплекта, Release/другие RID/AOT/trimming/single-file не проверены. Предшествующие реальные SQLite/PostgreSQL tests относятся к своим исходникам и окружению, не к runtime kit. Fake HTTP actual HttpClientLibrary не доказывает live codex-lb/OpenAI compatibility. Live HTTP/Telegram/hosting/demo — **Пропущено по указанию пользователя**. OpenSpec CLI отсутствует, CLI validation не выполнена, changes не архивированы. [Карта evidence00–25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>).
+
+<details>
+<summary>HTTP endpoints приложения: create dialog и JSON message</summary>
+
+Это код ASP.NET Core приложения, не API фасада. Logging/HTTP/authorization policy `AgentBridgeChat` и owner/agent permissions настраивает приложение; маршруты не создаются AddAgentBridge. Код перенесён из прежнего README, его host/HTTP/auth не исполнялись и compilation серверного примера не заявлена.
+
+## HTTP endpoints приложения
+
+`Models/ChatMessage.cs`:
+
+```csharp
+namespace MyServer.Models;
+
+/// <summary>Новое сообщение; TurnId сохраняется клиентом для этой логической отправки.</summary>
+public record ChatMessage(Guid TurnId, string Text);
+```
+
+`Integration/AgentBridgeEndpoints.cs`:
+
+```csharp
+using System.Security.Claims;
+using System.Text.Json;
+using AgentBridge.Application;
+using AgentBridge.Application.Models;
+using AgentBridge.Application.Ports;
+using AgentBridge.Application.Results;
+using AgentBridge.Configuration;
+using AgentBridge.Domain.Dialogs;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
+using MyServer.Models;
+
+namespace MyServer.Integration;
+
+/// <summary>Пример HTTP-границы приложения: владелец только из проверенной учётной записи.</summary>
+public static class AgentBridgeEndpoints
+{
+    /// <summary>Добавляет авторизованные маршруты одного текстового агента.</summary>
+    public static IEndpointRouteBuilder MapAgentBridgeChat(this IEndpointRouteBuilder endpoints)
+    {
+        RouteGroupBuilder group = endpoints.MapGroup("/api/agent/dialogs")
+            .RequireAuthorization("AgentBridgeChat");
+        group.MapPost("/", CreateAsync);
+        group.MapPost("/{dialogId:guid}/messages", SendAsync);
+        return endpoints;
+    }
+
+    private static async Task<IResult> CreateAsync(HttpContext http, IDialogCreator creator,
+        IOptionsSnapshot<DialogRetentionOptions> retention, TimeProvider time, CancellationToken ct)
+    {
+        string? userId = http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId)) return Results.Unauthorized();
+
+        DialogId id = DialogId.From(Guid.NewGuid());
+        DateTimeOffset created = time.GetUtcNow();
+        DateTimeOffset expires = retention.Value.CalculateExpiresAtUtc(created);
+        ServiceResult<DialogWriteToken> result = await creator.CreateAsync(
+            id, DialogOwnerId.From(userId), created, expires, ct);
+        if (!result.Success)
+            return Results.Json(new { errorCode = result.Error!.Type.ToString() },
+                statusCode: ErrorStatus(result.Error.Type));
+        return Results.Ok(new { dialogId = id.Value, expiresAtUtc = expires });
+    }
+
+    private static async Task<IResult> SendAsync(Guid dialogId, ChatMessage message,
+        HttpContext http, AgentRunner runner, CancellationToken ct)
+    {
+        string? userId = http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId)) return Results.Unauthorized();
+        if (dialogId == Guid.Empty || message.TurnId == Guid.Empty ||
+            string.IsNullOrWhiteSpace(message.Text))
+            return Results.BadRequest(new { errorCode = "InvalidMessage" });
+
+        ApplicationCallContext call = new(DialogId.From(dialogId),
+            DialogOwnerId.From(userId), message.TurnId, "support");
+        CanonicalModelItem input = new(JsonSerializer.SerializeToElement(new
+        {
+            type = "message",
+            role = "user",
+            content = new[] { new { type = "input_text", text = message.Text } }
+        }));
+        AgentRunRequest request = new(call, [input], [],
+            new ToolExecutionLimits(1, 1, 1, TimeSpan.FromMinutes(5)));
+        AgentRunResult result = await runner.RunAsync(request, cancellationToken: ct);
+
+        bool completed = result.Status == AgentRunStatus.Completed && result.TerminalSaved;
+        return Results.Json(new
+        {
+            turnId = message.TurnId,
+            status = result.Status.ToString(),
+            terminalSaved = result.TerminalSaved,
+            completed,
+            text = ReadVisibleText(result.LastResponse),
+            errorCode = result.Error?.Type.ToString()
+        }, statusCode: result.Error is null ? 200 : ErrorStatus(result.Error.Type));
+    }
+
+    // В HTTP DTO не выдаются envelope, reasoning, continuation или tool payload.
+    private static string ReadVisibleText(ModelResponse? response)
+    {
+        List<string> text = [];
+        if (response is null) return string.Empty;
+        foreach (CanonicalModelItem item in response.Output)
+        {
+            JsonElement json = item.Content;
+            if (!IsString(json, "type", "message") || !IsString(json, "role", "assistant") ||
+                !json.TryGetProperty("content", out JsonElement parts) ||
+                parts.ValueKind != JsonValueKind.Array) continue;
+            foreach (JsonElement part in parts.EnumerateArray())
+            {
+                if (IsString(part, "type", "output_text") &&
+                    part.TryGetProperty("text", out JsonElement value) &&
+                    value.ValueKind == JsonValueKind.String)
+                    text.Add(value.GetString()!);
+            }
+        }
+        return string.Join("\n", text);
+    }
+
+    private static bool IsString(JsonElement json, string property, string expected) =>
+        json.ValueKind == JsonValueKind.Object &&
+        json.TryGetProperty(property, out JsonElement value) &&
+        value.ValueKind == JsonValueKind.String && value.GetString() == expected;
+
+    // Это HTTP-политика примера приложения, а не контракт AgentBridge.
+    private static int ErrorStatus(ServiceErrorType error) => error switch
+    {
+        ServiceErrorType.Validation => 400,
+        ServiceErrorType.Forbidden => 403,
+        ServiceErrorType.NotFound => 404,
+        ServiceErrorType.Conflict => 409,
+        ServiceErrorType.Expired => 410,
+        ServiceErrorType.Unsupported => 422,
+        ServiceErrorType.Timeout => 504,
+        _ => 502
+    };
+}
+```
+
+В примере право `agentbridge.chat` разрешает агент `support`. При нескольких агентах приложение должно проверять доступ к каждому выбранному агенту. Отказ ключа codex-lb — проблема доступа сервера к модели, а не повод доверять другому owner; пример не превращает его в повторную попытку с другим ключом.
+
+Порядок вызовов:
+
+1. Авторизованный клиент отправляет `POST /api/agent/dialogs/` и получает `dialogId` и `expiresAtUtc`.
+2. Для нового сообщения создаёт `turnId` один раз и отправляет `POST /api/agent/dialogs/{dialogId}/messages`:
+
+```json
+{
+  "turnId": "771c966d-3502-4efa-96f2-a0c2a8047e0d",
+  "text": "Привет! Чем ты можешь помочь?"
+}
+```
+
+3. Проверяет `completed`, `status`, `terminalSaved` и `errorCode`, затем показывает `text`. HTTP 200 здесь означает получение отчёта; неполный или отменённый отчёт может иметь `completed=false`. Текст может быть частичным, а `LastResponse` не подтверждает сохранение.
+4. Следующий новый вопрос использует тот же `dialogId` и новый `turnId`. Повтор доставки прежнего запроса сохраняет прежний `turnId`: существующее обращение не переисполняется. Это защита от replay, а не кеш ответа на повторную HTTP-отправку. Не меняйте ID автоматически ради обхода отказа.
+
+Пример использует JSON-ответ модели. Для потоковой передачи нужен callback `AgentRunner.RunAsync` и отдельная HTTP streaming-граница приложения; [контракт SSE](<15-responses-sse-adapter.md>). Переданные лимиты инструментов — значения примера; сейчас выбранных инструментов нет.
+
+</details>

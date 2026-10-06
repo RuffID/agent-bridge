@@ -1,9 +1,7 @@
 using AgentBridge.Application;
 using AgentBridge.Application.Ports;
-using AgentBridge.CodexLb.Configuration;
 using AgentBridge.Configuration;
-using AgentBridge.Diagnostics;
-using AgentBridge.Persistence.EfCore.Configuration;
+using AgentBridge.Integration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,6 +13,7 @@ public static class UsageRegistration
     /// <summary>Регистрирует библиотеку и явно выбранные зависимости приложения без операций БД/HTTP.</summary>
     /// <remarks>Приложение владеет HttpClient/handlers без retry и смены ключа. Фабрики не выполняют I/O.
     /// Провайдеры возвращаются в нужном порядке, scoped бизнес-сервис не разделяется между tool tasks.
+    /// ILoggerFactory заранее зарегистрирован приложением; callback получает app-owned client с управляемым сроком.
     /// Logging provider, авторизация, инициализация БД и расписание очистки остаются у приложения.</remarks>
     public static IServiceCollection AddUsageGuide(this IServiceCollection services, IConfiguration configuration,
         Func<IServiceProvider, HttpClient> httpClientFactory,
@@ -27,20 +26,10 @@ public static class UsageRegistration
         ArgumentNullException.ThrowIfNull(individualKeyFactory);
         ArgumentNullException.ThrowIfNull(orderedProvidersFactory);
         ArgumentNullException.ThrowIfNull(accountSummaryFactory);
-        services.AddAgentBridgeConfiguration(configuration.GetSection("AgentBridge"));
-        services.AddCodexLbConfiguration(configuration.GetSection("CodexLb"));
-        services.AddDatabaseConfiguration(configuration.GetSection("Database"));
-        services.AddAgentBridgeDiagnostics();
-        services.AddAgentBridgePersistence();
         services.AddScoped<IIndividualModelKeySource>(individualKeyFactory);
-        services.AddCodexLbResponses(httpClientFactory);
         services.AddScoped<ContextBuilder>(provider => new ContextBuilder(orderedProvidersFactory(provider)));
         services.AddScoped<IAccountSummarySource>(accountSummaryFactory);
         services.AddAgentBridgeTool<AccountSummaryTool, AccountSummaryValidator>(AccountSummaryTool.ToolDefinition);
-        services.AddAgentBridgeTokenization();
-        services.AddAgentBridgeCompaction();
-        services.AddAgentBridgeRunner();
-        services.AddAgentBridgeSettings();
-        return services.AddAgentBridgeDialogCleanup();
+        return services.AddAgentBridge(configuration, httpClientFactory);
     }
 }

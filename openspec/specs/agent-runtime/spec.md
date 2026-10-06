@@ -1814,3 +1814,33 @@ Logging sinks/path/rotation/retention MUST принадлежать прилож
 
 - **WHEN** приложение не подключает maintenance и использует console logger без cleanup scheduler
 - **THEN** Backup, schedule и file path не становятся обязательными AgentBridge options.
+
+### Requirement: Стандартная интеграционная регистрация
+
+AgentBridge MUST предоставлять AddAgentBridge(IServiceCollection, IConfiguration, Func<IServiceProvider, HttpClient>) в отдельной Integration library net10.0, зависимой от ядра и адаптеров. Ядро MUST NOT зависеть от facade, адаптеров или ASP.NET Core. Регистрация MUST собирать existing options/persistence/diagnostics/transport/tools/tokenizer/context/compactor/runner/settings/cleanup без ServiceProvider, host или операций.
+
+#### Scenario: Базовый shared сценарий
+
+- **WHEN** приложение заранее предоставляет ILoggerFactory, полную configuration и app-owned HTTP factory в Shared режиме
+- **THEN** стандартный DI graph разрешается без пустых business classes
+- **AND** отсутствие providers/tools сохраняет обычную историю; maintenance/scheduler/auth/endpoints не подключаются автоматически.
+
+### Requirement: Владение интеграционными зависимостями
+
+Фасад MUST требовать app ILoggerFactory до registration и обязательную scoped HTTP factory без I/O. HttpClient/handlers/timeout/disposal MUST принадлежать приложению; pipeline MUST использовать существующий HttpClientLibrary. Individual mode MUST требовать app IIndividualModelKeySource, зарегистрированный до фасада; options validation MUST NOT разрешать scoped источник из root. Shared без источника MUST работать без app null-source класса.
+
+#### Scenario: Scoped индивидуальный источник
+
+- **WHEN** startup validation проверяет Individual mode с зарегистрированным scoped источником
+- **THEN** source instance не создаётся до runtime scope
+- **AND** отсутствие source отклоняется безопасно; ошибка source/key не допускает shared fallback.
+
+### Requirement: Сохранение расширений стандартной композиции
+
+Фасад MUST сохранять заранее заданные custom contracts через TryAdd; последующие overrides MUST использовать штатный DI выбор. Ordered providers MUST сохранять registration order в scoped builder, tools/validators MUST оставаться scoped на invocation. Повтор с теми же config/delegate objects MUST быть no-op; другие arguments MUST явно отклоняться. Configure/PostConfigure/reload MUST сохранять штатный options pipeline.
+
+#### Scenario: Повтор и overrides
+
+- **WHEN** приложение повторяет фасад с теми же аргументами и задаёт ordered providers/custom contracts до либо после него
+- **THEN** modules/binding не дублируются, explicit single-service contract выбирается штатно
+- **AND** scoped business state не захватывается singleton, async scope освобождается после работы.

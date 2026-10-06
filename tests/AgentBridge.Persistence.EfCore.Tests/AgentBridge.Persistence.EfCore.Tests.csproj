@@ -12,6 +12,11 @@
   <ItemGroup>
     <Compile Include="../Delivery/Consumer/SqlServerRegistration.cs" Link="Consumer/SqlServerRegistration.cs" />
     <Compile Include="../Delivery/Consumer/StrictConfigurationRegistration.cs" Link="Consumer/StrictConfigurationRegistration.cs" />
+    <Compile Include="../Delivery/Consumer/SimpleRegistration.cs" Link="Consumer/SimpleRegistration.cs" />
+    <Compile Include="../Delivery/Consumer/UsageRegistration.cs" Link="Consumer/UsageRegistration.cs" />
+    <Compile Include="../Delivery/Consumer/AccountSummaryTool.cs" Link="Consumer/AccountSummaryTool.cs" />
+    <Compile Include="../Delivery/Consumer/AccountSummaryValidator.cs" Link="Consumer/AccountSummaryValidator.cs" />
+    <Compile Include="../Delivery/Consumer/IAccountSummarySource.cs" Link="Consumer/IAccountSummarySource.cs" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
@@ -19,6 +24,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
+    <ProjectReference Include="../../adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.SqlServer/AgentBridge.Persistence.Migrations.SqlServer.csproj" />

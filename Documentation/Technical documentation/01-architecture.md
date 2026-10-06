@@ -14,6 +14,7 @@
 | --- | --- | --- |
 | `agent-bridge.csproj` | `AgentBridge.dll`, ядро/Application | Нет |
 | `adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj` | `AgentBridge.CodexLb.dll` | Ядро, локальный HttpClientLibrary |
+| `adapters/AgentBridge.Integration/AgentBridge.Integration.csproj` | `AgentBridge.Integration.dll`, [стандартная регистрация](26-integration-registration.md) | Ядро, CodexLb, EF adapter; ядро не зависит от facade/ASP.NET Core |
 | `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и maintenance SQLite/PostgreSQL |
 | `tests/AgentBridge.Tests/AgentBridge.Tests.csproj` | Проверки ядра | Ядро |
 | `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |

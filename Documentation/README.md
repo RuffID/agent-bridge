@@ -19,6 +19,8 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 ## Техническая документация
 
+Actual короткое подключение — [Integration facade](<Technical documentation/26-integration-registration.md>); current source examples компилируются отдельно от historical binary kits, новая поставка15/16 ещё не подтверждена.
+
 [Навигатор Technical documentation](<Technical documentation/README.md>)
 
 1. [Архитектура и обязанности типов](<Technical documentation/01-architecture.md>)

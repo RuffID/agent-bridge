@@ -18,6 +18,8 @@
 
 ## Карта и зависимости
 
+- `IntegrationRegistrationTests` в persistence project проверяет actual public Integration facade с ValidateScopes/ValidateOnBuild, required configuration/source modes, borrowed app HTTP, повтор/overrides, ordered providers/history и async business scopes. Только isolated Dependency!=Database: EF metadata без соединения, local fake handler без сети, compile linked current consumers без исполнения. Production core не зависит от facade.
+
 - `AgentBridge.Tests` проверяет ядро/Application и ссылается только на корневой production-проект.
 - ContextTokenCounterTests/ContextBudgetGuardTests проверяют actual offline Microsoft.ML.Tokenizers2.0.0 с embedded словарями, fixed BPE vectors, SHA256 словарей из OpenAI0.12.0, конкурентный singleton cache, actual builder→counter, whole payload/schema/results/controls, exact unsupported mapping, known/null estimate, reserve/threshold/equality/overflow и отмену. BPE не заглушён; boundary fake counter нужен только для long.MaxValue и failure/cancellation. Нет server count/HTTP/DB/hosting. Созданные конкурентные задачи bounded и все await через WhenAll.
 - `AgentBridge.CodexLb.Tests` проверяет транспортный адаптер и ссылается на `AgentBridge.CodexLb`.
