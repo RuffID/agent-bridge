@@ -964,6 +964,8 @@ public class ResponsesJsonTests
             services.AddLogging(builder => builder.AddProvider(Log));
             services.AddCodexLbConfiguration(options =>
             {
+                options.KeySource = ModelKeySourceMode.Individual;
+                options.ReasoningEffort = "medium";
                 options.BaseAddress = endpoint;
                 options.Model = "model";
                 options.SharedApiKey = "synthetic-shared-key";

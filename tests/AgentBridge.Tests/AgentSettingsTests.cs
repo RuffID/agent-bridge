@@ -25,7 +25,9 @@ public class AgentSettingsTests
         Probe probe = new();
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Retention:SoftContentLimitBytes"] = "128", ["Compaction:TokenThreshold"] = "20", ["Compaction:InputTokenReserve"] = "1"
+            ["Agent:InstructionsSource"] = "PerRequest", ["Agent:MaxToolSteps"] = "8",
+            ["Retention:RetentionPeriod"] = "7.00:00:00", ["Retention:SoftContentLimitBytes"] = "128",
+            ["Compaction:MaxPasses"] = "3", ["Compaction:TokenThreshold"] = "20", ["Compaction:InputTokenReserve"] = "1"
         }).Build();
         ServiceCollection services = Services(probe);
         services.AddAgentBridgeConfiguration(configuration);
@@ -312,7 +314,9 @@ public class AgentSettingsTests
         services.AddSingleton<IDialogSettingsWriter, Store>();
         services.AddScoped<IModelSettingsReader, Models>();
         services.AddSingleton<IContextTokenCounter, ContextTokenCounter>();
-        services.AddAgentBridgeConfiguration(options => options.Instructions = "synthetic-secret");
+        services.AddAgentBridgeConfiguration(options => { options.Instructions = "synthetic-secret"; options.InstructionsSource = AgentInstructionsSource.Configuration; options.MaxToolSteps = 8; },
+            options => { options.RetentionPeriod = TimeSpan.FromDays(7); options.SoftContentLimitBytes = 10_485_760; },
+            options => { options.TokenThreshold = 32_000; options.InputTokenReserve = 4_096; options.MaxPasses = 3; });
         services.AddAgentBridgeSettings();
         return services;
     }

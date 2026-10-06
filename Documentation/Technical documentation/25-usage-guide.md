@@ -35,11 +35,12 @@
 ```json
 {
   "AgentBridge": {
-    "Agent": { "Instructions": "Отвечай по разрешённым данным.", "MaxToolSteps": 8 },
+    "Agent": { "InstructionsSource": "Configuration", "Instructions": "Отвечай по разрешённым данным.", "MaxToolSteps": 8 },
     "Retention": { "RetentionPeriod": "7.00:00:00", "SoftContentLimitBytes": 10485760 },
     "Compaction": { "TokenThreshold": 32000, "InputTokenReserve": 4096, "MaxPasses": 3 }
   },
   "CodexLb": {
+    "KeySource": "Shared",
     "BaseAddress": "https://codex-lb.example.invalid/",
     "Model": "gpt-5", "ReasoningEffort": "medium",
     "GenerationTimeout": "00:03:00", "CompactTimeout": "00:03:00"
@@ -50,7 +51,7 @@
 
 Для PostgreSQL замените provider на `PostgreSql` и предоставьте реальную строку подключения через secret configuration приложения; поставьте выбранную PostgreSQL migrations DLL. `CodexLb:SharedApiKey` также приходит из secret store/configuration, а не из коммитимого примера. Строки подключения, ключи, raw headers/body и canonical payload не выводятся в logs/UI.
 
-Все числовые значения выше — переопределяемые начальные значения, а не обязательная политика внедрения. `RetentionPeriod` положителен и фиксирует expiry при создании; новая конфигурация не пересчитывает старые сроки. `SoftContentLimitBytes` положителен, даёт предупреждение при `bytes >= limit`, не запрещает запись и не вызывает cleanup. `TokenThreshold` положителен, `InputTokenReserve >= 0`, `MaxPasses > 0`. Проверенный threshold+reserve должен укладываться в **input_context_window**, context_window не заменяет неизвестный входной бюджет. [Полный options API](05-configuration-and-lifecycle.md), [бюджет/tokenizer](07-tokenizer-and-settings.md).
+Все операционные значения задаются явно; пропуск больше не получает прежний default. Для миграции выберите InstructionsSource=Configuration/PerRequest и KeySource=Shared/Individual. В Shared общий ключ обязателен, индивидуальный сохраняет приоритет; Individual не применяет общий fallback. PerRequest требует инструкции каждого run. `RetentionPeriod` положителен и фиксирует expiry при создании; новая конфигурация не пересчитывает старые сроки. `SoftContentLimitBytes` положителен, даёт предупреждение при `bytes >= limit`, не запрещает запись и не вызывает cleanup. `TokenThreshold` положителен, explicit `InputTokenReserve >= 0`, `MaxPasses > 0`. Проверенный threshold+reserve должен укладываться в **input_context_window**. [Полный options API и breaking migration](05-configuration-and-lifecycle.md), [бюджет/tokenizer](07-tokenizer-and-settings.md).
 
 Logging/Serilog provider и его redaction настраивает приложение. Фабрики DI не выполняют I/O, HttpClient/handlers принадлежат приложению; не добавляйте retry или замену ключа/аккаунта. Scoped зависимости не разделяются между параллельными tools. Для ASP.NET Core вызывайте групповую регистрацию в composition root; development DI validation остаётся включённой. В приложении без host явно проверяйте полученные options и lifetimes: compile-check не исполняет `ValidateOnStart` или контейнер.
 
@@ -62,7 +63,7 @@ Logging/Serilog provider и его redaction настраивает прилож
 
 ## 4. Ключи, каталог и выбор model/effort
 
-[IndividualKeySource](../../tests/Delivery/Consumer/IndividualKeySource.cs) — адаптер delegate к secret store приложения. Он возвращает исходный ключ: **только null** означает отсутствие и разрешает shared key. Пустая строка/ошибка заданного ключа/отказ источника не разрешают общий ключ. `ModelAccess` живёт только на вызов и не сохраняется.
+[IndividualKeySource](../../tests/Delivery/Consumer/IndividualKeySource.cs) — адаптер delegate к secret store приложения. Он возвращает исходный ключ: **только null** означает отсутствие и в режиме Shared разрешает shared key. В Individual общий fallback отсутствует. Пустая строка/ошибка заданного ключа/отказ источника не разрешают общий ключ. `ModelAccess` живёт только на вызов и не сохраняется.
 
 [UsageFlow.ReadModelsAsync](../../tests/Delivery/Consumer/UsageFlow.cs) сначала вызывает `IModelAccessResolver.ResolveAsync(owner)`, затем `IModelCatalog.ReadAsync(access)` в scoped boundary. UI получает `ModelCatalogSnapshot.Models`: `Id`, `ReasoningEfforts`, nullable `InputContextWindow` и другие safe capabilities. Это динамический каталог выбранного ключа; не заменяйте его фиксированным списком или default effort при отказе.
 

@@ -1,3 +1,5 @@
+using AgentBridge.Configuration;
+using System.Data.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -12,7 +14,8 @@ public static class DatabaseConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-        Validate(services.AddOptions<DatabaseOptions>().Bind(configuration));
+        Validate(services.AddOptions<DatabaseOptions>().BindSafely(configuration, "Database",
+            nameof(DatabaseOptions.Provider), nameof(DatabaseOptions.ConnectionString)));
         return services;
     }
 
@@ -31,5 +34,18 @@ public static class DatabaseConfigurationExtensions
         .Validate(options => !options.Provider.HasValue || Enum.IsDefined(options.Provider.Value),
             "Database.Provider не поддержан локальным контрактом SQLite/PostgreSQL/SQL Server.")
         .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "Database.ConnectionString обязателен.")
+        .Validate(options => string.IsNullOrWhiteSpace(options.ConnectionString) || IsConnectionString(options.ConnectionString),
+            "Database.ConnectionString: invalid_format — некорректная форма строки подключения.")
         .ValidateOnStart();
+
+    /// <summary>Проверяет только синтаксис без provider, подключения и вывода секрета; серверные свойства проверяются отдельно.</summary>
+    private static bool IsConnectionString(string connection)
+    {
+        try
+        {
+            DbConnectionStringBuilder parsed = new() { ConnectionString = connection };
+            return parsed.Count > 0;
+        }
+        catch (ArgumentException) { return false; }
+    }
 }

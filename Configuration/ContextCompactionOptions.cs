@@ -4,11 +4,12 @@ namespace AgentBridge.Configuration;
 public class ContextCompactionOptions
 {
     /// <summary>Порог запуска сжатия в токенах подготовленного контекста.</summary>
-    public int TokenThreshold { get; set; } = 32_000;
+    public int TokenThreshold { get; set; }
 
     /// <summary>Запас входного бюджета сверх подготовленного контекста в токенах.</summary>
-    public int InputTokenReserve { get; set; } = 4_096;
+    /// <remarks>Начальный -1 обозначает отсутствие настройки; явно заданный ноль допустим.</remarks>
+    public int InputTokenReserve { get; set; } = -1;
 
     /// <summary>Максимальное число последовательных проходов сжатия на обращение.</summary>
-    public int MaxPasses { get; set; } = 3;
+    public int MaxPasses { get; set; }
 }

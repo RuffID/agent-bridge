@@ -9,25 +9,14 @@ namespace AgentBridge.Tests;
 /// <summary>Изолированные проверки конфигурации через публичную DI-границу ядра.</summary>
 public class ConfigurationTests
 {
-    /// <summary>Пустой раздел ядра сохраняет все согласованные пробные лимиты.</summary>
+    /// <summary>Пустой раздел отклоняется вместо подстановки прежних пробных лимитов.</summary>
     [Fact]
-    public void EmptyCoreSectionUsesTrialDefaults()
+    public void EmptyCoreSectionRejectsMissingLimits()
     {
         ServiceCollection services = new();
         services.AddAgentBridgeConfiguration(new ConfigurationBuilder().Build());
         using ServiceProvider provider = services.BuildServiceProvider();
-        provider.GetRequiredService<IStartupValidator>().Validate();
-
-        AgentOptions agent = provider.GetRequiredService<IOptions<AgentOptions>>().Value;
-        DialogRetentionOptions retention = provider.GetRequiredService<IOptions<DialogRetentionOptions>>().Value;
-        ContextCompactionOptions compaction = provider.GetRequiredService<IOptions<ContextCompactionOptions>>().Value;
-        Assert.Equal(8, agent.MaxToolSteps);
-        Assert.Equal(10_485_760, retention.SoftContentLimitBytes);
-        Assert.Equal(32_000, compaction.TokenThreshold);
-        Assert.Equal(4_096, compaction.InputTokenReserve);
-        Assert.Equal(3, compaction.MaxPasses);
-        DateTimeOffset created = new(2026, 10, 3, 0, 0, 0, TimeSpan.Zero);
-        Assert.Equal(created.AddDays(7), retention.CalculateExpiresAtUtc(created));
+        Assert.Throws<AggregateException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
         Assert.Null(provider.GetService<IConfiguration>());
     }
 
@@ -38,6 +27,7 @@ public class ConfigurationTests
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Agent:Instructions"] = "Отвечай по данным приложения.",
+            ["Agent:InstructionsSource"] = "Configuration",
             ["Agent:MaxToolSteps"] = "5",
             ["Retention:RetentionPeriod"] = "14.00:00:00",
             ["Retention:SoftContentLimitBytes"] = "123456",
@@ -69,9 +59,9 @@ public class ConfigurationTests
     {
         ServiceCollection services = new();
         services.AddAgentBridgeConfiguration(
-            agent => agent.MaxToolSteps = 1,
-            retention => retention.RetentionPeriod = TimeSpan.FromHours(36),
-            compaction => compaction.InputTokenReserve = 16);
+            agent => { agent.MaxToolSteps = 1; agent.InstructionsSource = AgentInstructionsSource.PerRequest; },
+            retention => { retention.RetentionPeriod = TimeSpan.FromHours(36); retention.SoftContentLimitBytes = 100; },
+            compaction => { compaction.TokenThreshold = 100; compaction.MaxPasses = 1; compaction.InputTokenReserve = 16; });
         using ServiceProvider provider = services.BuildServiceProvider();
         provider.GetRequiredService<IStartupValidator>().Validate();
         DateTimeOffset created = new(2026, 10, 3, 0, 0, 0, TimeSpan.Zero);
@@ -86,7 +76,7 @@ public class ConfigurationTests
     {
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Retention:RetentionPeriod"] = "14.00:00:00"
+            ["Retention:RetentionPeriod"] = "14.00:00:00", ["Retention:SoftContentLimitBytes"] = "100"
         }).Build();
         ServiceCollection services = new();
         services.AddAgentBridgeConfiguration(configuration);
@@ -124,7 +114,7 @@ public class ConfigurationTests
     [InlineData("Compaction:MaxPasses", "-1")]
     public void InvalidRangeFailsAtPublicOptionsBoundary(string key, string value)
     {
-        IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { [key] = value }).Build();
+        IConfigurationRoot configuration = ValidConfiguration(); configuration[key] = value;
         ServiceCollection services = new();
         services.AddAgentBridgeConfiguration(configuration);
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -153,7 +143,7 @@ public class ConfigurationTests
         ServiceCollection services = new();
         services.AddAgentBridgeConfiguration(_ => { }, retention => retention.RetentionPeriod = TimeSpan.Zero);
         using ServiceProvider provider = services.BuildServiceProvider();
-        Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+        Assert.Throws<AggregateException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
     }
 
     /// <summary>Вычисление срока не маскирует неправильный UTC или переполнение даты.</summary>
@@ -161,10 +151,154 @@ public class ConfigurationTests
     public void ExpirationRejectsNonUtcAndUnrepresentableDate()
     {
         ServiceCollection services = new();
-        services.AddAgentBridgeConfiguration(_ => { });
+        services.AddAgentBridgeConfiguration(ValidConfiguration());
         using ServiceProvider provider = services.BuildServiceProvider();
         DialogRetentionOptions options = provider.GetRequiredService<IOptions<DialogRetentionOptions>>().Value;
         Assert.Throws<ArgumentException>(() => options.CalculateExpiresAtUtc(new DateTimeOffset(2026, 10, 3, 0, 0, 0, TimeSpan.FromHours(7))));
         Assert.Throws<ArgumentOutOfRangeException>(() => options.CalculateExpiresAtUtc(DateTimeOffset.MaxValue));
     }
+
+    /// <summary>Отсутствие каждого поля отличается от его явного допустимого значения, включая старый default и ноль.</summary>
+    [Theory]
+    [InlineData("Agent:MaxToolSteps")]
+    [InlineData("Agent:InstructionsSource")]
+    [InlineData("Retention:RetentionPeriod")]
+    [InlineData("Retention:SoftContentLimitBytes")]
+    [InlineData("Compaction:TokenThreshold")]
+    [InlineData("Compaction:InputTokenReserve")]
+    [InlineData("Compaction:MaxPasses")]
+    public void EachMissingFieldFailsWithSafePath(string key)
+    {
+        IConfigurationRoot config = ValidConfiguration();
+        foreach (string? value in new string?[] { null, "", " " })
+        {
+            config[key] = value;
+            ServiceCollection services = new(); services.AddAgentBridgeConfiguration(config);
+            using ServiceProvider provider = services.BuildServiceProvider();
+            OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+            Assert.Contains(key.Replace(':', '.'), error.ToString());
+        }
+    }
+
+    /// <summary>Malformed, overflow и неизвестный режим не раскрывают исходное значение или inner exception.</summary>
+    [Theory]
+    [InlineData("Agent:MaxToolSteps", "synthetic-secret")]
+    [InlineData("Retention:RetentionPeriod", "synthetic-secret")]
+    [InlineData("Retention:SoftContentLimitBytes", "9223372036854775808")]
+    [InlineData("Compaction:TokenThreshold", "2147483648")]
+    [InlineData("Compaction:InputTokenReserve", "synthetic-secret")]
+    [InlineData("Compaction:MaxPasses", "synthetic-secret")]
+    [InlineData("Agent:InstructionsSource", "synthetic-secret")]
+    [InlineData("Agent:InstructionsSource", "99")]
+    public void MalformedBindingIsSafe(string key, string value)
+    {
+        IConfigurationRoot config = ValidConfiguration(); config[key] = value;
+        ServiceCollection services = new(); services.AddAgentBridgeConfiguration(config);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+        Assert.Contains(key.Replace(':', '.'), error.ToString());
+        Assert.DoesNotContain(value, error.ToString());
+        Assert.Null(error.InnerException);
+    }
+
+    /// <summary>Явно выбранный provider precedence и PostConfigure проходят тот же стандартный pipeline.</summary>
+    [Fact]
+    public void MergedSectionAndExplicitOldDefaultsWork()
+    {
+        IConfigurationRoot valid = ValidConfiguration();
+        IConfigurationRoot merged = new ConfigurationBuilder().AddInMemoryCollection(valid.AsEnumerable().Select(pair =>
+            new KeyValuePair<string, string?>("Library:" + pair.Key, pair.Value)))
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Library:Compaction:InputTokenReserve"] = "0" }).Build();
+        ServiceCollection services = new(); services.AddAgentBridgeConfiguration(merged.GetSection("Library"));
+        services.PostConfigure<AgentOptions>(options => options.MaxToolSteps = 9);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IStartupValidator>().Validate();
+        Assert.Equal(9, provider.GetRequiredService<IOptions<AgentOptions>>().Value.MaxToolSteps);
+        Assert.Equal(0, provider.GetRequiredService<IOptions<ContextCompactionOptions>>().Value.InputTokenReserve);
+        Assert.Equal(7, provider.GetRequiredService<IOptions<DialogRetentionOptions>>().Value.RetentionPeriod.TotalDays);
+        using IServiceScope scope = provider.CreateScope();
+        Assert.Equal(0, scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ContextCompactionOptions>>().Value.InputTokenReserve);
+        Assert.Equal(0, provider.GetRequiredService<IOptionsMonitor<ContextCompactionOptions>>().CurrentValue.InputTokenReserve);
+    }
+
+    /// <summary>Программное отсутствие каждого поля отклоняется той же validation boundary.</summary>
+    [Theory]
+    [InlineData("Agent.MaxToolSteps")]
+    [InlineData("Agent.InstructionsSource")]
+    [InlineData("Retention.RetentionPeriod")]
+    [InlineData("Retention.SoftContentLimitBytes")]
+    [InlineData("Compaction.TokenThreshold")]
+    [InlineData("Compaction.InputTokenReserve")]
+    [InlineData("Compaction.MaxPasses")]
+    public void EachProgrammaticOmissionFails(string missing)
+    {
+        ServiceCollection services = new();
+        services.AddAgentBridgeConfiguration(agent =>
+        {
+            if (missing != "Agent.MaxToolSteps") agent.MaxToolSteps = 8;
+            if (missing != "Agent.InstructionsSource") agent.InstructionsSource = AgentInstructionsSource.PerRequest;
+        }, retention =>
+        {
+            if (missing != "Retention.RetentionPeriod") retention.RetentionPeriod = TimeSpan.FromDays(7);
+            if (missing != "Retention.SoftContentLimitBytes") retention.SoftContentLimitBytes = 10_485_760;
+        }, compaction =>
+        {
+            if (missing != "Compaction.TokenThreshold") compaction.TokenThreshold = 32_000;
+            if (missing != "Compaction.InputTokenReserve") compaction.InputTokenReserve = 0;
+            if (missing != "Compaction.MaxPasses") compaction.MaxPasses = 3;
+        });
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.Contains(missing, Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate()).Message);
+    }
+
+    /// <summary>Instructions условно обязательны; режим Configuration отвергает null/blank без fallback.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void ConfigurationInstructionsMustBeExplicit(string? instructions)
+    {
+        IConfigurationRoot config = ValidConfiguration(); config["Agent:InstructionsSource"] = "Configuration"; config["Agent:Instructions"] = instructions;
+        ServiceCollection services = new(); services.AddAgentBridgeConfiguration(config);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.Contains("Agent.Instructions", Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate()).Message);
+    }
+
+    /// <summary>Предшествующий Configure не скрывает missing выбранного configuration key/section; валидные overrides разрешены отдельно.</summary>
+    [Theory]
+    [InlineData("Agent:MaxToolSteps")]
+    [InlineData("Agent:InstructionsSource")]
+    [InlineData("Agent:Instructions")]
+    [InlineData("Retention:RetentionPeriod")]
+    [InlineData("Retention:SoftContentLimitBytes")]
+    [InlineData("Compaction:TokenThreshold")]
+    [InlineData("Compaction:InputTokenReserve")]
+    [InlineData("Compaction:MaxPasses")]
+    [InlineData("Retention")]
+    [InlineData("Agent")]
+    [InlineData("Compaction")]
+    public void PriorConfigureCannotHideMissingConfiguration(string key)
+    {
+        IConfigurationRoot config = ValidConfiguration(); config["Agent:InstructionsSource"] = "Configuration"; config["Agent:Instructions"] = "configured";
+        if (!key.Contains(':'))
+        {
+            foreach (KeyValuePair<string, string?> pair in config.GetSection(key).AsEnumerable().ToArray()) config[pair.Key] = null;
+        }
+        else config[key] = null;
+        ServiceCollection services = new();
+        services.Configure<AgentOptions>(options => { options.MaxToolSteps = 8; options.InstructionsSource = AgentInstructionsSource.Configuration; options.Instructions = "prior instructions"; });
+        services.Configure<DialogRetentionOptions>(options => { options.RetentionPeriod = TimeSpan.FromDays(7); options.SoftContentLimitBytes = 10_485_760; });
+        services.Configure<ContextCompactionOptions>(options => { options.TokenThreshold = 32_000; options.InputTokenReserve = 4_096; options.MaxPasses = 3; });
+        services.AddAgentBridgeConfiguration(config);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Assert.Contains(key.Replace(':', '.'), Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate()).Message);
+    }
+
+    /// <summary>Создаёт явную полную конфигурацию, в том числе значения прежних defaults.</summary>
+    private static IConfigurationRoot ValidConfiguration() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["Agent:InstructionsSource"] = "PerRequest", ["Agent:MaxToolSteps"] = "8",
+        ["Retention:RetentionPeriod"] = "7.00:00:00", ["Retention:SoftContentLimitBytes"] = "10485760",
+        ["Compaction:TokenThreshold"] = "32000", ["Compaction:InputTokenReserve"] = "4096", ["Compaction:MaxPasses"] = "3"
+    }).Build();
 }

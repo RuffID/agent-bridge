@@ -31,13 +31,19 @@ using AgentBridge.Domain.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
 
 services.AddLogging(); // Serilog provider и фильтры задаёт приложение
-services.AddAgentBridgeConfiguration(_ => { });
+services.AddAgentBridgeConfiguration(
+    options => { options.InstructionsSource = AgentInstructionsSource.PerRequest; options.MaxToolSteps = 8; },
+    options => { options.RetentionPeriod = TimeSpan.FromDays(7); options.SoftContentLimitBytes = 10_485_760; },
+    options => { options.TokenThreshold = 32_000; options.InputTokenReserve = 4_096; options.MaxPasses = 3; });
 services.AddCodexLbConfiguration(options =>
 {
     options.BaseAddress = "https://gateway.example/proxy/";
     options.Model = selectedModel;
     options.ReasoningEffort = selectedEffort;
     options.SharedApiKey = applicationSharedKey;
+    options.KeySource = ModelKeySourceMode.Shared;
+    options.GenerationTimeout = TimeSpan.FromSeconds(180);
+    options.CompactTimeout = TimeSpan.FromSeconds(180);
 });
 services.AddScoped<IIndividualModelKeySource>(_ => individualKeys);
 services.AddCodexLbModelCatalog(_ => applicationHttpClient);
@@ -47,7 +53,7 @@ IModelSettingsReader reader = scope.ServiceProvider.GetRequiredService<IModelSet
 ServiceResult<ModelSettingsSnapshot> result = await reader.ReadAsync(DialogOwnerId.From(applicationOwnerId), effort: requestedEffort, ct: ct);
 ```
 
-Общий API-ключ необязателен. Nullable override использует default; пустой override не подменяется. IOptionsSnapshot фиксирует defaults на scope, reader копирует выбранные строки и числовые лимиты до await. Для последующего scope доступны обновлённые options. Reader не записывает выбор пользователя и не реализует состояние выполняющегося turn. Будущая оркестрация должна отдельно фиксировать один ModelAccess и настройки на обращение; повторное чтение UI не является таким разрешением.
+Общий API-ключ обязателен в KeySource=Shared, необязателен в Individual. В Shared provided индивидуальный ключ сохраняет priority; Individual при null не применяет общий fallback. Nullable override использует явные defaults приложения; пустой override не подменяется. IOptionsSnapshot фиксирует настройки на scope, reader копирует строки и лимиты до await. Для последующего scope доступны обновлённые options. Reader не записывает выбор; AgentRunner фиксирует ModelAccess и settings на обращение. Повторное чтение UI не является разрешением run. [Строгая configuration/migration boundary13](05-configuration-and-lifecycle.md).
 
 ## Каталог и бюджет
 

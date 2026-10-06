@@ -4,10 +4,10 @@ namespace AgentBridge.Configuration;
 public class DialogRetentionOptions
 {
     /// <summary>Период хранения от создания будущего диалога.</summary>
-    public TimeSpan RetentionPeriod { get; set; } = TimeSpan.FromDays(7);
+    public TimeSpan RetentionPeriod { get; set; }
 
     /// <summary>Мягкий порог объёма содержимого на диалог в байтах; не основание для удаления.</summary>
-    public long SoftContentLimitBytes { get; set; } = 10_485_760;
+    public long SoftContentLimitBytes { get; set; }
 
     /// <summary>Вычисляет срок истечения из времени создания и текущего настроенного периода.</summary>
     /// <param name="createdAtUtc">Время создания с нулевым смещением UTC.</param>

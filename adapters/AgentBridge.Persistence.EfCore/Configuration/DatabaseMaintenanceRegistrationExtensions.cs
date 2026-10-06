@@ -1,4 +1,5 @@
 using System.Globalization;
+using AgentBridge.Configuration;
 using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Errors;
 using EFCoreLibrary.Maintenance.Extensions;
@@ -28,7 +29,19 @@ public static class DatabaseMaintenanceRegistrationExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         ValidateMode(mode);
-        services.AddOptions<DatabaseBackupOptions>().Bind(configuration).ValidateOnStart();
+        services.AddOptions<DatabaseBackupOptions>().BindSafely(configuration, "Backup")
+            .Configure<IOptions<DatabaseOptions>>((options, database) =>
+            {
+                List<string> required = [nameof(DatabaseBackupOptions.BackupRetentionPeriod)];
+                required.Add(database.Value.Provider == DatabaseProvider.SqlServer
+                    ? nameof(DatabaseBackupOptions.SqlServerBackupDirectory) : nameof(DatabaseBackupOptions.BackupDirectory));
+                if (database.Value.Provider == DatabaseProvider.PostgreSql)
+                {
+                    required.AddRange([nameof(DatabaseBackupOptions.PostgreSqlDumpExecutablePath),
+                        nameof(DatabaseBackupOptions.PostgreSqlServerMajorVersion), nameof(DatabaseBackupOptions.PostgreSqlCleanupTimeout)]);
+                }
+                SafeOptionsBindingExtensions.RequireValues<DatabaseBackupOptions>(configuration, "Backup", Options.DefaultName, required.ToArray());
+            }).ValidateOnStart();
         return Register(services, mode);
     }
 

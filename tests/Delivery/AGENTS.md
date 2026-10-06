@@ -1,5 +1,7 @@
 # Проверка поставки DLL
 
+- Consumer/StrictConfigurationRegistration.cs — compile-only пример explicit limits/source modes Audit Remediation13, linked isolated persistence tests. Методы не исполняются; source compilation не доказывает external binary kits15/16 или runtime18.
+
 - Consumer/SqlServerRegistration.cs — текущий compile-only пример persistence/maintenance API SQL Server: source компилируется как linked item isolated persistence tests, методы не исполняются. Это не новый DLL kit и не бинарная проверка MSSQL; комплекты трёх RID и внешний consumer относятся к Audit Remediation15/16.
 
 - `Build/` — служебный SDK library project для разрешения общей runtime closure CodexLb + выбранной migrations assembly. Собственная DLL не поставляется. `DeliveryProvider` принимает `Sqlite` или `PostgreSql`; перед каждой сменой варианта обязателен restore, сборки последовательны с отдельными output. Только обычный Build, без targets/Exec/hooks, pack/publish и запуска.

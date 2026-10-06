@@ -17,7 +17,7 @@ public class DialogTests
     public void ConfiguredExpirationIsFixedAcrossTurnsCompactionAndSettingsChanges()
     {
         ServiceCollection services = new();
-        services.AddAgentBridgeConfiguration(_ => { }, options => options.RetentionPeriod = TimeSpan.FromHours(36));
+        services.AddAgentBridgeConfiguration(_ => { }, options => { options.RetentionPeriod = TimeSpan.FromHours(36); options.SoftContentLimitBytes = 10_485_760; });
         using ServiceProvider provider = services.BuildServiceProvider();
         DialogRetentionOptions options = provider.GetRequiredService<IOptions<DialogRetentionOptions>>().Value;
         Dialog dialog = Dialog.Create(DialogId.From(Guid.NewGuid()), OWNER, CREATED_AT_UTC, options.CalculateExpiresAtUtc(CREATED_AT_UTC));

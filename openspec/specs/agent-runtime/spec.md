@@ -1751,3 +1751,66 @@ AgentRunner MUST сохранять partial reports и confirmed соседни�
 - **WHEN** инструмент завершился после expiry либо удаления диалога
 - **THEN** запись отклоняется
 - **AND** итог не сообщает Completed или подтверждённое сохранение.
+
+### Requirement: Явные обязательные настройки приложения
+
+AgentBridge MUST получать настройки из выбранного IConfiguration приложения или явных programmatic callbacks. Agent/Retention/Compaction/CodexLb/Database MUST требовать каждый обязательный для выбранного режима ключ без рабочих defaults. Предшествующий Configure MUST NOT скрывать отсутствующий configuration key.
+
+#### Scenario: Отсутствие обязательного ключа
+
+- **WHEN** выбранный configuration section не содержит обязательный ключ при ранее заполненных options
+- **THEN** startup/options validation отклоняет настройку с безопасным path без исходного значения.
+
+### Requirement: Диапазоны явных настроек
+
+Отсутствующий раздел, blank, malformed, invalid range, undefined enum и overflow MUST отклоняться до первого соответствующего сценария. Explicit reserve=0 и значения прежних defaults MUST приниматься.
+
+#### Scenario: Явный нулевой запас
+
+- **WHEN** все обязательные ключи заданы, а InputTokenReserve явно равен нулю
+- **THEN** локальная validation принимает reserve; отсутствие этого ключа даёт отказ.
+
+### Requirement: Безопасный стандартный options pipeline
+
+Binding MUST сохранять обычный IConfiguration provider precedence, Configure/PostConfigure, IOptions/IOptionsSnapshot/IOptionsMonitor и reload. Ошибки Binder MUST NOT раскрывать исходные values или unsafe inner exception. IStartupValidator MUST быть доступен приложению без host; registration MUST NOT строить ServiceProvider, запускать host, HTTP, DB или file logger. IConfiguration MUST NOT передаваться runtime-сервисам; собственного config loader/options store MUST NOT быть.
+
+#### Scenario: Проверка без hosting
+
+- **WHEN** приложение явно вызывает IStartupValidator после построения своего контейнера
+- **THEN** missing/malformed настройки отклоняются до операций, а merged providers и explicit overrides сохраняют обычный приоритет.
+
+### Requirement: Явные источники ключа и инструкций
+
+InstructionsSource MUST явно выбирать Configuration или PerRequest. Configuration MUST требовать непустые options instructions и сохранять request override; PerRequest MUST требовать instructions обращения без options/string.Empty fallback.
+
+#### Scenario: Инструкции обращения отсутствуют
+
+- **WHEN** выбран PerRequest, но инструкции обращения не предоставлены
+- **THEN** run отклоняется до первого I/O без options fallback.
+
+### Requirement: Явный источник ключа
+
+KeySource MUST явно выбирать Shared или Individual. Shared MUST требовать общий ключ и сохранять приоритет provided индивидуального источника; только null разрешает общий. Individual MUST NOT использовать общий fallback. Ошибка индивидуального ключа/источника MUST NOT переключать account. Local validation MUST NOT обещать catalog capabilities без HTTP.
+
+#### Scenario: Индивидуальный источник без ключа
+
+- **WHEN** Individual возвращает null при наличии общего ключа
+- **THEN** доступ отклоняется без общего fallback и без HTTP.
+
+### Requirement: Владение расписанием и logger конфигурацией
+
+Приложение MUST выбирать и валидировать cleanup schedule/bounded batch только в своём включённом режиме очистки и явно вызывать CleanupAsync в short scope. При disabled cleanup schedule MUST NOT требоваться библиотекой. AgentBridge MUST NOT создавать собственный scheduler.
+
+#### Scenario: Очистка отключена
+
+- **WHEN** приложение не включает cleanup scheduler
+- **THEN** библиотека не требует schedule и не запускает background job.
+
+### Requirement: Владение конфигурацией logging и maintenance
+
+Logging sinks/path/rotation/retention MUST принадлежать приложению; file mode MUST требовать явный путь в регистрации logging приложения. Console/custom ILogger MUST NOT требовать file path. AgentBridge MUST NOT создавать собственный logger. Optional maintenance MUST требовать provider-specific backup settings только при его явном подключении.
+
+#### Scenario: Отключённое обслуживание приложения
+
+- **WHEN** приложение не подключает maintenance и использует console logger без cleanup scheduler
+- **THEN** Backup, schedule и file path не становятся обязательными AgentBridge options.

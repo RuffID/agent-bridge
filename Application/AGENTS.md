@@ -9,6 +9,8 @@
 
 ## Оркестрация этапа20
 
+- AgentRunner проверяет явный InstructionsSource и непустые выбранные инструкции до storage/model/providers. В Configuration request override имеет приоритет над options; PerRequest не использует options как fallback. Недопустимый/отсутствующий режим не заменяется строкой.Empty. Остальные options валидируются штатной registration boundary; ручной Options.Create без registration не является строгим configuration API.
+
 - AgentRunner фиксирует owner/version/settings/access/selection/limits; providers один раз на run. Null callback использует JSON, non-null SSE. Compact и отдельный full guard выполняются перед каждой generation; compact failure не становится fallback generation. Existing TurnId (включая legacy без журнала) не replay; незакрытая известная function pair блокирует новое обращение.
 - AgentRunSession сериализует checkpoint writes/token updates и создаёт отдельные short scopes. IDialogToolAttemptWriter.StartAsync должен commit до handler, SaveOutcomesAsync принимает journal+outputs атомарно. LastResult только matching StepId после всех awaited workers/scopes. Unknown без fake output. Legacy null не доказывает отсутствие прежнего действия.
 - Successful compact tokens/window захватываются до возврата в compactor; следующий exception/cancel не возвращает исходный token. Любая неизвестная/отказавшая запись блокирует writes без refresh/retry. Fresh UTC перед каждым write; scope primary+Dispose ошибки сохраняются вместе. Late cancel при accepted terminal может вернуть Canceled/TerminalSaved=true/Turn.Completed без повторного finish. Неожиданные exceptions распространяются после попытки honest finalization; LastResponse/LastTools не логировать.

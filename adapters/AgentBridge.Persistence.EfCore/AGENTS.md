@@ -1,5 +1,7 @@
 # Общее EF-хранилище
 
+- Configuration API требует explicit Provider/ConnectionString из выбранного root/section с обычным provider precedence; programmatic omission тоже отклоняется. Standard Binder ограждён SafeOptionsBindingExtensions ядра: malformed/overflow выдаёт только path/code, без исходного secret или Binder inner exception. Optional maintenance не регистрирует backup options до явного подключения; existing SQLite/PostgreSQL/SQL Server conditional backup12 сохраняется без I/O и собственного loader/options store.
+
 ## Settings этапа21
 
 - DialogSettings — шестая mapped таблица, optional per-dialog выбор и independent concurrency Version. Settings UoW проверяет owner/expiry/incarnation/history token внутри Serializable scope, но не меняет root Revision/LastChangedAtUtc. Concurrent settings не инвалидируют active run; stale выбора — Conflict, driver busy/serialization исключения не маскируются retry.

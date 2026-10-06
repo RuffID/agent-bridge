@@ -71,6 +71,7 @@ MyServer/
 {
   "AgentBridge": {
     "Agent": {
+      "InstructionsSource": "Configuration",
       "Instructions": "Отвечай по-русски, кратко и по существу.",
       "MaxToolSteps": 8
     },
@@ -85,6 +86,7 @@ MyServer/
     }
   },
   "CodexLb": {
+    "KeySource": "Shared",
     "BaseAddress": "https://codex-lb.example.invalid/",
     "Model": "gpt-5",
     "ReasoningEffort": "medium",
@@ -108,7 +110,7 @@ Database__ConnectionString=Host=localhost;Port=5432;Database=agent_bridge;Userna
 
 Это шаблоны, не команды запуска. Рабочие секреты не сохраняйте в README или коммитимом appsettings. Параметры TLS и права PostgreSQL задаются вашим окружением.
 
-Все числовые значения выше можно переопределить. Срок отсчитывается от создания диалога; сообщения и сжатие его не продлевают. Мягкий порог байтов выдаёт предупреждение, а не удаляет историю.
+Все операционные параметры задаются явно: прежние defaults больше не подставляются при пропуске. Для индивидуальных ключей выберите KeySource=Individual; для инструкций каждого обращения — InstructionsSource=PerRequest. [Обязательные настройки и миграция](<Documentation/Technical documentation/05-configuration-and-lifecycle.md>). Срок отсчитывается от создания диалога; сообщения и сжатие его не продлевают. Мягкий порог байтов выдаёт предупреждение, а не удаляет историю.
 
 ## 3. Зарегистрировать библиотеку в DI
 

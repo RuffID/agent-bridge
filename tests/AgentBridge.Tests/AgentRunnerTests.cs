@@ -16,6 +16,30 @@ public class AgentRunnerTests
     private static readonly DateTimeOffset NOW = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);
     private static readonly ModelToolDefinition TOOL = new("action", "Действие", JsonSerializer.SerializeToElement(new { type = "object" }), false);
 
+    /// <summary>PerRequest не подставляет options instructions и отказывает до storage/providers/model.</summary>
+    [Fact]
+    public async Task PerRequestInstructionsAreRequiredBeforeFirstIo()
+    {
+        Probe probe = new(); ServiceCollection services = Services(probe);
+        services.Configure<AgentOptions>(options => options.InstructionsSource = AgentInstructionsSource.PerRequest);
+        await using ServiceProvider root = services.BuildServiceProvider();
+        AgentRunResult result = await RunAsync(root, Request(probe));
+        Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
+        Assert.Empty(probe.Events); Assert.Equal(0, probe.AccessCalls); Assert.Equal(0, probe.ProviderCalls); Assert.Equal(0, probe.Generations);
+    }
+
+    /// <summary>PerRequest передаёт явные инструкции в модель и сохраняет bounded успешный ход.</summary>
+    [Fact]
+    public async Task PerRequestInstructionsAreUsedWithoutFallback()
+    {
+        Probe probe = new(); probe.Responses.Enqueue(ModelResponse.Completed([Message("done")]));
+        ServiceCollection services = Services(probe);
+        services.Configure<AgentOptions>(options => options.InstructionsSource = AgentInstructionsSource.PerRequest);
+        await using ServiceProvider root = services.BuildServiceProvider();
+        AgentRunResult result = await RunAsync(root, new(probe.Call, [Message("input")], [TOOL.Name], new(8, 8, 2, TimeSpan.FromMinutes(1)), instructions: "request instructions"));
+        Assert.Equal(AgentRunStatus.Completed, result.Status); Assert.Equal("request instructions", Assert.Single(probe.Requests).Instructions);
+    }
+
     /// <summary>Per-request effort перекрывает per-dialog выбор; смена выбора после Begin не меняет already pinned request.</summary>
     [Fact]
     public async Task StoredSelectionAndOverrideRemainPinnedDuringRun()
@@ -655,7 +679,7 @@ public class AgentRunnerTests
         services.AddSingleton<IContextTokenCounter, Counter>();
         services.AddSingleton<IContextProvider, Provider>();
         services.AddScoped<ContextBuilder>(sp => new([sp.GetRequiredService<IContextProvider>()]));
-        services.Configure<AgentOptions>(options => options.Instructions = "instructions");
+        services.Configure<AgentOptions>(options => { options.Instructions = "instructions"; options.InstructionsSource = AgentInstructionsSource.Configuration; options.MaxToolSteps = 8; });
         services.Configure<ContextCompactionOptions>(options => options.MaxPasses = 3);
         services.AddAgentBridgeTool<Handler, Validator>(TOOL);
         services.AddAgentBridgeRunner();

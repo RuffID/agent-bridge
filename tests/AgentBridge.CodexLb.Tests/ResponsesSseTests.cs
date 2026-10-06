@@ -785,6 +785,9 @@ public class ResponsesSseTests
             services.AddLogging(builder => builder.AddProvider(Log));
             services.AddCodexLbConfiguration(options =>
             {
+                options.KeySource = ModelKeySourceMode.Individual;
+                options.ReasoningEffort = "medium";
+                options.CompactTimeout = TimeSpan.FromSeconds(180);
                 options.BaseAddress = "https://gateway.invalid/prefix/";
                 options.Model = "Exact-Model";
                 options.GenerationTimeout = timeout ?? TimeSpan.FromSeconds(5);

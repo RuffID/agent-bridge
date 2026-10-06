@@ -32,7 +32,7 @@ public class AgentRunRequest
     public string? Model { get; }
     /// <summary>Явное усилие либо выбор конфигурации.</summary>
     public string? Effort { get; }
-    /// <summary>Инструкции обращения либо неизменяемый снимок AgentOptions.</summary>
+    /// <summary>Инструкции обращения; обязательны в режиме PerRequest, в Configuration null использует AgentOptions.</summary>
     public string? Instructions { get; }
     /// <summary>Canonical generation controls без server continuation.</summary>
     public ModelRequestParameters? Parameters { get; }

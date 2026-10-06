@@ -65,8 +65,8 @@ public class CrossComponentFixture : IAsyncDisposable
         {
             services.AddSingleton(this);
             services.AddSingleton<TimeProvider>(Time);
-            services.AddAgentBridgeConfiguration(agent => agent.Instructions = "fixed instructions",
-                retention => retention.RetentionPeriod = TimeSpan.FromHours(37),
+            services.AddAgentBridgeConfiguration(agent => { agent.Instructions = "fixed instructions"; agent.InstructionsSource = AgentInstructionsSource.Configuration; agent.MaxToolSteps = 8; },
+                retention => { retention.RetentionPeriod = TimeSpan.FromHours(37); retention.SoftContentLimitBytes = 10_485_760; },
                 compact => { compact.TokenThreshold = threshold; compact.InputTokenReserve = 10; compact.MaxPasses = 2; });
             services.AddCodexLbConfiguration(options =>
             {
@@ -74,6 +74,9 @@ public class CrossComponentFixture : IAsyncDisposable
                 options.Model = "gpt-5";
                 options.ReasoningEffort = "medium";
                 options.SharedApiKey = SHARED;
+                options.KeySource = ModelKeySourceMode.Shared;
+                options.GenerationTimeout = TimeSpan.FromSeconds(180);
+                options.CompactTimeout = TimeSpan.FromSeconds(180);
             });
             services.AddSingleton<IIndividualModelKeySource>(Keys);
             services.AddCodexLbResponses(_ => _http);

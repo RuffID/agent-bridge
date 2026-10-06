@@ -149,6 +149,61 @@ public class DatabaseMaintenanceRegistrationTests
         Assert.Equal(TimeSpan.FromDays(30), root.GetRequiredService<IOptions<DatabaseBackupOptions>>().Value.BackupRetentionPeriod);
     }
 
+    /// <summary>Проверяет каждый условно обязательный ключ maintenance через configuration без context/DB/process.</summary>
+    [Theory]
+    [InlineData(DatabaseProvider.SQLite, "BackupDirectory")]
+    [InlineData(DatabaseProvider.SQLite, "BackupRetentionPeriod")]
+    [InlineData(DatabaseProvider.PostgreSql, "BackupDirectory")]
+    [InlineData(DatabaseProvider.PostgreSql, "BackupRetentionPeriod")]
+    [InlineData(DatabaseProvider.PostgreSql, "PostgreSqlDumpExecutablePath")]
+    [InlineData(DatabaseProvider.PostgreSql, "PostgreSqlServerMajorVersion")]
+    [InlineData(DatabaseProvider.PostgreSql, "PostgreSqlCleanupTimeout")]
+    [InlineData(DatabaseProvider.SqlServer, "SqlServerBackupDirectory")]
+    [InlineData(DatabaseProvider.SqlServer, "BackupRetentionPeriod")]
+    public void EachConditionalMaintenanceFieldIsRequired(DatabaseProvider selected, string field)
+    {
+        foreach (string? value in new string?[] { null, "", " " })
+        {
+            IConfigurationRoot config = BackupConfiguration(); config[field] = value;
+            ServiceCollection services = new();
+            services.Configure<DatabaseBackupOptions>(options =>
+            {
+                options.BackupDirectory = Path.GetFullPath("prior-backups"); options.SqlServerBackupDirectory = "/prior-backups";
+                options.BackupRetentionPeriod = TimeSpan.FromDays(30); options.PostgreSqlDumpExecutablePath = Path.GetFullPath("prior-pg-dump");
+                options.PostgreSqlServerMajorVersion = 17; options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(5);
+            });
+            services.AddDatabaseConfiguration(options => { options.Provider = selected; options.ConnectionString = "Password=synthetic-secret"; });
+            services.AddAgentBridgeDatabaseMaintenance(config, MaintenanceExecutionMode.SingleInitializer);
+            using ServiceProvider provider = services.BuildServiceProvider();
+            OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+            Assert.Contains("Backup." + field, error.ToString()); Assert.DoesNotContain("synthetic-secret", error.ToString()); Assert.Null(error.InnerException);
+        }
+    }
+
+    /// <summary>Binder malformed/overflow защищён до standard options даже при синтетическом секрете в значении.</summary>
+    [Theory]
+    [InlineData("BackupRetentionPeriod", "synthetic-secret")]
+    [InlineData("PostgreSqlServerMajorVersion", "synthetic-secret")]
+    [InlineData("PostgreSqlServerMajorVersion", "2147483648")]
+    [InlineData("PostgreSqlCleanupTimeout", "synthetic-secret")]
+    public void MaintenanceBindingErrorsAreSafe(string field, string value)
+    {
+        IConfigurationRoot config = BackupConfiguration(); config[field] = value;
+        ServiceCollection services = new(); services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = "Password=synthetic-secret"; });
+        services.AddAgentBridgeDatabaseMaintenance(config, MaintenanceExecutionMode.SingleInitializer);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+        Assert.Contains("Backup." + field, error.ToString()); Assert.DoesNotContain(value, error.ToString()); Assert.Null(error.InnerException);
+    }
+
+    /// <summary>Значения принадлежат тесту; пути никогда не открываются и процессы не запускаются.</summary>
+    private static IConfigurationRoot BackupConfiguration() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["BackupDirectory"] = Path.GetFullPath("never-created-backups"), ["SqlServerBackupDirectory"] = "/server/backups",
+        ["BackupRetentionPeriod"] = "30.00:00:00", ["PostgreSqlDumpExecutablePath"] = Path.GetFullPath("never-run-pg-dump"),
+        ["PostgreSqlServerMajorVersion"] = "17", ["PostgreSqlCleanupTimeout"] = "00:00:05"
+    }).Build();
+
     /// <summary>Настраивает production DI только синтетическими значениями без создания файлов.</summary>
     internal static ServiceCollection Services(DatabaseProvider provider, Action<DatabaseBackupOptions>? change = null)
     {

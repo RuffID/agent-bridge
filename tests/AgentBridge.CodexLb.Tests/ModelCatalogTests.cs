@@ -26,6 +26,16 @@ public class ModelCatalogTests
     private const string SHARED_KEY = "synthetic-shared-key";
     private const string PRIVATE_PAYLOAD = "synthetic-private-payload";
 
+    /// <summary>Individual не использует предоставленный общий ключ при null от источника и не отправляет HTTP.</summary>
+    [Fact]
+    public async Task IndividualModeRejectsNullWithoutSharedFallback()
+    {
+        using Fixture fixture = new(null, SHARED_KEY, keyMode: ModelKeySourceMode.Individual);
+        ServiceResult<ModelSettingsSnapshot> result = await fixture.Reader.ReadAsync(DialogOwnerId.From("owner"));
+        Assert.Equal(ServiceErrorType.Unauthorized, result.Error!.Type);
+        Assert.Equal(1, fixture.Source.Calls); Assert.Equal(0, fixture.Handler.Calls);
+    }
+
     /// <summary>Safe settings21 проверяет per-dialog новый выбор actual reader/HttpClientLibrary, не меняя defaults или ключ.</summary>
     [Fact]
     public async Task PublicSettingsServiceValidatesStoredChoiceThroughActualHttpLibrary()
@@ -421,20 +431,25 @@ public class ModelCatalogTests
     /// <summary>Владеет только изолированными ресурсами теста и настоящим DI-путём.</summary>
     private class Fixture : IDisposable
     {
-        public Fixture(string? individual, string? shared = SHARED_KEY, HttpErrorContentLogMode mode = HttpErrorContentLogMode.None)
+        public Fixture(string? individual, string? shared = SHARED_KEY, HttpErrorContentLogMode mode = HttpErrorContentLogMode.None, ModelKeySourceMode? keyMode = null)
         {
             Source = new() { Key = individual };
             Handler = new();
             Http = new(Handler);
             ServiceCollection services = new();
             services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(Log));
-            services.AddAgentBridgeConfiguration(_ => { });
+            services.AddAgentBridgeConfiguration(options => { options.InstructionsSource = AgentInstructionsSource.PerRequest; options.MaxToolSteps = 8; },
+                options => { options.RetentionPeriod = TimeSpan.FromDays(7); options.SoftContentLimitBytes = 10_485_760; },
+                options => { options.TokenThreshold = 32_000; options.InputTokenReserve = 4_096; options.MaxPasses = 3; });
             services.AddCodexLbConfiguration(options =>
             {
                 options.BaseAddress = "https://gateway.invalid/prefix/";
                 options.Model = "application-model";
                 options.ReasoningEffort = "custom-effort";
                 options.SharedApiKey = shared;
+                options.KeySource = keyMode ?? (shared is null ? ModelKeySourceMode.Individual : ModelKeySourceMode.Shared);
+                options.GenerationTimeout = TimeSpan.FromSeconds(180);
+                options.CompactTimeout = TimeSpan.FromSeconds(180);
             });
             services.AddSingleton<IIndividualModelKeySource>(Source);
             services.AddCodexLbModelCatalog(_ => Http, new() { ErrorContentMode = mode });

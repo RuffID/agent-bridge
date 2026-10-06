@@ -9,15 +9,18 @@ public class CodexLbOptions
     /// <summary>Модель приложения; обязательна, её доступность проверяется по серверному каталогу отдельно.</summary>
     public string? Model { get; set; }
 
-    /// <summary>Effort по умолчанию; поддержка моделью и ключом проверяется отдельно, без скрытой замены.</summary>
-    public string ReasoningEffort { get; set; } = "medium";
+    /// <summary>Обязательный effort приложения; поддержка моделью и ключом проверяется отдельно, без скрытой замены.</summary>
+    public string ReasoningEffort { get; set; } = string.Empty;
 
-    /// <summary>Общий секретный ключ приложения; может отсутствовать при индивидуальных ключах.</summary>
+    /// <summary>Явный режим ключа: Shared требует общий ключ, Individual запрещает общий fallback.</summary>
+    public ModelKeySourceMode? KeySource { get; set; }
+
+    /// <summary>Общий секретный ключ приложения; обязателен в Shared, не используется как fallback в Individual.</summary>
     public string? SharedApiKey { get; set; }
 
     /// <summary>Конечное время ожидания генерации.</summary>
-    public TimeSpan GenerationTimeout { get; set; } = TimeSpan.FromSeconds(180);
+    public TimeSpan GenerationTimeout { get; set; }
 
     /// <summary>Конечное время ожидания compact.</summary>
-    public TimeSpan CompactTimeout { get; set; } = TimeSpan.FromSeconds(180);
+    public TimeSpan CompactTimeout { get; set; }
 }

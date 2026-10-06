@@ -14,9 +14,16 @@ public static class AgentBridgeConfigurationExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        ValidateAgent(services.AddOptions<AgentOptions>().Bind(configuration.GetSection("Agent")));
-        ValidateRetention(services.AddOptions<DialogRetentionOptions>().Bind(configuration.GetSection("Retention")));
-        ValidateCompaction(services.AddOptions<ContextCompactionOptions>().Bind(configuration.GetSection("Compaction")));
+        ValidateAgent(services.AddOptions<AgentOptions>().BindSafely(configuration.GetSection("Agent"), "Agent",
+            nameof(AgentOptions.MaxToolSteps), nameof(AgentOptions.InstructionsSource)).Configure(options =>
+            {
+                if (options.InstructionsSource == AgentInstructionsSource.Configuration)
+                    SafeOptionsBindingExtensions.RequireValues<AgentOptions>(configuration.GetSection("Agent"), "Agent", Options.DefaultName, nameof(AgentOptions.Instructions));
+            }));
+        ValidateRetention(services.AddOptions<DialogRetentionOptions>().BindSafely(configuration.GetSection("Retention"), "Retention",
+            nameof(DialogRetentionOptions.RetentionPeriod), nameof(DialogRetentionOptions.SoftContentLimitBytes)));
+        ValidateCompaction(services.AddOptions<ContextCompactionOptions>().BindSafely(configuration.GetSection("Compaction"), "Compaction",
+            nameof(ContextCompactionOptions.TokenThreshold), nameof(ContextCompactionOptions.InputTokenReserve), nameof(ContextCompactionOptions.MaxPasses)));
         return services;
     }
 
@@ -50,21 +57,25 @@ public static class AgentBridgeConfigurationExtensions
 
     /// <summary>Регистрирует проверку локальных лимитов агента.</summary>
     private static void ValidateAgent(OptionsBuilder<AgentOptions> builder) => builder
-        .Validate(options => options.MaxToolSteps > 0, "Agent.MaxToolSteps должен быть положительным.")
+        .Validate(options => options.InstructionsSource.HasValue && Enum.IsDefined(options.InstructionsSource.Value),
+            "Agent.InstructionsSource: required_or_invalid — обязателен явный режим Configuration/PerRequest.")
+        .Validate(options => options.InstructionsSource != AgentInstructionsSource.Configuration || !string.IsNullOrWhiteSpace(options.Instructions),
+            "Agent.Instructions: required — обязательны непустые инструкции в режиме Configuration.")
+        .Validate(options => options.MaxToolSteps > 0, "Agent.MaxToolSteps должен быть положительным; required_or_range.")
         .ValidateOnStart();
 
     /// <summary>Регистрирует проверку периода хранения и мягкого порога содержимого.</summary>
     private static void ValidateRetention(OptionsBuilder<DialogRetentionOptions> builder) => builder
-        .Validate(options => options.RetentionPeriod > TimeSpan.Zero, "Retention.RetentionPeriod должен быть положительным.")
-        .Validate(options => options.SoftContentLimitBytes > 0, "Retention.SoftContentLimitBytes должен быть положительным.")
+        .Validate(options => options.RetentionPeriod > TimeSpan.Zero, "Retention.RetentionPeriod должен быть положительным; required_or_range.")
+        .Validate(options => options.SoftContentLimitBytes > 0, "Retention.SoftContentLimitBytes должен быть положительным; required_or_range.")
         .ValidateOnStart();
 
     /// <summary>Регистрирует проверку локальных лимитов сжатия, без обещания модельного бюджета.</summary>
     private static void ValidateCompaction(OptionsBuilder<ContextCompactionOptions> builder) => builder
-        .Validate(options => options.TokenThreshold > 0, "Compaction.TokenThreshold должен быть положительным.")
-        .Validate(options => options.InputTokenReserve >= 0, "Compaction.InputTokenReserve не может быть отрицательным.")
+        .Validate(options => options.TokenThreshold > 0, "Compaction.TokenThreshold должен быть положительным; required_or_range.")
+        .Validate(options => options.InputTokenReserve >= 0, "Compaction.InputTokenReserve не может быть отрицательным; required_or_range.")
         .Validate(options => (long)options.TokenThreshold + options.InputTokenReserve <= int.MaxValue,
-            "Сумма Compaction.TokenThreshold и InputTokenReserve выходит за локальный диапазон числа токенов.")
-        .Validate(options => options.MaxPasses > 0, "Compaction.MaxPasses должен быть положительным.")
+            "Сумма Compaction.TokenThreshold и InputTokenReserve выходит за локальный диапазон числа токенов; overflow.")
+        .Validate(options => options.MaxPasses > 0, "Compaction.MaxPasses должен быть положительным; required_or_range.")
         .ValidateOnStart();
 }

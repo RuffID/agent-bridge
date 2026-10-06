@@ -272,7 +272,9 @@ public class DialogSettingsIntegrationTests
         services.AddSingleton<IModelGateway, Gateway>();
         services.AddSingleton<IModelAccessResolver, AccessResolver>();
         services.AddScoped<ContextBuilder>(_ => new([]));
-        services.AddAgentBridgeConfiguration(options => options.Instructions = string.Empty);
+        services.AddAgentBridgeConfiguration(options => { options.Instructions = "test instructions"; options.InstructionsSource = AgentInstructionsSource.Configuration; options.MaxToolSteps = 8; },
+            options => { options.RetentionPeriod = TimeSpan.FromDays(7); options.SoftContentLimitBytes = 10_485_760; },
+            options => { options.TokenThreshold = 32_000; options.InputTokenReserve = 4_096; options.MaxPasses = 3; });
         services.AddAgentBridgeTokenization();
         services.AddAgentBridgeTools();
         services.AddAgentBridgeRunner();

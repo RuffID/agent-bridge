@@ -32,7 +32,12 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
         {
             cancellationToken.ThrowIfCancellationRequested();
             // Копии options фиксируются до первого I/O и не перечитываются между шагами.
-            string instructions = request.Instructions ?? options.Value.Instructions ?? string.Empty;
+            AgentOptions configured = options.Value;
+            if (configured.InstructionsSource is not { } source || !Enum.IsDefined(source))
+                return Report(AgentRunStatus.Failed, new(ServiceErrorType.Validation, "Agent.InstructionsSource: required_or_invalid."));
+            string? instructions = request.Instructions ?? (source == AgentInstructionsSource.Configuration ? configured.Instructions : null);
+            if (string.IsNullOrWhiteSpace(instructions))
+                return Report(AgentRunStatus.Failed, new(ServiceErrorType.Validation, "Agent.Instructions: required — инструкции обращения не предоставлены."));
             int maxSteps = options.Value.MaxToolSteps;
             int maxPasses = compactionOptions.Value.MaxPasses;
             if (maxSteps <= 0 || maxPasses <= 0) return Report(AgentRunStatus.Failed, new(ServiceErrorType.Validation, "Некорректные ограничения агента."));

@@ -1,23 +1,43 @@
 # Конфигурация, жизненный цикл и проверка
 
-SQL Server добавлен Audit Remediation12 как явный Database.Provider=SqlServer без default/fallback. Backup.SqlServerBackupDirectory задаёт серверный absolute path, Backup.BackupRetentionPeriod — положительный app-owned retention; host BackupDirectory не требуется для MSSQL. [Текущий provider API](12-sql-server-provider.md) не заменяет предстоящую строгую IConfiguration конфигурацию13 и отдельную facade14.
+SQL Server добавлен Audit Remediation12 как явный Database.Provider=SqlServer без default/fallback. Backup.SqlServerBackupDirectory задаёт серверный absolute path, Backup.BackupRetentionPeriod — положительный app-owned retention; host BackupDirectory не требуется для MSSQL. Строгая configuration boundary Audit Remediation13 описана ниже; отдельная facade14 ещё предстоит. [Provider API](12-sql-server-provider.md).
 
 ## Конфигурация
 
 Привязка настроек выполняется в composition root подключающего приложения через групповые DI-расширения. Прикладные сценарии получают типизированные options, а не `IConfiguration`.
 
-На этапе 02 реализованы следующие публичные группы. Имена свойств одновременно служат ключами binding; значения по умолчанию переопределяются приложением.
+**Breaking behavior13:** обязательные параметры больше не получают рабочие defaults. Типы и сигнатуры прежних свойств сохранены; добавлены nullable enum InstructionsSource и KeySource. Пустые callbacks и частичная configuration теперь отклоняются. Для миграции явно перенесите нужную политику: например, 8 шагов, 7 дней/10 MiB, 32000/4096/3, medium/180 секунд, и выберите оба source mode. Явное значение, равное прежнему default, допустимо; пропуск поля — ошибка. Initial zero и reserve=-1 не являются рабочими настройками.
 
-| Пространство имён / тип | Свойства и пробные значения |
-| --- | --- |
-| `AgentBridge.Configuration.AgentOptions` | `Instructions` (необязательно), `MaxToolSteps = 8` |
-| `AgentBridge.Configuration.DialogRetentionOptions` | `RetentionPeriod = 7 дней`, `SoftContentLimitBytes = 10 485 760` |
-| `AgentBridge.Configuration.ContextCompactionOptions` | `TokenThreshold = 32 000`, `InputTokenReserve = 4096`, `MaxPasses = 3` |
-| `AgentBridge.CodexLb.Configuration.CodexLbOptions` | Обязательные `BaseAddress`, `Model`; `ReasoningEffort = "medium"`, необязательный секрет `SharedApiKey`, `GenerationTimeout` и `CompactTimeout` по 180 секунд |
-| `AgentBridge.Persistence.EfCore.Configuration.DatabaseOptions` | Обязательные `Provider` и секрет `ConnectionString`; провайдер не задан по умолчанию |
-| `AgentBridge.Persistence.EfCore.Configuration.DatabaseBackupOptions` | Обязательные абсолютный каталог и явный положительный `BackupRetentionPeriod` без default; PostgreSQL дополнительно требует dump path, major 10+ и конечный cleanup timeout |
+Все значения в таблице принадлежат приложению. Пути относительны выбранному library root; адаптеры получают непосредственно CodexLb/Database/Backup section. Library owner проверки — соответствующая options registration. Безопасная ошибка содержит путь и причину без значения: missing/blank configuration — required, malformed/overflow Binder — invalid_type, неверный programmatic scalar/диапазон ядра — required_or_range. Секции и ключи проверяются независимо от ранее зарегистрированного Configure; valid configuration затем допускает Configure/PostConfigure overrides.
 
-`DatabaseProvider` содержит `SQLite` и `PostgreSql`; nullable-свойство отличает отсутствие выбора от неизвестного числового значения. Это конфигурационный контракт, не регистрация готового EF-провайдера.
+| Путь | Тип / диапазон | Обязательность / безопасная причина |
+| --- | --- | --- |
+| Agent.InstructionsSource | AgentInstructionsSource?: Configuration / PerRequest | Всегда; required / required_or_invalid |
+| Agent.Instructions | Непустая строка | Configuration: обязательно; PerRequest: обязательны instructions обращения без options fallback; required |
+| Agent.MaxToolSteps | int > 0 | Всегда; required / required_or_range |
+| Retention.RetentionPeriod | TimeSpan > 0 | Всегда; required / required_or_range; overflow даты отдельно в CalculateExpiresAtUtc |
+| Retention.SoftContentLimitBytes | long > 0, байты | Всегда; required / required_or_range |
+| Compaction.TokenThreshold | int > 0, токены | Всегда; required / required_or_range |
+| Compaction.InputTokenReserve | int >= 0, токены | Всегда, включая explicit zero; required / required_or_range |
+| Compaction.MaxPasses | int > 0 | Всегда; required / required_or_range |
+| Compaction.TokenThreshold + InputTokenReserve | Сумма <= int.MaxValue | Всегда; overflow; input budget проверяется каталогом отдельно |
+| CodexLb.BaseAddress | Абсолютная HTTP(S) строка без userinfo/query/fragment | Всегда; required / ошибка формы адреса |
+| CodexLb.Model | Непустой exact ID | Всегда; required; доступность локально не подтверждается |
+| CodexLb.ReasoningEffort | Непустая exact строка | Всегда; required / ошибка пустого effort; статического списка capabilities нет |
+| CodexLb.KeySource | ModelKeySourceMode?: Shared / Individual | Всегда; required / required_or_invalid |
+| CodexLb.SharedApiKey | Secret, непустая строка без whitespace/control chars | Shared: обязательно; Individual: необязательно, не fallback; required / invalid_key |
+| CodexLb.GenerationTimeout | TimeSpan > 0, <=4294967294 ms | Всегда; required / ошибка диапазона таймера |
+| CodexLb.CompactTimeout | TimeSpan > 0, <=4294967294 ms | Всегда; required / ошибка диапазона таймера |
+| Database.Provider | DatabaseProvider?: SQLite / PostgreSql / SqlServer | Всегда; required / ошибка неизвестного провайдера |
+| Database.ConnectionString | Secret, непустая строка с синтаксисом DbConnectionStringBuilder | Всегда; required / invalid_format; provider keys/server/auth/TLS этой границей не проверяются |
+| Backup.BackupDirectory | Абсолютный локальный путь | Включённое SQLite/PostgreSQL maintenance; ошибка абсолютного пути |
+| Backup.SqlServerBackupDirectory | Абсолютный серверный Unix/Windows/UNC путь | Включённое SQL Server maintenance; ошибка серверного пути |
+| Backup.BackupRetentionPeriod | TimeSpan > 0 | Любое включённое maintenance; ошибка required/положительного retention |
+| Backup.PostgreSqlDumpExecutablePath | Абсолютный локальный путь | Включённое PostgreSQL maintenance; ошибка абсолютного пути |
+| Backup.PostgreSqlServerMajorVersion | int >= 10 | Включённое PostgreSQL maintenance; ошибка required/major диапазона |
+| Backup.PostgreSqlCleanupTimeout | TimeSpan > 0, <=4294967294 ms | Включённое PostgreSQL maintenance; ошибка required/диапазона таймера |
+
+Без вызова AddAgentBridgeDatabaseMaintenance Backup не требуется. При включении SingleInitializer задаётся явно; приложение применяет backup retention само. Наличие unused backup поля не меняет выбранного провайдера; malformed переданный scalar отклоняется стандартным binding. Валидация не открывает соединение или пути.
 
 Этап 12 отдельно подключает `AddAgentBridgeDatabaseMaintenance` после `AddDatabaseConfiguration`/`AddAgentBridgePersistence`, с явным SingleInitializer. Backup options проверяются локально без I/O; фактические maintenance методы вызываются приложением в отдельном scope после остановки writes/DDL/других экземпляров. Retention backup исполняет приложение. [Сигнатуры, binding и ошибки](06-database-maintenance.md#подключение-agentbridge-этапа-12).
 
@@ -40,18 +60,22 @@ services.AddDatabaseConfiguration(configuration.GetSection("AgentBridge:Database
 
 ```csharp
 services.AddAgentBridgeConfiguration(
-    agent => agent.MaxToolSteps = 5,
-    retention => retention.RetentionPeriod = TimeSpan.FromDays(14),
-    compaction => compaction.TokenThreshold = 24_000);
+    agent => { agent.InstructionsSource = AgentInstructionsSource.PerRequest; agent.MaxToolSteps = 5; },
+    retention => { retention.RetentionPeriod = TimeSpan.FromDays(14); retention.SoftContentLimitBytes = 10_485_760; },
+    compaction => { compaction.TokenThreshold = 24_000; compaction.InputTokenReserve = 0; compaction.MaxPasses = 3; });
 ```
 
 Ни файл appsettings, ни ASP.NET Core, ни host не обязательны. `IConfiguration` не регистрируется расширениями как зависимость сценариев. Обработчики инструментов и источники контекста регистрируются программно на последующих этапах, а не именами в options.
 
 ### Валидация и применение
 
+Исходник полной programmatic регистрации: [StrictConfigurationRegistration.cs](../../tests/Delivery/Consumer/StrictConfigurationRegistration.cs). Он компилируется как linked source в isolated persistence tests без исполнения; внешние binary kits и runtime относятся к15/16/18.
+
 Options проверяются при получении `Value`/`CurrentValue`, включая новые scope и reload. Зарегистрирован стандартный `IStartupValidator` через `ValidateOnStart`; приложение без host может явно вызвать `serviceProvider.GetRequiredService<IStartupValidator>().Validate()` сразу после построения своего контейнера. Одна регистрация `IServiceCollection` или `BuildServiceProvider` сами по себе не запускают проверку значений.
 
-Локальные ошибки дают `OptionsValidationException` с именами полей и причиной без значений. Ошибки формата binding (например, неизвестное имя enum или неверный TimeSpan) дают явный `InvalidOperationException` от Microsoft.Extensions. Обязательны модель, адрес, провайдер и непустая строка подключения. Инструкции и общий ключ необязательны: инструкции может сформировать приложение на обращение, а индивидуальные ключи предоставляются отдельно. Уже заданный пустой/пробельный общий ключ считается ошибкой.
+Локальные ошибки, включая malformed enum/TimeSpan/overflow Binder, дают OptionsValidationException без исходного значения и unsafe inner exception. IStartupValidator объединяет несколько отказов в AggregateException. SafeOptionsBindingExtensions ограждает стандартный ConfigurationBinder внутри Configure и регистрирует стандартный ConfigurationChangeTokenSource; собственного loader/options store нет. Приложение передаёт merged root, subsection либо отдельный IConfiguration и само выбирает environment/secret providers и их приоритет. Библиотека не открывает config файлы и не передаёт IConfiguration runtime-сервисам.
+
+Shared требует общий ключ, но сохраняет приоритет provided индивидуального ключа; только null индивидуального источника разрешает общий. Individual допускает отсутствие общего ключа, null источника даёт Unauthorized без fallback. Ошибка/пустой индивидуальный ключ/HTTP отказ не переключают account. Источник приложения регистрируется в обоих режимах (для shared-only он явно возвращает null). Configuration instructions допускают request override; PerRequest требует непустые request instructions до первого I/O, без options/string.Empty fallback. Ручной Options.Create без registration не является строгим configuration API.
 
 Период, мягкий порог байтов, порог токенов и числа шагов/проходов должны быть положительными; запас токенов допускает ноль. Сумма порога и запаса проверяется на переполнение локального `int`, а не на бюджет модели. Deadline положительный и не превышает `4 294 967 294` миллисекунды (диапазон таймера .NET). Адрес — абсолютный HTTP(S), без userinfo, query и fragment; путь префикса разрешён.
 
@@ -63,11 +87,28 @@ Options проверяются при получении `Value`/`CurrentValue`,
 
 `DialogRetentionOptions.CalculateExpiresAtUtc(DateTimeOffset createdAtUtc)` уже вычисляет время создания плюс настроенный период, включая нестандартные 14 дней или 36 часов. Требуется нулевое UTC-смещение; неправильный UTC, неположительный период и переполнение даты дают явные ошибки. Метод не создаёт сущность, не меняет ранее вычисленную дату и не обращается к хранилищу.
 
-На этапе 06 `Dialog.Create` уже фиксирует `CreatedAtUtc` и вычисленный из конфигурации `ExpiresAtUtc` в доменной сущности; сохранение через EFCoreLibrary/scenario UoW реализовано этапами08–10, actual SQLite/PostgreSQL evidence см. в [карте00–25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>). Начальный срок — 7 дней; активность и compact его не продлевают. UTC используется для хранения и сравнения, отображение в часовом поясе пользователя выполняет приложение. [Публичный доменный API и границы снимка версии](08-dialog-domain-state.md).
+На этапе 06 `Dialog.Create` фиксирует `CreatedAtUtc` и вычисленный из конфигурации `ExpiresAtUtc` в доменной сущности; сохранение через EFCoreLibrary/scenario UoW реализовано этапами08–10, actual SQLite/PostgreSQL evidence см. в [карте00–25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>). Срок задаётся явно; активность и compact его не продлевают. UTC используется для хранения и сравнения, отображение в часовом поясе пользователя выполняет приложение. [Публичный доменный API](08-dialog-domain-state.md).
 
 Чтение безопасных настроек, выбор модели/effort, ключи и Serilog описаны в [отдельном разделе](07-tokenizer-and-settings.md).
 
 Изменение параметров через конфигурацию не требует правки и пересборки бизнес-логики. Настройки проверяются до соответствующей операции; некорректные лимиты, адрес или отсутствующая обязательная зависимость приводят к явной ошибке.
+
+## Настройки расписания и логирования приложения
+
+Cleanup schedule, bounded batch и logger принадлежат приложению и читаются им из его IConfiguration. Это не поля AgentBridge options; приложение выбирает их имена/пути и валидатор. Например, собственные `Cleanup.Enabled`, `Cleanup.Schedule`, `Cleanup.BatchLimit` и `Logging.Mode`, `Logging.FilePath`, `Logging.Rotation`, `Logging.Retention` могут иметь следующий контракт:
+
+| Пример app path / owner | Тип / обязательность выбранного app режима | Безопасная ошибка app |
+| --- | --- | --- |
+| Cleanup.Enabled / приложение | bool, явный выбор при настройке scheduler | Только path/код режима |
+| Cleanup.Schedule / приложение | Непустое допустимое расписание, только Enabled=true | Только path/код required/invalid_schedule |
+| Cleanup.BatchLimit / приложение | Положительный bounded int в пределах собственного лимита приложения, только Enabled=true | Только path/код required/range |
+| Logging.Mode / приложение | Выбор Serilog/ILogger provider/sinks | Только path/код invalid_mode |
+| Logging.FilePath / приложение | Явный путь только для файлового sink | Только path/код required/invalid_path |
+| Logging.Rotation, Logging.Retention / приложение | Положительные app policy параметры, если нужны выбранному файловому sink | Только path/код required/range |
+
+Эти имена — пример configuration приложения, а не новый API библиотеки. При отключённом cleanup schedule/batch не обязательны; console/custom ILogger не требует file path. При обязательном файловом режиме приложение отклоняет missing path в своей регистрации logging до работы. AgentBridge получает ILogger приложения без собственного logger/file writer/sinks. Валидация13 не запускает file logger и не открывает файл.
+
+Приложение само вызывает ExpiredDialogCleanup.CleanupAsync в short scope с bounded batch по своему расписанию; AddAgentBridgeDialogCleanup не запускает scheduler/host/background job. RetentionPeriod фиксирует expiry диалога от создания, а compaction limits задают рабочий token budget; они не определяют расписание, backup retention или физический размер БД.
 
 ## Жизненный цикл данных
 

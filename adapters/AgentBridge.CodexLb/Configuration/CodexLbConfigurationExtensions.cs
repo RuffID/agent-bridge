@@ -1,3 +1,4 @@
+using AgentBridge.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -14,7 +15,13 @@ public static class CodexLbConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-        Validate(services.AddOptions<CodexLbOptions>().Bind(configuration));
+        Validate(services.AddOptions<CodexLbOptions>().BindSafely(configuration, "CodexLb",
+            nameof(CodexLbOptions.BaseAddress), nameof(CodexLbOptions.Model), nameof(CodexLbOptions.KeySource),
+            nameof(CodexLbOptions.ReasoningEffort), nameof(CodexLbOptions.GenerationTimeout), nameof(CodexLbOptions.CompactTimeout)).Configure(options =>
+            {
+                if (options.KeySource == ModelKeySourceMode.Shared)
+                    SafeOptionsBindingExtensions.RequireValues<CodexLbOptions>(configuration, "CodexLb", Options.DefaultName, nameof(CodexLbOptions.SharedApiKey));
+            }));
         return services;
     }
 
@@ -29,13 +36,18 @@ public static class CodexLbConfigurationExtensions
 
     /// <summary>Регистрирует локальную валидацию без вывода секретов и без серверного каталога.</summary>
     private static void Validate(OptionsBuilder<CodexLbOptions> builder) => builder
+        .Validate(options => options.KeySource.HasValue && Enum.IsDefined(options.KeySource.Value),
+            "CodexLb.KeySource: required_or_invalid — обязателен явный режим Shared/Individual.")
+        .Validate(options => options.KeySource != ModelKeySourceMode.Shared || !string.IsNullOrWhiteSpace(options.SharedApiKey),
+            "CodexLb.SharedApiKey: required — обязателен непустой ключ в режиме Shared.")
         .Validate(options => !string.IsNullOrWhiteSpace(options.BaseAddress), "CodexLb.BaseAddress обязателен.")
         .Validate(options => string.IsNullOrWhiteSpace(options.BaseAddress) || IsServerAddress(options.BaseAddress),
             "CodexLb.BaseAddress должен быть абсолютным HTTP(S)-адресом без учётных данных, query и fragment.")
         .Validate(options => !string.IsNullOrWhiteSpace(options.Model), "CodexLb.Model обязателен; модель задаёт приложение.")
         .Validate(options => !string.IsNullOrWhiteSpace(options.ReasoningEffort), "CodexLb.ReasoningEffort не может быть пустым.")
-        .Validate(options => options.SharedApiKey is null || !string.IsNullOrWhiteSpace(options.SharedApiKey),
-            "CodexLb.SharedApiKey должен отсутствовать либо содержать непустой ключ.")
+        .Validate(options => options.SharedApiKey is null || (!string.IsNullOrWhiteSpace(options.SharedApiKey)
+            && !options.SharedApiKey.Any(char.IsWhiteSpace) && !options.SharedApiKey.Any(char.IsControl)),
+            "CodexLb.SharedApiKey должен отсутствовать либо содержать непустой ключ без пробелов и control chars; invalid_key.")
         .Validate(options => IsTimeout(options.GenerationTimeout), "CodexLb.GenerationTimeout должен быть положительным и допустимым для таймера .NET.")
         .Validate(options => IsTimeout(options.CompactTimeout), "CodexLb.CompactTimeout должен быть положительным и допустимым для таймера .NET.")
         .ValidateOnStart();
