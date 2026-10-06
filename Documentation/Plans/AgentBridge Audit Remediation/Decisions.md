@@ -1,6 +1,6 @@
 # Согласованные решения после аудита
 
-[Навигатор](README.md). Дата: 2026-10-06, Asia/Novosibirsk. Источник: ответы пользователя в обсуждении Q-002–005 и уточнение «обновить план и описание подключения». **На момент подготовки решений реализация и runtime-проверки не выполнялись.** Текущее исполнение и приёмка00–11 отражены в [навигаторе](README.md#принятые-локальные-результаты); Q-003–005 приняты в локальных границах09–11; новое подключение12–15 и реальные проверки17–19 ещё предстоят.
+[Навигатор](README.md). Дата: 2026-10-06, Asia/Novosibirsk. Источник: ответы пользователя в обсуждении Q-002–005 и уточнение «обновить план и описание подключения». **На момент подготовки решений реализация и runtime-проверки не выполнялись.** Текущее исполнение и приёмка00–12 отражены в [навигаторе](README.md#принятые-локальные-результаты); Q-003–005 приняты в локальных границах09–11; provider12 принят в A/B; новое подключение13–15 и реальные проверки17–19 ещё предстоят.
 
 Документ дополняет исторический [OpenQuestions аудита](<../AgentBridge Quality Audit/OpenQuestions.md>). Старые результаты A и незапущенные B/C/D не переписываются. Решение о контракте не означает исправление кода или прохождение проверки.
 
@@ -47,6 +47,8 @@ AgentBridge до HTTP отклоняет неверные типы и повто
 **Результат11, 2026-10-06 (принят в A/B):** [Results11](11-repeated-call-pairing.md#результаты) фиксирует FIFO по исходным occurrences в AgentBridge и actual подготовке compact-запроса codex-lb. Wrong/ambiguous association отклоняется до save с сохранением принятого окна и без replay; допустимые полные/сокращённые пары и opaque/continuity controls сохранены. Actual local commits: AgentBridge `18d11b0b546cd97c9157a0befd20ff38f4186bda`, codex-lb `f2b8e042c4ce012ae703bc939413bf9961b00032`. Focused LB change verified/archived по отдельному точному разрешению пользователя; global LB validation и deployed/live19 не доказаны. Исходный Q-005 не переоткрывался.
 
 ## Настройки и простое подключение
+
+**Результат12, 2026-10-06 (принят в A/B):** [Results12](12-sql-server-provider.md#результаты) и [provider API](<../../Technical documentation/12-sql-server-provider.md>) фиксируют явный SqlServer=2 при сохранении SQLite/PostgreSQL, отдельную generated initial schema и existing EFCoreLibrary maintenance с серверным backup destination. Actual commit `1c508a3dc3ac50d9a25487e968540b695759c07b`; disconnected model/DI/converter/generated checks211/211 и main strict прошли. SQL equality/CAS/journal/backup/restore17, kits15/16 и runtime18 остаются открытыми; версии/TLS/auth/server resources Q-002 ещё не определены. IConfiguration13/facade14 ещё предстоят.
 
 Приложение создаёт и передаёт `IConfiguration` либо выбранный раздел. Оно само выбирает JSON-файлы, отдельный файл AgentBridge, environment variables, secret store и порядок объединения источников. Библиотека не открывает собственный config, не ищет `appsettings.json` и не хранит secrets.
 
