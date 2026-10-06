@@ -27,6 +27,162 @@ public class ResponsesJsonTests
          {"type":"compaction","encrypted_content":"opaque-compaction","unknown":true}]
         """;
 
+    /// <summary>Неверный summary и его повтор отклоняются одинаково до HTTP в JSON/SSE/compact.</summary>
+    [Theory]
+    [InlineData("json", "{\"reasoning\":{\"summary\":42}}")]
+    [InlineData("sse", "{\"reasoning\":{\"summary\":42}}")]
+    [InlineData("compact", "{\"reasoning\":{\"summary\":42}}")]
+    [InlineData("json", "{\"reasoning\":{\"summary\":\"first\",\"summary\":\"second\"}}")]
+    [InlineData("sse", "{\"reasoning\":{\"summary\":\"first\",\"summary\":\"second\"}}")]
+    [InlineData("compact", "{\"reasoning\":{\"summary\":\"first\",\"summary\":\"second\"}}")]
+    public async Task NestedControlsDifferentiatingRegression(string path, string parameters)
+    {
+        using Fixture fixture = new();
+        using JsonDocument controls = JsonDocument.Parse(parameters);
+        ModelRequest request = new("model", "selected-effort", "", [], [], parameters: new(controls.RootElement));
+        ServiceResult<ModelResponse> result = await SendControls(fixture, request, path);
+        Assert.False(result.Success);
+        Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
+        Assert.Equal(0, fixture.Handler.Calls);
+    }
+
+    /// <summary>Матрица подтверждённых known shapes и прежних top-level границ, без предположений о серверных enum.</summary>
+    public static IEnumerable<object[]> InvalidNestedControls()
+    {
+        string[] reasoning =
+        [
+            "{\"reasoning\":{\"summary\":false}}", "{\"reasoning\":{\"summary\":[]}}",
+            "{\"reasoning\":{\"summary\":{}}}", "{\"reasoning\":{\"summary\":null,\"summary\":null}}",
+            "{\"reasoning\":{\"effort\":null}}", "{\"reasoning\":{\"effort\":\"override\"}}",
+            "{\"reasoning\":null}", "{\"reasoning\":[]}", "{\"reasoning\":{},\"reasoning\":{}}"
+        ];
+        foreach (string path in new[] { "json", "sse", "compact" })
+        {
+            foreach (string parameters in reasoning) { yield return [path, parameters, ServiceErrorType.Validation]; }
+            yield return [path, "{\"future\":{\"summary\":42}}", ServiceErrorType.Unsupported];
+        }
+        string[] text =
+        [
+            "{\"text\":null}", "{\"text\":[]}", "{\"text\":{},\"text\":{}}",
+            "{\"text\":{\"verbosity\":42}}", "{\"text\":{\"verbosity\":null,\"verbosity\":null}}",
+            "{\"text\":{\"format\":42}}", "{\"text\":{\"format\":[]}}", "{\"text\":{\"format\":\"json\"}}",
+            "{\"text\":{\"format\":false}}", "{\"text\":{\"format\":null,\"format\":{}}}",
+            "{\"text\":{\"format\":{\"type\":42}}}", "{\"text\":{\"format\":{\"name\":[]}}}",
+            "{\"text\":{\"format\":{\"strict\":\"true\"}}}", "{\"text\":{\"format\":{\"strict\":0}}}",
+            "{\"text\":{\"format\":{\"strict\":{}}}}", "{\"text\":{\"format\":{\"strict\":[]}}}",
+            "{\"text\":{\"format\":{\"type\":null,\"type\":null}}}",
+            "{\"text\":{\"format\":{\"name\":\"first\",\"name\":\"second\"}}}",
+            "{\"text\":{\"format\":{\"strict\":true,\"strict\":false}}}",
+            "{\"text\":{\"format\":{\"schema\":null,\"schema\":{}}}}",
+            "{\"tool_choice\":null}", "{\"include\":[42]}", "{\"parallel_tool_calls\":null}"
+        ];
+        foreach (string path in new[] { "json", "sse" })
+        {
+            foreach (string parameters in text) { yield return [path, parameters, ServiceErrorType.Validation]; }
+        }
+        foreach (string parameters in new[] { "{\"text\":{\"format\":null}}", "{\"tool_choice\":{}}", "{\"include\":[]}" })
+        {
+            yield return ["compact", parameters, ServiceErrorType.Unsupported];
+        }
+    }
+
+    /// <summary>Known malformed/duplicate controls возвращают safe Validation без raw input и HTTP.</summary>
+    [Theory]
+    [MemberData(nameof(InvalidNestedControls))]
+    public async Task NestedControlsRejectKnownMalformedAndKeepTopLevelPolicy(string path, string parameters, ServiceErrorType expected)
+    {
+        using Fixture fixture = new();
+        using JsonDocument controls = JsonDocument.Parse(parameters);
+        ModelRequest request = new("model", "selected-effort", "synthetic-raw-instructions", [], [], parameters: new(controls.RootElement));
+        ServiceResult<ModelResponse> result = await SendControls(fixture, request, path);
+        Assert.False(result.Success);
+        Assert.Equal(expected, result.Error!.Type);
+        Assert.Equal(0, fixture.Handler.Calls);
+        Assert.DoesNotContain(parameters, result.Error.Message);
+        Assert.DoesNotContain("synthetic-raw-instructions", result.Error.Message);
+        AssertSafe(result.Error.Message + fixture.Log.Text);
+    }
+
+    /// <summary>Nullable known controls и произвольные schema значения допускаются без нормализации.</summary>
+    public static IEnumerable<object[]> ValidNestedControls()
+    {
+        string[] reasoning =
+        [
+            "{\"reasoning\":{}}", "{\"reasoning\":{\"summary\":null}}", "{\"reasoning\":{\"summary\":\" future-value \"}}",
+            "{\"reasoning\":{\"summary\":\"\",\"future\":{\"summary\":42,\"effort\":false},\"future\":[1,null]}}"
+        ];
+        foreach (string path in new[] { "json", "sse", "compact" })
+        {
+            foreach (string parameters in reasoning) { yield return [path, parameters]; }
+        }
+        string[] text =
+        [
+            "{\"text\":{}}", "{\"text\":{\"verbosity\":null,\"format\":null}}",
+            "{\"text\":{\"verbosity\":\" unknown \",\"format\":{\"type\":null,\"name\":null,\"strict\":null,\"schema\":null}}}",
+            "{\"text\":{\"verbosity\":\"\",\"format\":{\"type\":\" future \",\"name\":\"\",\"strict\":true,\"schema\":42}}}",
+            "{\"text\":{\"format\":{\"strict\":false,\"schema\":[true,\"opaque\",null]}}}",
+            "{\"text\":{\"format\":{\"schema\":\"opaque\"}}}", "{\"text\":{\"format\":{\"schema\":true}}}",
+            "{\"text\":{\"future\":{\"verbosity\":42,\"format\":false},\"format\":{\"schema\":{\"strict\":42,\"type\":[],\"type\":false,\"reasoning\":{\"summary\":42}},\"future\":{\"name\":42},\"future\":null}}}",
+            "{\"tool_choice\":{\"type\":42,\"type\":null,\"reasoning\":{\"summary\":42}},\"include\":[]}"
+        ];
+        foreach (string path in new[] { "json", "sse" })
+        {
+            foreach (string parameters in text) { yield return [path, parameters]; }
+        }
+    }
+
+    /// <summary>Positive HTTP path сохраняет ordered input, nullable known/unknown controls и даже повторы unknown.</summary>
+    [Theory]
+    [MemberData(nameof(ValidNestedControls))]
+    public async Task NestedControlsPreserveNullableAndOpaqueCanonicalContent(string path, string parameters)
+    {
+        using Fixture fixture = new();
+        using JsonDocument source = JsonDocument.Parse("""
+            [{"type":"reasoning","encrypted_content":"opaque","summary":[],"unknown":{"strict":42}},
+             {"role":"user","content":[{"type":"input_text","text":"question"}],"future":null}]
+            """);
+        using JsonDocument controls = JsonDocument.Parse(parameters);
+        ModelRequest request = new("model", "selected-effort", "", source.RootElement.EnumerateArray().Select(item => new CanonicalModelItem(item)),
+            [], parameters: new(controls.RootElement));
+        ServiceResult<ModelResponse> result = await SendControls(fixture, request, path);
+        Assert.True(result.Success);
+        Assert.Equal(ModelResponseStatus.Completed, result.Data!.Status);
+        Assert.Equal(1, fixture.Handler.Calls);
+        JsonElement sent = fixture.Handler.Bodies.Single();
+        Assert.Equal(JsonSerializer.Serialize(source.RootElement), JsonSerializer.Serialize(sent.GetProperty("input")));
+        Assert.Equal("selected-effort", sent.GetProperty("reasoning").GetProperty("effort").GetString());
+        foreach (JsonProperty property in controls.RootElement.EnumerateObject())
+        {
+            if (property.Name == "reasoning")
+            {
+                Assert.Equal(property.Value.EnumerateObject().Select(item => (item.Name, JsonSerializer.Serialize(item.Value))),
+                    sent.GetProperty("reasoning").EnumerateObject().Where(item => item.Name != "effort")
+                        .Select(item => (item.Name, JsonSerializer.Serialize(item.Value))));
+            }
+            else { Assert.Equal(JsonSerializer.Serialize(property.Value), JsonSerializer.Serialize(sent.GetProperty(property.Name))); }
+        }
+        if (controls.RootElement.TryGetProperty("include", out _)) { Assert.Equal(0, sent.GetProperty("include").GetArrayLength()); }
+        else if (path != "compact") { Assert.Equal("reasoning.encrypted_content", sent.GetProperty("include")[0].GetString()); }
+        AssertSafe(fixture.Log.Text);
+    }
+
+    /// <summary>Вызывает actual public JSON/SSE/compact pipeline с локальным terminal ответом без сети.</summary>
+    private static Task<ServiceResult<ModelResponse>> SendControls(Fixture fixture, ModelRequest request, string path)
+    {
+        if (path == "compact")
+        {
+            fixture.SetJson("{\"object\":\"response.compact\",\"output\":[]}");
+            return fixture.Compact(request);
+        }
+        if (path == "sse")
+        {
+            fixture.Handler.MediaType = "text/event-stream";
+            fixture.SetJson("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"response-controls\",\"status\":\"completed\",\"output\":[]}}\n\n");
+            return fixture.Gateway.GenerateAsync(fixture.Call, request, new(KEY), (_, _) => ValueTask.CompletedTask);
+        }
+        return fixture.Generate(request);
+    }
+
     /// <summary>Canonical input/output/tools/controls не сокращаются до текста; exact selection и route сохраняются.</summary>
     [Fact]
     public async Task CanonicalRoundTripPreservesOpaqueOrderAndIndependentSnapshots()

@@ -87,8 +87,8 @@ internal static class ResponseRequestWriter
         "include" => value.ValueKind == JsonValueKind.Array
             && value.EnumerateArray().All(item => item.ValueKind == JsonValueKind.String),
         "tool_choice" => value.ValueKind is JsonValueKind.String or JsonValueKind.Object,
-        "text" => value.ValueKind == JsonValueKind.Object,
-        "reasoning" => value.ValueKind == JsonValueKind.Object && !value.TryGetProperty("effort", out _),
+        "text" => NestedControlsValidator.Text(value),
+        "reasoning" => NestedControlsValidator.Reasoning(value),
         "truncation" => value.ValueKind == JsonValueKind.String && value.GetString() is "auto" or "disabled",
         _ => value.ValueKind == JsonValueKind.String
     };

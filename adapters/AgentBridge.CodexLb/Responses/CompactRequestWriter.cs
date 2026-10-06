@@ -27,7 +27,7 @@ internal static class CompactRequestWriter
                         "Параметр не поддерживается compact-адаптером."));
                 }
                 bool valid = property.Name == "reasoning"
-                    ? property.Value.ValueKind == JsonValueKind.Object && !property.Value.TryGetProperty("effort", out _)
+                    ? NestedControlsValidator.Reasoning(property.Value)
                     : property.Value.ValueKind == JsonValueKind.String;
                 if (!valid || !parameters.TryAdd(property.Name, property.Value))
                 {

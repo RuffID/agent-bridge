@@ -32,10 +32,12 @@ ModelRequest теперь принимает optional `ModelRequestParameters` �
 | include | array of strings; если отсутствует, отправляется reasoning.encrypted_content; explicit [] сохраняется |
 | service_tier / prompt_cache_key | string без скрытой нормализации |
 | truncation | auto/disabled согласно текущему codex-lb |
-| text | object с полным format/schema/unknown content |
-| reasoning | object с summary/unknown fields; effort только из ModelRequest.ReasoningEffort |
+| text | object; verbosity string/null, format object/null; format.type/name string/null, strict boolean/null, schema произвольный JSON |
+| reasoning | object; summary string/null, unknown fields сохраняются; effort только из ModelRequest.ReasoningEffort |
 
 Неизвестный top-level параметр/override model/input/instructions/tools/stream/store/previous_response_id — Unsupported до HTTP; дубликат контроля, override reasoning.effort или неверная форма — Validation. Поддержка конкретных значений/вложенных контролей upstream не обещается по allowlist top-level; explicit серверный отказ возвращается без fallback. Envelope/continuation не входят в input. Будущий tokenizer должен учитывать весь prepared request, включая Parameters.
+
+Принятый Q-004 реализован общей проверкой NestedControlsValidator до HTTP: неверные типы и повторы summary, verbosity, format, format.type/name/strict/schema дают безопасный Validation. JSON и SSE используют один writer; compact использует ту же проверку reasoning и сохраняет отдельный allowlist без text. Nullable known поля допустимы, внешний reasoning/text по-прежнему требует object. Schema не ограничена object; её содержимое, неизвестные поля и их повторы не обходятся рекурсивно и сохраняются полностью, включая порядок. Tool_choice object не получает придуманную вложенную схему. Нормализация строк/enum не вводится. [Различающие проверки и ограничения этапа10](<../Plans/AgentBridge Audit Remediation/10-nested-controls-contract.md#результаты>) относятся к actual gateway/HttpClientLibrary с fake handler, не к deployed серверу и не повышают достоверность прежнего аудита.
 
 ## Результат и отмена
 

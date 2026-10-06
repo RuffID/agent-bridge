@@ -617,6 +617,29 @@ JSON gateway MUST отправлять canonical base-prefix POST /v1/responses 
 - **WHEN** controls переопределяют mandatory field или имеют duplicate
 - **THEN** запрос отклоняется до HTTP; default include не заменяет explicit include.
 
+### Requirement: Проверка известных вложенных controls
+
+JSON/SSE и compact MUST отклонять неверные типы и повторы известных поддержанных nested fields с Validation до HTTP. Reasoning.summary MUST быть string/null; override effort MUST NOT допускаться. Generation text.verbosity MUST быть string/null, format — object/null; format.type/name — string/null, strict — boolean/null, schema — произвольный JSON. Повтор schema MUST отклоняться. Top-level allowlists и запрет null reasoning/text MUST сохраняться.
+
+#### Scenario: Неверный summary до HTTP
+
+- **WHEN** JSON/SSE либо compact получает reasoning.summary=42 или два поля summary
+- **THEN** возвращается безопасный Validation без HTTP вызова.
+
+#### Scenario: Nullable known controls
+
+- **WHEN** generation получает text.format=null или type/name/strict/schema=null внутри format
+- **THEN** запрос допускается без изменения nullable полей.
+
+### Requirement: Сохранение неизвестных nested controls
+
+Writer MUST сохранять unknown nested fields, их повторы, порядок и произвольное содержимое schema без удаления, переименования или нормализации. Known validation MUST ограничиваться подтверждёнными путями и MUST NOT рекурсивно применяться внутри schema, unknown JSON или untyped tool_choice object. Статические enum/model ограничения MUST NOT вводиться без подтверждённого контракта.
+
+#### Scenario: Opaque вложенные данные
+
+- **WHEN** schema или unknown object содержит summary=42, повтор type либо иной opaque JSON
+- **THEN** эти данные сохраняются полностью и допускаются по прежнему top-level контракту.
+
 ### Requirement: Canonical output и JSON completion
 
 Output MUST сохранять порядок/unknown/opaque поля отдельно от полного envelope/continuation. Completed MUST требовать status=completed, output array и отсутствие explicit error; HTTP 2xx/видимый текст MUST NOT заменять это подтверждение. Failed/incomplete/unknown lifecycle MUST сохранять известный output/envelope.

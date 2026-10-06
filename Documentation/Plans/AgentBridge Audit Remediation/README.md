@@ -79,6 +79,7 @@ Q-001 уже закрыт организационным evidence аудита; 
 | [06 / ABQA-002](06-http-disposal.md#результаты) | Remaining HTTP cleanup attempted; original primary/stack + immutable secondary; cleanup-only identity | B ownership/error; попытка не гарантирует release, deployment leak не доказана |
 | [07 / ABQA-010](07-gated-test-cleanup.md#результаты) | Оба исходных gated tests завершают/await tasks на normal и early exit | B test lifecycle; production hang/leak не заявлены |
 | [09 / ABQA-003/004](09-openspec-reconciliation.md#результаты) | Q-003 закреплён в [workflow](../../../openspec/README.md); normative clauses/scenarios сохранены, actual CLI1.14.1 final main + original18 strict19 passed/0 failed | A workflow/B CLI приняты; ABQA-003/004 закрыты в этих границах; INFO2 archive collision отдельно; sync/archive/runtime не исполнялись |
+| [10 / Q-004](10-nested-controls-contract.md#результаты) | Known nested shapes/duplicates → Validation до HTTP; unknown/schema JSON сохранены | Принят в локальных A/B границах; actual gateway/HTTP library с fake handler; live —19; исходный audit не повышен |
 
 ## Проверки и запись результатов
 

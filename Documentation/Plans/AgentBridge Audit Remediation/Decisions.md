@@ -34,6 +34,8 @@ AgentBridge до HTTP отклоняет неверные типы и повто
 
 **Неоднозначность Q-004 согласована; реализация и проверки — этап10.** JSON/SSE/compact должны использовать одну согласованную границу validation. Достоверность исходного аудита не повышается задним числом.
 
+**Результат10, 2026-10-06 (принят в локальных A/B границах):** [Results10](10-nested-controls-contract.md#результаты) фиксирует реализацию known nullable shapes/duplicates через общий validator, сохранение unknown/schema JSON и прежних top-level границ. Actual gateway/HttpClientLibrary с fake handler даёт before calls1 и after Validation/calls0 для числа/duplicate summary в JSON/SSE/compact; deployed/live остаётся19. Это исполнение принятого Q-004, а не подтверждение прежнего audit дефекта. Координатор независимо сверил код/контракт, actual outputs/CLI/TRX и сохранность source/UTF-8; поручен локальный commit exact11 manifest без Coordination.
+
 ## Q-005 — Вызовы и результаты при compact
 
 Для повторного `call_id` используется единое правило FIFO: результат относится к первому ещё не закрытому вызову с этим ID. Сжатие сохраняет именно связанные occurrences «вызов → результат»; сокращение истории не меняет association.
