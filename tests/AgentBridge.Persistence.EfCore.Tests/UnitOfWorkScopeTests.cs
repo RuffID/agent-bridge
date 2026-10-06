@@ -4,7 +4,9 @@ using AgentBridge.Persistence.EfCore.Reading;
 using AgentBridge.Persistence.EfCore.Repositories;
 using AgentBridge.Persistence.EfCore.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
+using System.Runtime.ExceptionServices;
 using Xunit;
+using Xunit.Sdk;
 
 namespace AgentBridge.Persistence.EfCore.Tests;
 
@@ -124,18 +126,89 @@ public class UnitOfWorkScopeTests
     [Fact]
     public async Task SharedGateRejectsReadAndWriteWhileFirstOperationIsPending()
     {
-        TaskCompletionSource completion = new();
-        FakeUnitOfWorkSession session = new() { OnSave = () => completion.Task };
+        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await RunSharedGateAsync(completion, _ => Task.CompletedTask);
+    }
+
+    /// <summary>Ранний assertion, timeout или отмена ожидания сохраняются после завершения начатой работы.</summary>
+    [Theory]
+    [InlineData("assertion")]
+    [InlineData("timeout")]
+    [InlineData("cancellation")]
+    public async Task SharedGateCleanupPreservesEarlyExit(string exit)
+    {
+        TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenSource cancellation = new();
+        Task<ServiceResult>? started = null;
+        Exception? primary = null;
+        try
+        {
+            Exception? actual = await Record.ExceptionAsync(() => RunSharedGateAsync(completion, async first =>
+            {
+                started = first;
+                primary = await Record.ExceptionAsync(async () =>
+                {
+                    if (exit == "assertion") Assert.Fail("synthetic early assertion");
+                    else if (exit == "timeout") await first.WaitAsync(TimeSpan.FromMilliseconds(30));
+                    else
+                    {
+                        cancellation.Cancel();
+                        await first.WaitAsync(cancellation.Token);
+                    }
+                });
+                Assert.NotNull(primary);
+                Assert.False(first.IsCompleted);
+                ExceptionDispatchInfo.Capture(primary).Throw();
+            }));
+            Assert.Same(primary, actual);
+            if (exit == "assertion") Assert.IsType<FailException>(actual);
+            else if (exit == "timeout") Assert.IsType<TimeoutException>(actual);
+            else Assert.Equal(cancellation.Token, Assert.IsAssignableFrom<OperationCanceledException>(actual).CancellationToken);
+            Assert.NotNull(started);
+            Assert.True(started.IsCompletedSuccessfully);
+            Assert.True((await started).Success);
+        }
+        finally
+        {
+            // Страховка самой регрессии наблюдает work и при дефекте проверяемого cleanup.
+            completion.TrySetResult();
+            if (started is not null) await Record.ExceptionAsync(() => started).WaitAsync(TimeSpan.FromSeconds(3));
+        }
+    }
+
+    /// <summary>Выполняет исходные проверки gate с управляемой точкой раннего выхода до release.</summary>
+    private static async Task RunSharedGateAsync(TaskCompletionSource completion, Func<Task<ServiceResult>, Task> beforeRelease)
+    {
+        using CancellationTokenSource lifetime = new(TimeSpan.FromSeconds(5));
+        FakeUnitOfWorkSession session = new() { OnSave = () => completion.Task.WaitAsync(lifetime.Token) };
         PersistenceOperationGate gate = new();
         UnitOfWorkScope scope = new(session, gate);
-        Task<ServiceResult> first = scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default);
-        Assert.False(first.IsCompleted);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default));
         FakeBaseRepository<DialogRecord> rows = new();
         ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(rows), rows), gate);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch, 1));
-        Assert.Equal(0, rows.ReadCalls);
-        completion.SetResult();
+        Task<ServiceResult> first = scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default);
+        Exception? primary = null;
+        try
+        {
+            Assert.False(first.IsCompleted);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => reader.ReadAsync(DateTimeOffset.UnixEpoch, 1));
+            Assert.Equal(0, rows.ReadCalls);
+            await beforeRelease(first);
+        }
+        catch (Exception error)
+        {
+            primary = error;
+            throw;
+        }
+        finally
+        {
+            completion.TrySetResult();
+            try { await Record.ExceptionAsync(() => first).WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (Exception cleanup) when (primary is not null)
+            {
+                throw new AggregateException("Ошибка теста и ограниченного ожидания cleanup.", primary, cleanup);
+            }
+        }
         Assert.True((await first).Success);
         Assert.True((await reader.ReadAsync(DateTimeOffset.UnixEpoch, 1)).Success);
     }
