@@ -41,7 +41,7 @@
 | [16 — Изолированная регрессия и compile-only DLL](16-isolated-regression-and-delivery.md) | Свежие сборки, тесты и binary consumer каждого kits/RID | Принятые01–15 в выбранном объёме | Конкретные проекты и tests/Delivery |
 | [17 — Provider maintenance и сохранение](17-provider-verification.md) | Основной MSSQL и адресные existing provider проверки | 01,02,05,07,12–16; Q-002 и разрешение C | Собственные тестовые БД |
 | [18 — Runtime комплектов DLL](18-runtime-delivery.md) | Actual win-x64/linux-x64/linux-arm64 загрузка/DI/native | 12–16; Q-002 и разрешение запуска | Выделенные потребители |
-| [19 — Внешние контракты и recovery](19-live-contracts-and-recovery.md) | Live transport/compact и crash evidence | 03,04,06,10–18 в применимой части; Q-002 и разрешение C/D | Выделенные app/endpoint/данные |
+| [19 — Внешние контракты и recovery](19-live-contracts-and-recovery.md) | [Подготовленная матрица и ресурсы](19-live-recovery-readiness.md); live transport/compact и crash evidence заблокированы C/D | 03,04,06,10–18 в применимой части; Q-002 и разрешение C/D | Выделенные app/endpoint/данные |
 | [20 — Итоговая приёмка](20-final-acceptance.md) | Состояние каждого ID, нового подключения и остаточных рисков | Отчёт или явный блокер каждого00–19 | Документация |
 
 Этапы17–19 — отдельная очередь реальных проверок. Их пропуск не препятствует приёмке доказанной локальной правки, но не закрывает integration/runtime риск. MSSQL и три RID входят в согласованный объём; MySQL/AOT/trimming/single-file не добавляются автоматически. Поддержка Linux ARM64 клиента не является поддержкой локального SQL Server Engine на ARM64.

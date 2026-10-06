@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "kind": "preparation-only",
+  "runAllowed": false,
+  "note": "Синтетические данные и незаполненная карточка ресурсов. Не request, config, harness или evidence исполнения.",
+  "parameterFixtures": [
+    { "id": "summary-number", "transports": ["json", "sse", "compact"], "rawParameters": "{\"reasoning\":{\"summary\":42}}", "expectation": "Validation", "httpSends": 0 },
+    { "id": "summary-duplicate", "transports": ["json", "sse", "compact"], "rawParameters": "{\"reasoning\":{\"summary\":\"auto\",\"summary\":\"detailed\"}}", "expectation": "Validation", "httpSends": 0 },
+    { "id": "verbosity-number", "transports": ["json", "sse"], "rawParameters": "{\"text\":{\"verbosity\":42}}", "expectation": "Validation", "httpSends": 0 },
+    { "id": "strict-string", "transports": ["json", "sse"], "rawParameters": "{\"text\":{\"format\":{\"strict\":\"true\"}}}", "expectation": "Validation", "httpSends": 0 },
+    { "id": "schema-duplicate", "transports": ["json", "sse"], "rawParameters": "{\"text\":{\"format\":{\"schema\":{},\"schema\":{}}}}", "expectation": "Validation", "httpSends": 0 },
+    { "id": "reasoning-nullable-unknown", "transports": ["json", "sse", "compact"], "rawParameters": "{\"reasoning\":{\"summary\":null,\"future\":{\"summary\":42},\"future\":[1,2]}}", "expectation": "PreserveExactNestedJson", "httpSends": null },
+    { "id": "schema-arbitrary-unknown", "transports": ["json", "sse"], "rawParameters": "{\"text\":{\"verbosity\":null,\"format\":{\"type\":null,\"name\":null,\"strict\":null,\"schema\":{\"summary\":42,\"summary\":false},\"future\":[1,2]}}}", "expectation": "PreserveExactNestedJson", "httpSends": null },
+    { "id": "compact-text-unsupported", "transports": ["compact"], "rawParameters": "{\"text\":{\"verbosity\":null}}", "expectation": "Unsupported", "httpSends": 0 }
+  ],
+  "pairFixtures": [
+    {
+      "id": "distinct-grouped",
+      "source": [
+        { "type": "function_call", "call_id": "same", "name": "synthetic_counter", "arguments": "{\"marker\":\"A\"}", "future": [1,2] },
+        { "type": "function_call", "call_id": "same", "name": "synthetic_counter", "arguments": "{\"marker\":\"B\"}", "future": [1,2] },
+        { "type": "function_call_output", "call_id": "same", "output": "{\"marker\":\"A\",\"count\":1}" },
+        { "type": "function_call_output", "call_id": "same", "output": "{\"marker\":\"B\",\"count\":2}" }
+      ],
+      "fifoPairs": [[0,2],[1,3]],
+      "candidates": [
+        { "id": "first", "sourcePositions": [0,2], "expectation": "UniqueAssociation", "handlerCalls": 0 },
+        { "id": "second", "sourcePositions": [1,3], "expectation": "UniqueAssociation", "handlerCalls": 0 },
+        { "id": "all", "sourcePositions": [0,1,2,3], "expectation": "UniqueAssociation", "handlerCalls": 0 },
+        { "id": "wrong", "sourcePositions": [1,2], "expectation": "RejectedBeforeSave", "handlerCalls": 0 },
+        { "id": "duplicate", "sourcePositions": [0,2,0,2], "expectation": "RejectedBeforeSave", "handlerCalls": 0 },
+        { "id": "incomplete", "sourcePositions": [0], "expectation": "RejectedBeforeSave", "handlerCalls": 0 }
+      ]
+    },
+    {
+      "id": "identical-grouped",
+      "source": [
+        { "type": "function_call", "call_id": "same", "name": "synthetic_counter", "arguments": "{\"marker\":\"A\"}" },
+        { "type": "function_call", "call_id": "same", "name": "synthetic_counter", "arguments": "{\"marker\":\"A\"}" },
+        { "type": "function_call_output", "call_id": "same", "output": "{\"marker\":\"A\"}" },
+        { "type": "function_call_output", "call_id": "same", "output": "{\"marker\":\"A\"}" }
+      ],
+      "fifoPairs": [[0,2],[1,3]],
+      "candidates": [
+        { "id": "ambiguous", "sourcePositions": [0,2], "expectation": "RejectedBeforeSave", "handlerCalls": 0 },
+        { "id": "all", "sourcePositions": [0,1,2,3], "expectation": "UniqueAssociation", "handlerCalls": 0 }
+      ]
+    }
+  ],
+  "pairVariants": [
+    { "id": "distinct-alternating", "fixture": "distinct-grouped", "sourcePositions": [0,2,1,3], "note": "Перестановка source; FIFO pairs пересчитать по позициям нового массива: [0,1],[2,3]." },
+    { "id": "identical-alternating", "fixture": "identical-grouped", "sourcePositions": [0,2,1,3], "note": "Одна identical пара по-прежнему неоднозначна; полный массив допустим." }
+  ],
+  "cases": [
+    { "id": "T01", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ModelCatalogTests.cs", "method": "KeyPriorityAndCanonicalRoute" }] },
+    { "id": "T02", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesJsonTests.cs", "method": "CanonicalRoundTripPreservesOpaqueOrderAndIndependentSnapshots" }] },
+    { "id": "T03", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesSseTests.cs", "method": "CompletedFragmentedMultilineToolsAndOpaque" }] },
+    { "id": "T04", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesJsonTests.cs", "method": "CompactCanonicalRoundTrip" }] },
+    { "id": "T05", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesSseTests.cs", "method": "ContinuationCrossTransportAndMissingId" }] },
+    { "id": "T06", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ModelCatalogTests.cs", "method": "MalformedIndividualKeyDoesNotFallBack" }, { "path": "tests/AgentBridge.CodexLb.Tests/ModelCatalogTests.cs", "method": "HttpRejectionIsSafeAndNeverRetries" }] },
+    { "id": "T07", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesJsonTests.cs", "method": "UnsafeOrIncompleteErrorHasOnlySafeStatus" }] },
+    { "id": "T08", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesSseTests.cs", "method": "EmptyEofCancellationOnSuccessfulDisposalUsesCallerToken" }, { "path": "tests/AgentBridge.CodexLb.Tests/ResponsesSseTests.cs", "method": "CallerCancellationBeforeData" }] },
+    { "id": "T09", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesSseTests.cs", "method": "LateCancellationPreservesCanonicalEnvelopeAndContinuation" }, { "path": "tests/AgentBridge.CodexLb.Tests/ResponsesSseTests.cs", "method": "LateCancellationKeepsReportAndFailurePriority" }] },
+    { "id": "T10", "level": "D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesSseTests.cs", "method": "ReadPrimarySurvivesThrowingCleanup" }] },
+    { "id": "T11", "level": "B-in-live-consumer", "status": "not_run", "fixtureGroup": "parameterFixtures", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesJsonTests.cs", "method": "NestedControlsRejectKnownMalformedAndKeepTopLevelPolicy" }] },
+    { "id": "T12", "level": "D", "status": "not_run", "fixtureGroup": "parameterFixtures", "sourceRefs": [{ "path": "tests/AgentBridge.CodexLb.Tests/ResponsesJsonTests.cs", "method": "NestedControlsPreserveNullableAndOpaqueCanonicalContent" }] },
+    { "id": "T13", "level": "D", "status": "not_run", "fixtureGroup": "pairFixtures", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/ContextCompactorTests.cs", "method": "RepeatedAssociationRetainsOriginalPairsWithoutReplay" }] },
+    { "id": "T14", "level": "D", "status": "not_run", "sourceRefs": [], "externalSource": "codex-lb/tests/unit/test_compact_repeated_call_fifo.py; Results11 final public payload, read-only predecessor" },
+    { "id": "T15", "level": "C/D-with-test-seam", "status": "not_run", "fixtureGroup": "pairFixtures", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/ContextCompactorTests.cs", "method": "RepeatedAssociationAmbiguousSubsetRefuses" }, { "path": "tests/AgentBridge.Tests/ContextCompactorTests.cs", "method": "RepeatedAssociationInvalidSubsetRefuses" }] },
+    { "id": "T16", "level": "C/D-with-test-seam", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/ContextCompactorTests.cs", "method": "RepeatedAssociationSecondPassRetainsAcceptedWindow" }] },
+    { "id": "T17", "level": "C/D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/ContextCompactorTests.cs", "method": "RepeatedAssociationSubsetDoesNotReplaceFullBudget" }] },
+    { "id": "T18", "level": "C/D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/AgentRunnerTests.cs", "method": "GuardChecksWholePayloadAfterToolOutcome" }] },
+    { "id": "T19", "level": "C/D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/ContextCompactorTests.cs", "method": "ActualOfflineCounterAcceptsOpaqueThenGuardStillRejects" }] },
+    { "id": "R01", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "Application/AgentRunner.cs", "method": "RunAsync" }] },
+    { "id": "R02", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/AgentRunnerTests.cs", "method": "RestartRefusesExistingTurnAndPreservesHistory" }] },
+    { "id": "R03", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs", "method": "RestartDoesNotReplayStartedOrLegacyTurn" }] },
+    { "id": "R04", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/AgentRunnerTests.cs", "method": "UnknownActionIsPersistedWithoutOutput" }] },
+    { "id": "R05", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs", "method": "OutcomeSaveFailureRollsBackOutputsAndJournalTogether" }] },
+    { "id": "R06", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs", "method": "PublicRunnerCommitsStartsBeforeActionsAndRoundTripsRepeatedCalls" }] },
+    { "id": "R07", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/AgentRunnerTests.cs", "method": "CancellationDuringTerminalSaveReturnsCanceled" }] },
+    { "id": "R08", "level": "C/D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs", "method": "UnknownStartCommitPersistsBarrierWithoutExecutingAction" }] },
+    { "id": "R09", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Tests/AgentRunnerTests.cs", "method": "AppendCleanupCancellationRemainsUnexpected" }, { "path": "tests/AgentBridge.Tests/AgentRunnerTests.cs", "method": "CheckpointCleanupCancellationRemainsUnexpected" }] },
+    { "id": "R10", "level": "C", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs", "method": "ParallelPartialFailurePersistsConfirmedNeighbor" }] },
+    { "id": "R11", "level": "C/D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs", "method": "DurableStartEnforcesGuards" }] },
+    { "id": "R12", "level": "C/D", "status": "not_run", "sourceRefs": [{ "path": "tests/AgentBridge.Persistence.EfCore.Tests/Integration/AgentRunnerIntegrationTests.cs", "method": "LateOutcomeAfterDeleteCleanupOrExpiryIsRefused" }] }
+  ],
+  "resourceForm": {
+    "approvalReference": null,
+    "coordinatorWriteAdmission": null,
+    "allowedCaseVariants": null,
+    "transport": { "endpoint": null, "basePrefix": null, "deployedCommit": null, "deployedBuildHash": null, "tlsPolicy": null, "exactModelsAndCapabilities": null, "tokenizerMapping": null, "testAccountAliases": null, "localSecretSourceNames": null, "allowedRoutesAndOperations": null, "sendObserver": null, "safeLoggerSink": null },
+    "budgets": { "maxTotalRequestsIncludingCatalogErrorsCompact": null, "maxModelTurns": null, "maxToolActions": null, "maxCompactPasses": null, "perCaseWallSeconds": null, "totalWallSeconds": null, "maxBillableTokens": null, "maxCost": null, "currency": null, "actualUsageSource": null, "stopOnUnknownUsagePolicy": null },
+    "processes": { "appOwner": null, "osRidRuntimeAndKitHashes": null, "appDependencyGraph": null, "p1ExecutableAndStartCommand": null, "p2ExecutableAndStartCommand": null, "processIdentityCheck": null, "allowedHardStopCommand": null },
+    "storage": { "sqlServerEndpoint": null, "versionEditionEngineEdition": null, "serverOsArchitecture": null, "tlsPolicy": null, "authenticationSourceName": null, "testDatabaseNameAndIdentity": null, "existingSchemaAndMigrationState": null, "allowedReadWriteInitializeOperations": null, "counterStorePathAndDurability": null, "counterOccurrenceSchemaAndBaseline": null, "allowedCounterIncrementRead": null },
+    "faults": { "boundariesAndGateReadiness": null, "commitAcknowledgementObserver": null, "networkFaultControllerAndTargets": null, "throwingCleanupSeam": null, "syntheticVersusActualFaultReceipts": null },
+    "evidence": { "runNamespace": null, "privateDirectoryAclRetention": null, "publicFieldAllowlist": null },
+    "cleanup": { "owner": null, "exactResourcesAndIdentityChecks": null, "resolvedWorkspacePaths": null, "allowedOperationsAndCommands": null, "receiptAndRemainingResources": null }
+  },
+  "evidenceTemplate": {
+    "caseId": null,
+    "variantAndFixture": null,
+    "outcome": "not_run",
+    "sourceKitBuildAndArtifactHashes": null,
+    "sdkRuntimeOsRidPackagesDeployedVersions": null,
+    "exactCommandCwdExit": null,
+    "startEndUtc": null,
+    "p1P2PidAndCreationTimes": null,
+    "actualFaultKindPointAndConfirmation": null,
+    "safeCountsStatusesIdentityAndPersistedComparisons": null,
+    "actualUsageAndRemainingBudget": null,
+    "cleanupReceiptAndRemainingResources": null,
+    "verificationBoundaryAndBlocker": "Endpoint, resources, budgets and actual fault harness are not defined."
+  }
+}
