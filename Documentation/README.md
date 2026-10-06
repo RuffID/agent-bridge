@@ -54,4 +54,6 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 [Первоначальная реализация AgentBridge](<Plans/AgentBridge Initial Implementation/README.md>) — 26 небольших этапов от подготовки контрактов до DLL и руководства подключения.
 
-[Аудит качества AgentBridge](<Plans/AgentBridge Quality Audit/README.md>) — отдельный план выявления проблем без исправлений. Этапы 00–15 не начаты; [реестр](<Plans/AgentBridge Quality Audit/Findings.md>) содержит подготовительные наблюдения.
+[Аудит качества AgentBridge](<Plans/AgentBridge Quality Audit/README.md>) — статический проход 00–15 завершён с ограничениями; общий аудит A/B/C/D частичный. [Реестр](<Plans/AgentBridge Quality Audit/Findings.md>) содержит находки и пределы их доказательств.
+
+[Исправление проблем аудита AgentBridge](<Plans/AgentBridge Audit Remediation/README.md>) — план из 21 этапа с MSSQL, строгой конфигурацией приложения, единой регистрацией и win-x64/linux-x64/linux-arm64. [Q-003–005 согласованы](<Plans/AgentBridge Audit Remediation/Decisions.md>); реализация ещё не начата.

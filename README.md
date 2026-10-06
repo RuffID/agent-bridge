@@ -2,6 +2,33 @@
 
 AgentBridge — C#-библиотека для добавления ИИ-агента в приложение на .NET 10. Она собирает контекст, обращается к модели через codex-lb, выполняет разрешённые инструменты приложения и сохраняет диалог в SQLite или PostgreSQL. Подключение — обычными DLL.
 
+## Коротко о подключении
+
+Приложение подключает подходящий DLL-комплект, передаёт свою конфигурацию в групповую DI-регистрацию и использует публичные сценарии создания диалога и `AgentRunner.RunAsync`. Authentication, business permissions, инструменты и HTTP-маршруты задаёт приложение. Обычная регистрация не выполняет миграции и не запускает очистку.
+
+В текущем развёрнутом примере приложение один раз определяет обёртку `AddServerAgentBridge`, после чего вызывает её из `Program.cs`:
+
+```csharp
+builder.Services.AddServerAgentBridge(builder.Configuration);
+```
+
+Это **extension приложения**, показанный ниже, а не готовый универсальный API библиотеки. Плановая единая регистрация AgentBridge пока не реализована. [Подробное руководство](<Documentation/Technical documentation/25-usage-guide.md>) описывает существующие API.
+
+## Конфигурация и логирование
+
+Источник и хранение конфигурации выбирает приложение: общий или отдельный JSON, environment variables, User Secrets или другой secret store. `IConfiguration` передаётся при регистрации и привязывается к typed options; AgentBridge не читает собственный config-файл. URL/model/БД/строка подключения уже валидируются, но часть лимитов и таймаутов сейчас имеет defaults.
+
+Логи идут в `ILogger` приложения. Оно настраивает Serilog/provider, путь файлов для событий AgentBridge, sinks, уровни и ротацию; библиотека не создаёт logger или log-файл. Путь проверяет файловая logging-регистрация приложения. Срок хранения диалога задаёт библиотечная retention option, а расписание запуска очистки и размер пакета выбирает приложение из своего конфига.
+
+## Согласованное развитие подключения
+
+[Обновлённый план00–20](<Documentation/Plans/AgentBridge Audit Remediation/README.md>) предусматривает **MSSQL как основную БД**, .NET10, **win-x64/linux-x64/linux-arm64**, одну стандартную registration с IConfiguration и исключения при пропущенных обязательных настройках. Эти изменения **ещё не реализованы**; текущие SQLite/PostgreSQL сохраняются. [Принятые решения и границы](<Documentation/Plans/AgentBridge Audit Remediation/Decisions.md>) отделены от actual API и runtime evidence.
+
+Разработка сейчас на Windows11; целевой потребитель — ASP.NET Core на Ubuntu. Linux ARM64 относится к приложению-клиенту, а не к размещению SQL Server Engine. MSSQL backup будет использовать существующий модуль EFCoreLibrary с каталогом на сервере БД. Endpoint codex-lb и реальные проверки подключений отложены до определения ресурсов.
+
+<details>
+<summary>Развёрнутый пример существующего API: ASP.NET Core и PostgreSQL</summary>
+
 Ниже — пример для **ASP.NET Core сервера с PostgreSQL**: создать диалог и отправить текстовое сообщение. Пример использует общий ключ codex-lb, без бизнес-инструментов и дополнительных источников контекста. Авторизация, интерфейс и бизнес-данные остаются у приложения.
 
 ## 1. Подключить DLL к серверному проекту
@@ -401,12 +428,14 @@ public static class AgentBridgeEndpoints
 - `ExpiredDialogCleanup.CleanupAsync(limit, ct)` вызывается приложением в отдельном scope по его расписанию и обрабатывает один ограниченный пакет. Регистрация не запускает фоновой очистки. Partial/Unknown/отмена не означают успешное удаление всех кандидатов.
 - При неизвестном исходе внешнего действия библиотека не выполняет автоматический повтор. Проверку фактического состояния бизнес-системы организует приложение.
 
+</details>
+
 ## Проверенность и документация
 
 Сигнатуры примера выше сверены статически с текущими исходниками. **Новый ASP.NET Core пример не компилировался и не запускался**; PostgreSQL, migrations и живой codex-lb в этой задаче не проверялись. Ранее [бинарные примеры Consumer](tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj) компилировались с обоими комплектами, но их методы не исполнялись. Это отдельные исторические проверки, не подтверждение нового серверного примера.
 
 Неизвестный полный размер opaque-контекста блокирует отправку встроенным budget guard; успешное сжатие само по себе не гарантирует возможность продолжения. Runtime/native загрузка комплекта и совместимость с конкретным приложением требуют отдельной проверки. [Ограничения и подробное руководство](<Documentation/Technical documentation/25-usage-guide.md>).
 
-Первоначальная реализация 00–25 завершена в документированных границах; [карта доказательств](<Documentation/Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>). OpenSpec validation по прежним отчётам не выполнена, changes не архивированы. Новый аудит предназначен только для выявления проблем; его этапы пока не начаты.
+Первоначальная реализация 00–25 завершена в документированных границах; [карта доказательств](<Documentation/Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>). Статический аудит00–15 завершён с ограничениями, общий объём A/B/C/D частичный; [реестр](<Documentation/Plans/AgentBridge Quality Audit/Findings.md>) содержит результаты. OpenSpec validation по прежним отчётам не выполнена, changes не архивированы. Исправления и новое подключение запланированы в00–20, их реализация не начата.
 
 [Бизнес-логика](<Documentation/Business logic/README.md>) · [Техническая документация](<Documentation/Technical documentation/README.md>) · [План аудита](<Documentation/Plans/AgentBridge Quality Audit/README.md>) · [Реестр проблем](<Documentation/Plans/AgentBridge Quality Audit/Findings.md>) · [OpenSpec](openspec/specs/agent-runtime/spec.md) · [Решение](agent-bridge.slnx)
