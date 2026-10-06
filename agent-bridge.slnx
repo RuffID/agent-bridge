@@ -43,6 +43,7 @@
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/19-live-contracts-and-recovery.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/20-final-acceptance.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/Decisions.md" />
+    <File Path="Documentation/Plans/AgentBridge Audit Remediation/Coordination.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/README.md" />
   </Folder>
   <Folder Name="/Documentation/Plans/AgentBridge Initial Implementation/">
