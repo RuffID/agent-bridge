@@ -401,6 +401,236 @@ public class ContextCompactorTests
         Assert.Equal(0, fixture.Provider.Calls);
     }
 
+    /// <summary>Баланс повторных ID не разрешает замену исходной FIFO-пары.</summary>
+    [Fact]
+    public async Task RepeatedAssociationDifferentiatingRegression()
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem callA = PairCall("A");
+        CanonicalModelItem callB = PairCall("B");
+        CanonicalModelItem outputA = PairOutput("A");
+        CanonicalModelItem outputB = PairOutput("B");
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed,
+            [Text(new string('h', 200)), callA, callB, outputA, outputB])]);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed([callB, outputA]));
+        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        Assert.Equal(ContextCompactionStatus.Failed, result.Status);
+        Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
+        Assert.Empty(fixture.Writer.Tokens);
+        Assert.Null(result.ActiveContext);
+        Assert.Equal(snapshot.Token, result.Token);
+        Assert.Equal(5, snapshot.Turns[0].Items.Count);
+    }
+
+    /// <summary>Сохранённые occurrences проходят последующий builder/executor без повторного открытия handler.</summary>
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(2, true)]
+    public async Task RepeatedAssociationRetainsOriginalPairsWithoutReplay(int selection, bool alternating)
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem a = PairCall("A"), b = PairCall("B"), oa = PairOutput("A"), ob = PairOutput("B");
+        CanonicalModelItem[] pairs = alternating ? [a, oa, b, ob] : [a, b, oa, ob];
+        CanonicalModelItem[] retained = selection == 0 ? [a, oa] : selection == 1 ? [b, ob] : pairs;
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), .. pairs])]);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed(retained));
+        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        Assert.Equal(ContextCompactionStatus.TargetReached, result.Status);
+        Assert.Single(fixture.Writer.Tokens);
+        Assert.Same(fixture.Writer.Accepted, result.ActiveContext!.Compaction);
+        DialogSnapshot saved = new(result.Token, OWNER, snapshot.CreatedAtUtc, snapshot.ExpiresAtUtc,
+            snapshot.ContentBytes, snapshot.Turns, result.ActiveContext);
+        ModelRequest built = (await fixture.Root.GetRequiredService<ContextBuilder>()
+            .BuildAsync(new(ID, OWNER, Guid.NewGuid(), "agent"), saved, Request(), NOW)).Data!;
+        Assert.Equal(retained.Select(item => item.Content.GetRawText()), built.Input.Skip(1).Select(item => item.Content.GetRawText()));
+        Assert.Equal(snapshot.ExpiresAtUtc, saved.ExpiresAtUtc);
+        Assert.Same(snapshot.Turns[0], saved.Turns[0]);
+        NoReplayRegistry registry = new();
+        ToolExecutor executor = new(registry, fixture.Time);
+        ToolExecutionSession session = executor.CreateSession(new(ID, OWNER, Guid.NewGuid(), "agent"), result.Token,
+            saved.ExpiresAtUtc, ["GetOrderStatus"], new(8, 16, 1, TimeSpan.FromMinutes(1)));
+        ToolExecutionBatch batch = (await executor.ExecuteAsync(session, new(Guid.NewGuid(), result.ActiveContext.Compaction))).Data!;
+        Assert.Empty(batch.Results);
+        Assert.Equal(0, registry.Opened);
+    }
+
+    /// <summary>Подмена, повтор, неполная и неизвестная association не проходят save даже при локальном балансе.</summary>
+    [Theory]
+    [InlineData("swapped")]
+    [InlineData("rewritten-call")]
+    [InlineData("rewritten-output")]
+    [InlineData("duplicated")]
+    [InlineData("incomplete")]
+    [InlineData("orphan")]
+    public async Task RepeatedAssociationInvalidSubsetRefuses(string kind)
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem a = PairCall("A"), b = PairCall("B"), oa = PairOutput("A"), ob = PairOutput("B");
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed,
+            [Text(new string('h', 200)), a, b, oa, ob])]);
+        CanonicalModelItem[] candidate = kind switch
+        {
+            "swapped" => [a, b, ob, oa],
+            "rewritten-call" => [PairCall("C"), oa],
+            "rewritten-output" => [a, PairOutput("C")],
+            "duplicated" => [a, oa, a, oa],
+            "incomplete" => [a, b, oa],
+            _ => [oa]
+        };
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed(candidate));
+        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        Assert.Equal(ContextCompactionStatus.Failed, result.Status);
+        Assert.Empty(fixture.Writer.Tokens);
+        Assert.Equal(snapshot.Token, result.Token);
+        Assert.Null(result.ActiveContext);
+    }
+
+    /// <summary>Разные ID допускают исходный обратный порядок результатов без догадки о новых парах.</summary>
+    [Fact]
+    public async Task RepeatedAssociationPreservesCrossIdOutputOrder()
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem a = PairCall("A"), oa = PairOutput("A");
+        CanonicalModelItem b = Item("""{"type":"function_call","call_id":"y","name":"GetOrderStatus","arguments":"{}"}""");
+        CanonicalModelItem ob = Item("""{"type":"function_call_output","call_id":"y","output":"B"}""");
+        CanonicalModelItem[] pairs = [a, b, ob, oa];
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), .. pairs])]);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed(pairs));
+        Assert.Equal(ContextCompactionStatus.TargetReached, (await fixture.Run(snapshot)).Data!.Status);
+        Assert.Single(fixture.Writer.Tokens);
+    }
+
+    /// <summary>Opaque не раскрывает скрытую association, но сохраняется вместе с проверенной внешней парой.</summary>
+    [Fact]
+    public async Task RepeatedAssociationOpaqueRetainsKnownPairAndUnknownBudget()
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem a = PairCall("A"), oa = PairOutput("A");
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), a, oa])]);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed(
+            [Item("""{"type":"compaction","encrypted_content":"opaque"}"""), a, oa]));
+        fixture.FakeCounter.Evaluate = request => request.Input.Any(item => item.Content.TryGetProperty("encrypted_content", out _))
+            ? new("custom", 5, null, true) : new("custom", 0, 200, false);
+        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        Assert.Equal(ContextCompactionStatus.UnknownBudget, result.Status);
+        Assert.Single(fixture.Writer.Tokens);
+        Assert.Null(result.Count!.EstimatedInputTokens);
+        Assert.Equal(ServiceErrorType.Unsupported, (await new ContextBudgetGuard(fixture.Counter)
+            .CheckAsync(result.PreparedRequest, Settings())).Error!.Type);
+    }
+
+    /// <summary>Одна из полностью одинаковых occurrences не имеет доказанной исходной association.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RepeatedAssociationAmbiguousSubsetRefuses(bool alternating)
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem a = PairCall("A"), oa = PairOutput("A");
+        CanonicalModelItem[] pairs = alternating ? [a, oa, a, oa] : [a, a, oa, oa];
+        StoredDialogContext previous = new(1, 1, ModelResponse.Completed([Text(new string('h', 200)), .. pairs]));
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, pairs)], previous);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed([a, oa]));
+        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        Assert.Equal(ContextCompactionStatus.Failed, result.Status);
+        Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
+        Assert.Empty(fixture.Writer.Tokens);
+        Assert.Same(previous, result.ActiveContext);
+        Assert.Equal(snapshot.Token, result.Token);
+        Assert.Equal(4, snapshot.Turns[0].Items.Count);
+    }
+
+    /// <summary>Полная одинаковая последовательность и одинаковые calls с разными outputs остаются однозначными.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RepeatedAssociationIdenticalCallsHaveUniqueControls(bool keepAll)
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem a = PairCall("A"), oa = PairOutput("A"), ob = keepAll ? PairOutput("A") : PairOutput("B");
+        CanonicalModelItem[] pairs = [a, a, oa, ob];
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), .. pairs])]);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed(keepAll ? pairs : [a, ob]));
+        Assert.Equal(ContextCompactionStatus.TargetReached, (await fixture.Run(snapshot)).Data!.Status);
+        Assert.Single(fixture.Writer.Tokens);
+    }
+
+    /// <summary>Ошибка association второго прохода оставляет token и окно первого save.</summary>
+    [Fact]
+    public async Task RepeatedAssociationSecondPassRetainsAcceptedWindow()
+    {
+        using Fixture fixture = new();
+        CanonicalModelItem a = PairCall("A"), b = PairCall("B"), oa = PairOutput("A"), ob = PairOutput("B");
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed,
+            [Text(new string('h', 200)), a, b, oa, ob])]);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed(fixture.Gateway.Requests.Count == 1
+            ? [Text(new string('s', 150)), a, b, oa, ob] : [b, oa]));
+        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        Assert.Equal(ContextCompactionStatus.Failed, result.Status);
+        Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
+        Assert.Single(fixture.Writer.Tokens);
+        Assert.Equal(11, result.Token.Revision);
+        Assert.Same(fixture.Writer.Accepted, result.ActiveContext!.Compaction);
+        Assert.Equal(5, result.ActiveContext.Items.Count);
+        Assert.Equal(2, fixture.Gateway.Requests.Count);
+        Assert.Equal(snapshot.ExpiresAtUtc, NOW.AddHours(1));
+    }
+
+    /// <summary>Незакрытый исходный occurrence блокирует compact без gateway/save.</summary>
+    [Fact]
+    public async Task RepeatedAssociationIncompletePrefixRefuses()
+    {
+        using Fixture fixture = new();
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed,
+            [Text(new string('h', 200)), PairCall("A"), PairCall("B"), PairOutput("A")])]);
+        ServiceResult<ContextCompactionResult> result = await fixture.Run(snapshot);
+        Assert.False(result.Success);
+        Assert.Equal(ServiceErrorType.Conflict, result.Error!.Type);
+        Assert.Empty(fixture.Gateway.Requests);
+        Assert.Empty(fixture.Writer.Tokens);
+        Assert.Equal(4, snapshot.Turns[0].Items.Count);
+    }
+
+    /// <summary>Полный бюджет включает providers после сохранения корректного subset.</summary>
+    [Fact]
+    public async Task RepeatedAssociationSubsetDoesNotReplaceFullBudget()
+    {
+        using Fixture fixture = new(maxPasses: 1);
+        fixture.Provider.Items = [Text(new string('p', 900))];
+        CanonicalModelItem a = PairCall("A"), oa = PairOutput("A");
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200)), a, oa])]);
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed([Text(new string('s', 150)), a, oa]));
+        ContextCompactionResult result = (await fixture.Run(snapshot)).Data!;
+        Assert.Equal(ContextCompactionStatus.PassLimitReached, result.Status);
+        Assert.Equal(1050, result.Count!.EstimatedInputTokens);
+        Assert.Single(fixture.Writer.Tokens);
+        Assert.Equal(ServiceErrorType.Rejected, (await new ContextBudgetGuard(fixture.Counter)
+            .CheckAsync(result.PreparedRequest, Settings())).Error!.Type);
+    }
+
+    /// <summary>Закрытые сохранённые пары не должны открывать scope и повторять бизнес-действие.</summary>
+    private class NoReplayRegistry : IToolRegistry
+    {
+        internal int Opened;
+        /// <inheritdoc/>
+        public IReadOnlyList<ModelToolDefinition> Definitions => [];
+        /// <inheritdoc/>
+        public IToolHandlerScope? OpenScope(string name)
+        {
+            Opened++;
+            throw new InvalidOperationException("Повтор handler недопустим.");
+        }
+    }
+
+    /// <summary>Создаёт различимый вызов с повторным внешним ID.</summary>
+    private static CanonicalModelItem PairCall(string value) => new(JsonSerializer.SerializeToElement(new
+        { type = "function_call", call_id = "x", name = "GetOrderStatus", arguments = JsonSerializer.Serialize(new { value }) }));
+    /// <summary>Создаёт различимый результат с повторным внешним ID.</summary>
+    private static CanonicalModelItem PairOutput(string value) => new(JsonSerializer.SerializeToElement(new
+        { type = "function_call_output", call_id = "x", output = value }));
+
     /// <summary>Создаёт стандартное неизменяемое состояние диалога.</summary>
     private static DialogSnapshot Snapshot(IEnumerable<StoredDialogTurn>? turns = null, StoredDialogContext? active = null) =>
         new(new(ID, Guid.NewGuid(), 10), OWNER, NOW.AddHours(-1), NOW.AddHours(1), 100,

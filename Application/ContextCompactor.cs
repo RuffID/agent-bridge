@@ -109,6 +109,8 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
                 return Report(ContextCompactionStatus.Failed, new(ServiceErrorType.Unsupported,
                     "Compact вернул неподдержанное продолжение."));
             }
+            pairError = CompactFunctionPairInspector.Validate(history, lastResponse.Output, cancellationToken);
+            if (pairError is not null) { return Report(ContextCompactionStatus.Failed, pairError); }
             ModelRequest candidate = new(prepared.Model, prepared.ReasoningEffort, prepared.Instructions,
                 providers.Concat(lastResponse.Output).Concat(tail), prepared.Tools, parameters: prepared.Parameters);
             pairError = ContextBuilder.ValidateFunctionPairs(candidate.Input, cancellationToken);

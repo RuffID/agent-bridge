@@ -295,6 +295,30 @@ Instructions/tools/controls MUST сохраняться в полном generati
 - **WHEN** первое окно сохранено, следующий кандидат стал stale или expired
 - **THEN** сохранённое окно остаётся активным, история и fixed expiry не меняются.
 
+### Requirement: Исходная FIFO association при compact
+
+Сжатие MUST связывать известные результаты с первым незакрытым вызовом того же call_id. Каждая retained известная пара MUST сохранять полный canonical call/output и исходный порядок occurrences. Подмена результата, ID rewriting и global dedup по call_id MUST NOT допускаться. Неопределимая association MUST давать явный отказ до save без потери последнего принятого окна/token/history/fixed expiry и без replay handler.
+
+#### Scenario: Различимые повторные ID
+
+- **WHEN** исходная история содержит call(x,argsA), call(x,argsB), output(x,resultA), output(x,resultB)
+- **THEN** compact subset может сохранить callA/resultA либо callB/resultB, но не callB/resultA
+- **AND** следующий builder/executor сохраняет закрытые occurrences без повторения handler.
+
+### Requirement: Однозначность retained compact occurrences
+
+Баланс известных пар и первое совпадение содержимого MUST NOT считаться доказательством исходной association. Retained пары MUST иметь единственное ordered сопоставление с исходными полными call/output occurrences; неоднозначный subset MUST отклоняться. Полная одинаковая последовательность и одинаковые calls с различимыми outputs MUST оставаться допустимыми при единственном сопоставлении. Скрытая opaque association MUST NOT выдумываться.
+
+#### Scenario: Неоднозначный subset одинаковых пар
+
+- **WHEN** compact оставляет одну известную пару из двух полностью одинаковых исходных occurrences с одним call_id
+- **THEN** сценарий отказывает до save, сохраняя последнее принятое состояние.
+
+#### Scenario: Ошибка association второго прохода
+
+- **WHEN** первый проход сохранён, а известные пары второго прохода потеряли исходную association
+- **THEN** сохраняются окно и token первого save без retry или replay.
+
 ### Requirement: Отдельный бюджет compact и генерации
 
 Compact payload MUST проходить отдельную проверку input budget перед HTTP. Статус отчёта MUST NOT объявляться разрешением generation без отдельного full-request guard.
