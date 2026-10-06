@@ -28,7 +28,7 @@
 | Этап | Чат / host | Статус | Проверки и приёмка | Локальные коммиты |
 | --- | --- | --- | --- | --- |
 | 00 | `01a10f3f-ed96-7031-9941-e7372b0e45be` / `local` | Принят в A-границе | Baseline/map/manifest01; исходное задание/UTF8/LF/5 ссылок/diff check независимо сверены | AB `bfd09fda45d5d36f97feec2ee0f3af3a18912acd` |
-| 01 | — | Не начат | Зависимость00 | — |
+| 01 | `01a10f47-8332-7fa3-b0cd-b8cdd07dcaa5` / `local` | Принят в A/B | EF50/50, AB40/40; before EF4/10 fail, AB3/3 fail; C17 открыт | EF `be05cc94b5fd7426699e12ea29e8814b361c4e5d`; AB `5ced2104a996c066da62d17ab51f09fc84201885` |
 | 02 | — | Не начат | Зависимость00 | — |
 | 03 | — | Не начат | Зависимость00 | — |
 | 04 | — | Не начат | Зависимость00 | — |
@@ -60,3 +60,7 @@ Q-003–005 не открываются повторно без обнаруже
 - Чат00 создан через create_thread в проверенном local проекте. Вызов явно передал `model=gpt-6.1-sol`, `thinking=medium`; ответ подтвердил только threadId/hostId, actual model/effort не вернул. Полное задание ограничено A/одним файлом00, коммит ожидает приёмку.
 - Review00: исправлено описание ABQA-001 в карте — сохраняется actual stale status AgentSettingsService (architecture52/66), навигация лишь частично обновлена. Остальная карта/проекты/traits/manifest01 и trace006 приняты. Пользовательские решения не открывались повторно. Отправлено явное поручение на адресный docs-коммит одного файла00; Coordination исключён. Соседи EF/HTTP чисты, codex-lb сохраняет `.vs/`.
 - Commit00 `bfd09fda45d5d36f97feec2ee0f3af3a18912acd` фактически проверен через git show: только отчёт00, Conventional Commit. Index пуст, Coordinator diff сохранён отдельно. Зависимость00 для01 выполнена; B/C/D не заявлены.
+- Coordination после приёмки00 сохранён коммитом `d68055727a80b0460d016a623616ee32e0d04a18`. Создан чат01 для EF maintenance/tests и адресной регистрации AgentBridge с manifest00, обязательными различающими B-контролями и запретом commit до review. create_thread подтвердил thread/host; model/effort переданы явно, actual не возвращены.
+- Review01 в работе: независимо прочитан production diff (InitializationStarted перед CREATE; poison в catch до finally lease release) и test diffs. TRX actual before-v2 EF10:6 pass/4 fail, AB3:0 pass/3 fail; final EF50/50 и AB40/40, skipped0, XML rows соответствуют counters. Точные build/test вызовы через read_thread сверены, свежие successful build перед no-build; конкретные csproj/GeneratePackageOnBuild=false/Dependency!=Database. Эти адресные и повторные наборы не суммируются; приёмка ещё ожидает полного отчёта.
+- Этап01 принят после чтения полного отчёта, source/test diff, spec733, независимой UTF8/LF проверки7 manifest files, сохранности исходного задания и diff check обеих repo. Отправлено поручение на отдельные EF fix/AB test commits с explicit manifest4+3. Partial cleanup existing gated tests допустим, но ABQA-010/07 ещё требует оба исходных места и различающий early-exit case. C17 остаётся открытым.
+- Commit01 подтверждены через actual git show: EF `be05cc94b5fd7426699e12ea29e8814b361c4e5d` (4 файла), AB `5ced2104a996c066da62d17ab51f09fc84201885` (3 файла). EF чист, AB только отдельный Coordination diff, indexes пусты; HTTP/LB не менялись. Следующий02 получает эти hashes и сохраняет gate regression01.
