@@ -21,6 +21,15 @@ namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 [Collection("DatabaseIntegration")]
 public class PersistenceIntegrationTests
 {
+    private readonly DatabaseIntegrationFixture environment;
+
+    /// <summary>Получает общее окружение коллекции; каждый случай сохраняет собственную БД.</summary>
+    /// <param name="environment">Fixture, владеющий временным каталогом и PostgreSQL-контейнером.</param>
+    public PersistenceIntegrationTests(DatabaseIntegrationFixture environment)
+    {
+        this.environment = environment;
+    }
+
     private static readonly DateTimeOffset NOW = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);
     private static readonly DialogOwnerId OWNER = DialogOwnerId.From(" User:Б ");
 
@@ -36,7 +45,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, ModelResponseStatus.Canceled)]
     public async Task RestartRoundTripPreservesFullHistory(DatabaseProvider provider, ModelResponseStatus status)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         Guid turn = Guid.NewGuid();
@@ -100,7 +109,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task GuardsAndDeleteRecreateRejectLateWrites(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         using IServiceScope scope = database.Root.CreateScope();
@@ -132,7 +141,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task LocalIdsAndCascadeAreIsolated(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken first = await CreateAsync(database);
         DialogWriteToken second = await CreateAsync(database);
@@ -157,7 +166,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ExpiredCandidatesUseTicksAndLimitAfterSorting(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DateTimeOffset boundary = NOW.AddHours(36);
         DialogWriteToken future = await CreateAsync(database, expiry: boundary.AddTicks(1));
@@ -177,7 +186,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActualCasFailureRollsBackChildWrites(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         using IServiceScope staleScope = database.Root.CreateScope();
@@ -207,7 +216,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task RootCollisionAndFixedFieldsAreEnforced(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         using IServiceScope scope = database.Root.CreateScope();
@@ -244,7 +253,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task FailureAfterRealSaveRollsBackWholeScenario(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         string before = await database.FingerprintAsync();
@@ -263,7 +272,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task SimultaneousWritersCannotBothCommit(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         ConcurrentReadBarrier barrier = new();
@@ -311,7 +320,7 @@ public class PersistenceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task RelationalConstraintsRejectInvalidRows(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         Guid turn = Guid.NewGuid();

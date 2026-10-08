@@ -21,13 +21,22 @@ namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 [Collection("DatabaseIntegration")]
 public class MaintenanceIntegrationTests
 {
+    private readonly DatabaseIntegrationFixture environment;
+
+    /// <summary>Получает общее окружение коллекции; каждый случай сохраняет собственную БД.</summary>
+    /// <param name="environment">Fixture, владеющий временным каталогом и PostgreSQL-контейнером.</param>
+    public MaintenanceIntegrationTests(DatabaseIntegrationFixture environment)
+    {
+        this.environment = environment;
+    }
+
     /// <summary>Missing/initialize/no-pending, настоящий Up/Down/Up и независимость ledger подключающего приложения.</summary>
     [DatabaseIntegrationTheory]
     [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task MigrationsAndHostHistoryAreIsolated(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         using (IServiceScope scope = database.Root.CreateScope())
         {
             IDatabaseMaintenance<AgentBridgeContextKey> maintenance = scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
@@ -84,7 +93,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ExistingDatabaseIsBackedUpBeforeInitialMigration(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.CreateEmptyAsync();
         await SeedSentinelAsync(database);
         string before = await database.FingerprintAsync();
@@ -113,7 +122,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task FullBackupRestoresSchemaAndDataIntoSeparateDatabase(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         token = await PersistenceIntegrationTests.FillAsync(database, token, Guid.NewGuid(), Guid.NewGuid(), "backup 😀");
@@ -151,7 +160,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task BackupFailureStopsMigrationsAndLeavesGateUsable(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.CreateEmptyAsync();
         await SeedSentinelAsync(database);
         string before = await database.FingerprintAsync();
@@ -171,7 +180,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActualMigrationFailurePoisonsSharedGateAndPreservesBackup(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.CreateEmptyAsync();
         await SeedSentinelAsync(database);
         await database.ExecuteAsync("CREATE TABLE \"Dialogs\" (\"Legacy\" text NOT NULL)");
@@ -205,7 +214,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task CancelledInitializationDoesNotCreateDatabase(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         using CancellationTokenSource caller = new();
         caller.Cancel();
         using IServiceScope scope = database.Root.CreateScope();
@@ -220,7 +229,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task PostgreSqlAuthenticationAndMajorMismatchDoNotInitialize(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         NpgsqlConnectionStringBuilder wrong = new(database.ConnectionString) { Password = "invalid-task-password" };
         using ServiceProvider unauthenticated = database.BuildRoot(connection: wrong.ConnectionString);
         using (IServiceScope scope = unauthenticated.CreateScope())
@@ -246,7 +255,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task PostgreSqlMissingExecutableStopsUpdate(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.CreateEmptyAsync();
         await SeedSentinelAsync(database);
         string before = await database.FingerprintAsync();
@@ -266,7 +275,7 @@ public class MaintenanceIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task PostgreSqlRestoreRejectsCorruptArtifact(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         await PersistenceIntegrationTests.FillAsync(database, token, Guid.NewGuid(), Guid.NewGuid(), "source preserved");

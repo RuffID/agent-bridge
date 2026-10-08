@@ -2,10 +2,10 @@ using Microsoft.Data.SqlClient;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Проверяет явные ресурсы отдельного MSSQL запуска до создания DI и любого I/O.</summary>
+/// <summary>Проверяет ресурсы собственного MSSQL-контейнера до создания DI и подключения к БД.</summary>
 public class SqlServerIntegrationSettings
 {
-    /// <summary>Фиксирует согласованный endpoint, уникальную собственную БД, TLS и серверный каталог.</summary>
+    /// <summary>Фиксирует точный loopback endpoint, уникальную БД, TLS и серверный каталог.</summary>
     public SqlServerIntegrationSettings(string connectionString, string expectedEndpoint, string expectedDatabase,
         string serverBackupDirectory, TimeSpan operationBudget)
     {
@@ -15,13 +15,15 @@ public class SqlServerIntegrationSettings
         if (string.IsNullOrWhiteSpace(expectedEndpoint) || !expectedEndpoint.StartsWith("tcp:", StringComparison.Ordinal) ||
             expectedEndpoint.Split(',').Length != 2 || expectedEndpoint.IndexOf(',') <= 4 ||
             expectedEndpoint.Contains('\\') || expectedEndpoint.Contains(';') ||
+            expectedEndpoint.Split(',')[0] != "tcp:127.0.0.1" ||
             !int.TryParse(expectedEndpoint.Split(',').Last(), out int port) || port is < 1 or > 65535 ||
             !string.Equals(settings.DataSource, expectedEndpoint, StringComparison.Ordinal) ||
             !expectedDatabase.StartsWith("abverify_", StringComparison.Ordinal) ||
             !Guid.TryParseExact(expectedDatabase[9..], "N", out Guid databaseId) || databaseId == Guid.Empty ||
             !string.Equals(settings.InitialCatalog, expectedDatabase, StringComparison.Ordinal))
             throw new InvalidOperationException("Требуются точный TCP endpoint с портом и собственное имя abverify_<GUID N>.");
-        if (!settings.ShouldSerialize("Encrypt") || !settings.ShouldSerialize("TrustServerCertificate") ||
+        if (!settings.ShouldSerialize("Encrypt") || settings.Encrypt != SqlConnectionEncryptOption.Mandatory ||
+            !settings.ShouldSerialize("TrustServerCertificate") || !settings.ShouldSerialize("Pooling") ||
             !settings.ShouldSerialize("ConnectRetryCount") || settings.ConnectRetryCount != 0 ||
             settings.Pooling || settings.MultiSubnetFailover || !string.IsNullOrEmpty(settings.FailoverPartner) ||
             !string.IsNullOrEmpty(settings.AttachDBFilename) || settings.ApplicationIntent != ApplicationIntent.ReadWrite)
@@ -39,23 +41,29 @@ public class SqlServerIntegrationSettings
 
     /// <summary>Подключение с секретами; запрещено включать в evidence и сообщения.</summary>
     internal string ConnectionString { get; }
-    /// <summary>Каталог на сервере; fixture его не создаёт и не удаляет.</summary>
+    /// <summary>Каталог внутри собственного контейнера; удаляется вместе с контейнером.</summary>
     public string ServerBackupDirectory { get; }
     /// <summary>Явный конечный бюджет одной maintenance операции.</summary>
     public TimeSpan OperationBudget { get; }
 
-    /// <summary>Читает только отдельные MSSQL параметры; общий PostgreSQL opt-in не используется.</summary>
-    public static SqlServerIntegrationSettings FromEnvironment()
+    /// <summary>Формирует конфигурацию из контейнера, сохраняя секрет только в памяти.</summary>
+    internal static SqlServerIntegrationSettings FromContainer(string containerConnectionString, ushort port,
+        string database, string serverBackupDirectory)
     {
-        if (Environment.GetEnvironmentVariable("AGENTBRIDGE_SQLSERVER_INTEGRATION") != "1")
-            throw new InvalidOperationException("MSSQL fixture требует отдельный opt-in и согласованные ресурсы.");
-        if (!int.TryParse(Required("AGENTBRIDGE_SQLSERVER_BUDGET_SECONDS"), out int seconds))
-            throw new InvalidOperationException("Требуется целый бюджет MSSQL в секундах.");
-        return new(Required("AGENTBRIDGE_SQLSERVER_CONNECTION"), Required("AGENTBRIDGE_SQLSERVER_ENDPOINT"),
-            Required("AGENTBRIDGE_SQLSERVER_DATABASE"), Required("AGENTBRIDGE_SQLSERVER_BACKUP_DIRECTORY"), TimeSpan.FromSeconds(seconds));
-    }
+        string endpoint = "tcp:127.0.0.1," + port;
+        SqlConnectionStringBuilder connection;
+        try { connection = new(containerConnectionString); }
+        catch (ArgumentException) { throw new InvalidOperationException("Некорректная MSSQL конфигурация; значения скрыты."); }
 
-    /// <summary>Не допускает silent skip или печать значения отсутствующей конфигурации.</summary>
-    private static string Required(string name) => Environment.GetEnvironmentVariable(name)
-        ?? throw new InvalidOperationException("Отсутствует настройка " + name + ".");
+        connection.DataSource = endpoint;
+        connection.InitialCatalog = database;
+        connection.Encrypt = SqlConnectionEncryptOption.Mandatory;
+        // Сертификат временного SQL Server самоподписанный; TLS остаётся обязательным.
+        connection.TrustServerCertificate = true;
+        connection.Pooling = false;
+        connection.ConnectRetryCount = 0;
+        connection.ConnectTimeout = 15;
+
+        return new(connection.ConnectionString, endpoint, database, serverBackupDirectory, TimeSpan.FromMinutes(2));
+    }
 }

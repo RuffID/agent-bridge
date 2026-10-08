@@ -9,17 +9,17 @@ using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Подготовленный actual MSSQL migration/append/context/restart case; запуск требует согласованных собственных ресурсов.</summary>
+/// <summary>Проверяет настоящие MSSQL migration/append/context и новый DI root в собственном контейнере.</summary>
 [Trait("Dependency", "Database")]
 [Collection("DatabaseIntegration")]
-public class SqlServerPersistenceIntegrationTests
+public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture environment)
 {
     /// <summary>Первая установка и публичные короткие записи сохраняют историю; stale root и expiry запрещают запись.</summary>
     [SqlServerIntegrationFact]
     public async Task InitializeAppendContextRestartAndExpiry()
     {
-        await using SqlServerIntegrationDatabase database = new();
-        Assert.Equal(MaintenanceOutcome.Initialized, (await database.InitializeNewAsync()).Outcome);
+        await using SqlServerIntegrationDatabase database = await environment.CreateSqlServerDatabaseAsync();
+        Assert.Equal(MaintenanceOutcome.Initialized, (await database.InitializeNewAsync(TestContext.Current.CancellationToken)).Outcome);
         DateTimeOffset now = DateTimeOffset.UtcNow;
         DialogOwnerId owner = DialogOwnerId.From(" User:Б ");
         DialogId id = DialogId.From(Guid.NewGuid());

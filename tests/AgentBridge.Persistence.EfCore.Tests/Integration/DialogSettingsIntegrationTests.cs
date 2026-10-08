@@ -24,6 +24,15 @@ namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 [Collection("DatabaseIntegration")]
 public class DialogSettingsIntegrationTests
 {
+    private readonly DatabaseIntegrationFixture environment;
+
+    /// <summary>Получает общее окружение коллекции; каждый случай сохраняет собственную БД.</summary>
+    /// <param name="environment">Fixture, владеющий временным каталогом и PostgreSQL-контейнером.</param>
+    public DialogSettingsIntegrationTests(DatabaseIntegrationFixture environment)
+    {
+        this.environment = environment;
+    }
+
     private static readonly DateTimeOffset NOW = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);
     private static readonly DialogOwnerId OWNER = DialogOwnerId.From(" User:Б ");
 
@@ -33,7 +42,7 @@ public class DialogSettingsIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task IndependentSelectionSurvivesRestartAndRejectsStaleVersion(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         DialogWriteToken other = await PersistenceIntegrationTests.CreateAsync(database);
@@ -60,7 +69,7 @@ public class DialogSettingsIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActiveRunKeepsSnapshotAndNextRunUsesStoredSelectionWithEffortOverride(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         Probe probe = new();
@@ -114,7 +123,7 @@ public class DialogSettingsIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task ActualRollbackPreservesOriginalSelection(DatabaseProvider provider, bool existing)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         if (existing)
@@ -144,7 +153,7 @@ public class DialogSettingsIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task GuardsAndCascadeProtectDialogLifetime(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         using IServiceScope scope = database.Root.CreateScope();
@@ -168,7 +177,7 @@ public class DialogSettingsIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task ConcurrentSettingsWritersCannotBothCommit(DatabaseProvider provider, bool existing)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         if (existing)
@@ -213,7 +222,7 @@ public class DialogSettingsIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task NewMigrationRoundTripsProvenanceAndKeepsHistoricalRows(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         Guid turnId = Guid.NewGuid();

@@ -22,6 +22,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageReference Include="xunit.v3" Version="4.0.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" PrivateAssets="all" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.14.0" />
+    <PackageReference Include="Testcontainers.MsSql" Version="4.14.0" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />

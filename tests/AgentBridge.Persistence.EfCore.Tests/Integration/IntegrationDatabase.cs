@@ -20,27 +20,36 @@ public class IntegrationDatabase : IAsyncDisposable
 {
     private readonly List<string> databases = [];
     private readonly string? adminConnection;
+    private readonly PostgreSqlIntegrationTools? tools;
 
     /// <summary>Создаёт только локальную конфигурацию; соединение и схема ещё не открываются.</summary>
-    public IntegrationDatabase(DatabaseProvider provider)
+    internal IntegrationDatabase(DatabaseProvider provider, string configuredRoot, string? postgresConnection, PostgreSqlIntegrationTools? tools)
     {
+        if (provider is not (DatabaseProvider.SQLite or DatabaseProvider.PostgreSql))
+        {
+            throw new ArgumentOutOfRangeException(nameof(provider));
+        }
+
         Provider = provider;
-        string configuredRoot = Required("AGENTBRIDGE_INTEGRATION_ROOT");
+        this.tools = tools;
         if (!Path.IsPathFullyQualified(configuredRoot) || !Directory.Exists(configuredRoot))
         {
             throw new InvalidOperationException("Требуется существующий абсолютный тестовый каталог.");
         }
         DirectoryPath = Path.Combine(configuredRoot, "abverify_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(DirectoryPath);
         BackupDirectory = Path.Combine(DirectoryPath, "backups");
-        Directory.CreateDirectory(BackupDirectory);
         if (provider == DatabaseProvider.SQLite)
         {
             ConnectionString = SqliteSettings(Path.Combine(DirectoryPath, "source.db"));
         }
         else
         {
-            NpgsqlConnectionStringBuilder configured = new(Required("AGENTBRIDGE_POSTGRES_CONNECTION"));
+            if (tools is null || postgresConnection is null)
+            {
+                throw new InvalidOperationException("Требуется PostgreSQL-контейнер и проверенные клиентские утилиты fixture.");
+            }
+
+            NpgsqlConnectionStringBuilder configured = new(postgresConnection);
             if (configured.Host != "127.0.0.1" || configured.Database != "postgres" ||
                 configured.Username is null || !configured.Username.StartsWith("abverify_", StringComparison.Ordinal) ||
                 configured.Port == 5432 || configured.SslMode != SslMode.Disable)
@@ -52,7 +61,16 @@ public class IntegrationDatabase : IAsyncDisposable
             configured.Database = NewDatabaseName();
             ConnectionString = configured.ConnectionString;
         }
-        Root = BuildRoot();
+        Directory.CreateDirectory(BackupDirectory);
+        try
+        {
+            Root = BuildRoot();
+        }
+        catch
+        {
+            Directory.Delete(DirectoryPath, true);
+            throw;
+        }
     }
 
     /// <summary>Выбранный фактический provider.</summary>
@@ -65,6 +83,10 @@ public class IntegrationDatabase : IAsyncDisposable
     public string ConnectionString { get; }
     /// <summary>Root DI container с настоящей persistence/maintenance цепочкой.</summary>
     public ServiceProvider Root { get; }
+
+    /// <summary>Утилиты доступны только PostgreSQL; нарушение конфигурации не скрывается nullable suppression.</summary>
+    private PostgreSqlIntegrationTools PostgreSqlTools => tools
+        ?? throw new InvalidOperationException("Утилиты PostgreSQL не подготовлены fixture.");
 
     /// <summary>Регистрирует существующие production API; разрешает адресную тестовую настройку отказов.</summary>
     public ServiceProvider BuildRoot(Action<DatabaseBackupOptions>? backup = null, Action<ServiceCollection>? customize = null,
@@ -84,8 +106,8 @@ public class IntegrationDatabase : IAsyncDisposable
             options.BackupRetentionPeriod = TimeSpan.FromDays(1);
             if (Provider == DatabaseProvider.PostgreSql)
             {
-                options.PostgreSqlDumpExecutablePath = Required("AGENTBRIDGE_PG_DUMP");
-                options.PostgreSqlServerMajorVersion = int.Parse(Required("AGENTBRIDGE_PG_MAJOR"));
+                options.PostgreSqlDumpExecutablePath = PostgreSqlTools.DumpPath;
+                options.PostgreSqlServerMajorVersion = PostgreSqlIntegrationTools.SERVER_MAJOR;
                 options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(10);
             }
             backup?.Invoke(options);
@@ -177,7 +199,7 @@ public class IntegrationDatabase : IAsyncDisposable
             restored.Username + ":" + restored.Password + "\n", default);
         using MaintenanceBudget restoreBudget = new(TimeSpan.FromSeconds(45), default);
         ProcessResult result = await restoreScope.ServiceProvider.GetRequiredService<IBackupProcessRunner>().RunAsync(
-            new ProcessCommand(Required("AGENTBRIDGE_PG_RESTORE"),
+            new ProcessCommand(PostgreSqlTools.RestorePath,
                 ["--no-password", "--exit-on-error", "--dbname=" + PostgreSqlMaintenanceProvider<AgentBridgeContextKey>.BuildConnectionInfo(restored), artifact.Path],
                 new Dictionary<string, string> { ["PGPASSFILE"] = credentials, ["LC_ALL"] = "C" }, workspace.RecoverAfterConfirmedStop),
             restoreBudget, TimeSpan.FromSeconds(10));
@@ -188,7 +210,10 @@ public class IntegrationDatabase : IAsyncDisposable
     /// <inheritdoc/>
     public async ValueTask DisposeAsync()
     {
-        await Root.DisposeAsync();
+        List<Exception> errors = [];
+        try { await Root.DisposeAsync(); }
+        catch (Exception exception) { errors.Add(exception); }
+
         if (adminConnection is not null)
         {
             DatabaseCommands commands = new();
@@ -198,13 +223,25 @@ public class IntegrationDatabase : IAsyncDisposable
                 {
                     throw new InvalidOperationException("Отказ удаления чужой БД.");
                 }
-                await using NpgsqlConnection admin = new(adminConnection);
-                using MaintenanceBudget budget = new(TimeSpan.FromSeconds(30), default);
-                await commands.ExecuteAsync(admin, "DROP DATABASE IF EXISTS \"" + database + "\" WITH (FORCE)",
-                    new Dictionary<string, object?>(), budget);
+                try
+                {
+                    await using NpgsqlConnection admin = new(adminConnection);
+                    using MaintenanceBudget budget = new(TimeSpan.FromSeconds(30), default);
+                    await commands.ExecuteAsync(admin, "DROP DATABASE IF EXISTS \"" + database + "\" WITH (FORCE)",
+                        new Dictionary<string, object?>(), budget);
+                }
+                catch (Exception exception) { errors.Add(exception); }
             }
         }
-        Directory.Delete(DirectoryPath, true);
+        // Unconfirmed disposal может означать ещё работающий backup process: его файлы сохраняются.
+        if (errors.Count == 0)
+        {
+            Directory.Delete(DirectoryPath, true);
+        }
+        else
+        {
+            throw new AggregateException("Не удалось очистить собственную тестовую БД.", errors);
+        }
     }
 
     /// <summary>Формирует локальное непулируемое подключение с включёнными FK.</summary>
@@ -225,7 +262,4 @@ public class IntegrationDatabase : IAsyncDisposable
     private DbConnection OpenConnection(string connection) => Provider == DatabaseProvider.SQLite
         ? new SqliteConnection(connection) : new NpgsqlConnection(connection);
 
-    /// <summary>Не допускает незаметного пропуска включённой проверки.</summary>
-    private static string Required(string name) => Environment.GetEnvironmentVariable(name)
-        ?? throw new InvalidOperationException("Отсутствует обязательная интеграционная настройка " + name + ".");
 }

@@ -22,6 +22,15 @@ namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 [Collection("DatabaseIntegration")]
 public class CrossComponentIntegrationTests
 {
+    private readonly DatabaseIntegrationFixture environment;
+
+    /// <summary>Получает общее окружение коллекции; каждый случай сохраняет собственную БД.</summary>
+    /// <param name="environment">Fixture, владеющий временным каталогом и PostgreSQL-контейнером.</param>
+    public CrossComponentIntegrationTests(DatabaseIntegrationFixture environment)
+    {
+        this.environment = environment;
+    }
+
     /// <summary>JSON/SSE сохраняют полные repeated pairs; Started виден handler, restart не повторяет side effects.</summary>
     [DatabaseIntegrationTheory]
     [InlineData(DatabaseProvider.SQLite, false)]
@@ -30,7 +39,7 @@ public class CrossComponentIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task RepeatedPairsRoundTripThroughActualTransportAndRestart(DatabaseProvider provider, bool stream)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         Enqueue(fixture, stream, Function());
@@ -78,7 +87,7 @@ public class CrossComponentIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task PartialSsePersistsAndBlocksNextRequest(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         const string PARTIAL = "data: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc\",\"call_id\":\"same\",\"name\":\"action\",\"arguments\":\"\"}}\n\n"
@@ -109,7 +118,7 @@ public class CrossComponentIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task OpaqueCompactAndNewMetadataSurviveActualBackupRestore(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         await fixture.SelectAsync("gpt-5", "high");
@@ -150,7 +159,7 @@ public class CrossComponentIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task TextCompactContinuesWithExactlyOneWindowProviderAndCurrentTurn(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         Enqueue(fixture, false, Message(string.Join(' ', Enumerable.Repeat("история", 400)), "assistant"));
@@ -192,7 +201,7 @@ public class CrossComponentIntegrationTests
     [InlineData(true)]
     public async Task ActualFullBudgetEqualityAndOneTokenExcess(bool excess)
     {
-        await using IntegrationDatabase database = new(DatabaseProvider.SQLite);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(DatabaseProvider.SQLite);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         fixture.BuildRoot(threshold: 1);
@@ -224,7 +233,7 @@ public class CrossComponentIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActiveRunPinsSettingsAndAccessWhileNextRunUsesSavedSelection(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         await fixture.SelectAsync("gpt-4.1", "low");
@@ -278,7 +287,7 @@ public class CrossComponentIntegrationTests
     [InlineData("exact-effort")]
     public async Task AccessAndCatalogFailuresStopBeforeDurableBegin(string boundary)
     {
-        await using IntegrationDatabase database = new(DatabaseProvider.SQLite);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(DatabaseProvider.SQLite);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         switch (boundary)
@@ -330,7 +339,7 @@ public class CrossComponentIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task CancellationAndConcurrentCleanupDoNotRepeatActions(DatabaseProvider provider, bool cleanup)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         await fixture.SelectAsync("gpt-5", "high");
@@ -394,7 +403,7 @@ public class CrossComponentIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task LostOutcomeAcknowledgementDoesNotRepeatConfirmedAction(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         fixture.BuildRoot(customize: services =>

@@ -6,22 +6,22 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Opt-in MSSQL fixture с actual AgentBridge/EFCoreLibrary; не выполняет автоматическую очистку ресурсов.</summary>
+/// <summary>Владеет DI для собственной БД в контейнере коллекции; операции выполняет AgentBridge/EFCoreLibrary.</summary>
 public class SqlServerIntegrationDatabase : IAsyncDisposable
 {
     private readonly SqlServerIntegrationSettings settings;
 
-    /// <summary>Читает явную конфигурацию и создаёт DI, не открывая соединение и не создавая каталоги.</summary>
-    public SqlServerIntegrationDatabase()
+    /// <summary>Принимает проверенные ресурсы fixture и создаёт DI без открытия соединения.</summary>
+    internal SqlServerIntegrationDatabase(SqlServerIntegrationSettings settings)
     {
-        settings = SqlServerIntegrationSettings.FromEnvironment();
+        this.settings = settings;
         Root = BuildRoot();
     }
 
     /// <summary>Root gate сохраняется между maintenance entrant одного fixture.</summary>
     public ServiceProvider Root { get; }
 
-    /// <summary>Создаёт новый container для restart чтения либо адресной подстановки отказа; не запускает I/O.</summary>
+    /// <summary>Создаёт новый DI root для чтения либо подстановки отказа; SQL Server не перезапускается.</summary>
     public ServiceProvider BuildRoot(Action<ServiceCollection>? customize = null)
     {
         ServiceCollection services = new();
@@ -41,7 +41,7 @@ public class SqlServerIntegrationDatabase : IAsyncDisposable
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }
 
-    /// <summary>Явно вызывает actual CREATE/migration только после отдельного согласования ресурсов и операций.</summary>
+    /// <summary>Явно создаёт собственную БД и применяет миграции настоящим maintenance API.</summary>
     public async Task<DatabaseMaintenanceResult> InitializeNewAsync(CancellationToken cancellationToken = default)
     {
         using IServiceScope scope = Root.CreateScope();
@@ -50,6 +50,6 @@ public class SqlServerIntegrationDatabase : IAsyncDisposable
     }
 
     /// <inheritdoc/>
-    /// <remarks>Освобождает только DI. DROP/Down/restore и удаление backup требуют отдельной процедуры с identity check.</remarks>
+    /// <remarks>Освобождает DI; БД и серверные файлы удаляются вместе с собственным контейнером коллекции.</remarks>
     public ValueTask DisposeAsync() => Root.DisposeAsync();
 }

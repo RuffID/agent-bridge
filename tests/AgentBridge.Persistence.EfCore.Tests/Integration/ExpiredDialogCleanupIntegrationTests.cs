@@ -20,6 +20,15 @@ namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 [Collection("DatabaseIntegration")]
 public class ExpiredDialogCleanupIntegrationTests
 {
+    private readonly DatabaseIntegrationFixture environment;
+
+    /// <summary>Получает общее окружение коллекции; каждый случай сохраняет собственную БД.</summary>
+    /// <param name="environment">Fixture, владеющий временным каталогом и PostgreSQL-контейнером.</param>
+    public ExpiredDialogCleanupIntegrationTests(DatabaseIntegrationFixture environment)
+    {
+        this.environment = environment;
+    }
+
     private static readonly DateTimeOffset NOW = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);
     private static readonly DialogOwnerId OWNER = DialogOwnerId.From(" User:Б ");
     private static readonly string[] TABLES = ["Dialogs", "DialogTurns", "ModelSteps", "CanonicalItems", "DialogContexts", "DialogSettings"];
@@ -30,7 +39,7 @@ public class ExpiredDialogCleanupIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task EqualityBoundedBatchAndCascadeIgnoreSoftBytes(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         List<DialogWriteToken> expired = [];
         foreach (int _ in Enumerable.Range(0, 3)) expired.Add(await FilledAsync(database, NOW.AddHours(2)));
@@ -73,7 +82,7 @@ public class ExpiredDialogCleanupIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, "removed")]
     public async Task StaleCandidateKeepsPartialResultAndDoesNotDeleteNewIncarnation(DatabaseProvider provider, string mutation)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         await FilledAsync(database, NOW.AddHours(1));
         await FilledAsync(database, NOW.AddHours(2));
@@ -126,7 +135,7 @@ public class ExpiredDialogCleanupIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task PartialRealRollbackPreservesRemainingChildren(DatabaseProvider provider, bool cancel)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         List<DialogWriteToken> original = [];
         foreach (int hours in new[] { 1, 2, 3 }) original.Add(await FilledAsync(database, NOW.AddHours(hours)));
@@ -163,7 +172,7 @@ public class ExpiredDialogCleanupIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task CleanupWhileAgentWaitsRejectsLateResponseAndPreservesReplacement(DatabaseProvider provider, bool recreate)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken original = await PersistenceIntegrationTests.CreateAsync(database, expiry: NOW.AddHours(1));
         using (IServiceScope seed = database.Root.CreateScope())
@@ -177,6 +186,13 @@ public class ExpiredDialogCleanupIntegrationTests
             services.AddAgentBridgeTokenization();
             services.AddScoped<ContextBuilder>(_ => new([]));
             services.AddAgentBridgeTools();
+            services.Configure<AgentOptions>(options =>
+            {
+                options.InstructionsSource = AgentInstructionsSource.Configuration;
+                options.Instructions = "cleanup test instructions";
+                options.MaxToolSteps = 2;
+            });
+            services.Configure<ContextCompactionOptions>(options => options.MaxPasses = 2);
             services.AddAgentBridgeRunner();
         });
         ApplicationCallContext call = new(original.DialogId, OWNER, Guid.NewGuid(), "agent");

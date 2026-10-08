@@ -24,6 +24,15 @@ namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 [Collection("DatabaseIntegration")]
 public class AgentRunnerIntegrationTests
 {
+    private readonly DatabaseIntegrationFixture environment;
+
+    /// <summary>Получает общее окружение коллекции; каждый случай сохраняет собственную БД.</summary>
+    /// <param name="environment">Fixture, владеющий временным каталогом и PostgreSQL-контейнером.</param>
+    public AgentRunnerIntegrationTests(DatabaseIntegrationFixture environment)
+    {
+        this.environment = environment;
+    }
+
     private static readonly DateTimeOffset NOW = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);
     private static readonly ModelToolDefinition TOOL = new("action", "Тестовое действие", JsonSerializer.SerializeToElement(new { type = "object" }), false);
 
@@ -33,7 +42,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task PublicRunnerCommitsStartsBeforeActionsAndRoundTripsRepeatedCalls(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         Probe probe = new(token);
@@ -69,7 +78,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task RestartDoesNotReplayStartedOrLegacyTurn(DatabaseProvider provider, bool durable)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         Probe probe = new(token);
@@ -102,7 +111,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task OutcomeSaveFailureRollsBackOutputsAndJournalTogether(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         Probe probe = new(await PersistenceIntegrationTests.CreateAsync(database)) { FailOutcomes = true };
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
@@ -126,7 +135,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task UnknownStartCommitPersistsBarrierWithoutExecutingAction(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         Probe probe = new(await PersistenceIntegrationTests.CreateAsync(database)) { FailStartAcknowledgement = true };
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
@@ -159,7 +168,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, "duplicate", ServiceErrorType.Conflict)]
     public async Task DurableStartEnforcesGuards(DatabaseProvider provider, string boundary, ServiceErrorType expected)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         Probe probe = new(token);
@@ -196,7 +205,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql, "expiry", ServiceErrorType.Expired)]
     public async Task LateOutcomeAfterDeleteCleanupOrExpiryIsRefused(DatabaseProvider provider, string boundary, ServiceErrorType expected)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         Probe probe = new(await PersistenceIntegrationTests.CreateAsync(database));
         probe.Responses.Enqueue(ModelResponse.Completed([Call("x")]));
@@ -232,7 +241,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ParallelPartialFailurePersistsConfirmedNeighbor(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         Probe probe = new(await PersistenceIntegrationTests.CreateAsync(database));
         probe.Responses.Enqueue(ModelResponse.Completed([Call("fail"), Call("ok")]));
@@ -259,7 +268,7 @@ public class AgentRunnerIntegrationTests
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task MigrationDownAndUpgradePreserveHistoricalRows(DatabaseProvider provider)
     {
-        await using IntegrationDatabase database = new(provider);
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
         Probe probe = new(token);
@@ -298,7 +307,12 @@ public class AgentRunnerIntegrationTests
         services.AddSingleton<IContextTokenCounter, Counter>();
         services.AddSingleton<IContextProvider, Provider>();
         services.AddScoped<ContextBuilder>(sp => new([sp.GetRequiredService<IContextProvider>()]));
-        services.Configure<AgentOptions>(options => options.Instructions = "fixed");
+        services.Configure<AgentOptions>(options =>
+        {
+            options.InstructionsSource = AgentInstructionsSource.Configuration;
+            options.Instructions = "fixed";
+            options.MaxToolSteps = 8;
+        });
         services.Configure<ContextCompactionOptions>(options => options.MaxPasses = 2);
         services.AddAgentBridgeTool<Handler, Validator>(TOOL);
         services.AddAgentBridgeRunner();
