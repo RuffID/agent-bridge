@@ -170,8 +170,8 @@ public class ApplicationPortsTests
     {
         DialogSnapshot snapshot = new(Token(), OWNER, NOW_UTC, NOW_UTC.AddDays(1), 0, [], null);
 
-        Assert.True(snapshot.IsExpired(snapshot.ExpiresAtUtc));
-        Assert.False(snapshot.IsExpired(snapshot.ExpiresAtUtc.AddTicks(-1)));
+        Assert.True(snapshot.IsExpired(snapshot.ExpiresAtUtc!.Value));
+        Assert.False(snapshot.IsExpired(snapshot.ExpiresAtUtc!.Value.AddTicks(-1)));
     }
 
     /// <summary>Compact snapshot отделяет полное окно от envelope и не фильтрует историю по terminal prefix.</summary>

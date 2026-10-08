@@ -105,7 +105,7 @@ public class BaseRepositoryAdapterTests
         FakeBaseRepository<DialogRecord> repository = new();
         DialogRecord selected = new() { Id = Guid.NewGuid() };
         repository.Records.AddRange([new() { Id = Guid.NewGuid() }, selected]);
-        DialogRecordQueries adapter = new(new FakeDialogByIdRepository(repository), repository);
+        DialogRecordQueries adapter = new(new FakeDialogByIdRepository(repository), repository, new(new()));
         Assert.Same(selected, await adapter.FindAsync(selected.Id, trackChanges: true, cancellationToken: TestContext.Current.CancellationToken));
         Assert.False(repository.LastAsNoTracking);
         Assert.Null(await adapter.FindAsync(Guid.NewGuid(), cancellationToken: TestContext.Current.CancellationToken));

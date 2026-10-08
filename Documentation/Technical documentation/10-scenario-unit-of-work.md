@@ -19,7 +19,7 @@
 
 ## Запись и ошибки
 
-После begin tracking read root фиксирует исходные EF concurrency values. Проверяются access/token ID, существование, ordinal owner, incarnation/revision и `access.NowUtc < ExpiresAtUtc`. Явное удаление допускает истёкший диалог; системное удаление одного кандидата проверяет `nowUtc >= ExpiresAtUtc` и token. Время передаётся приложением для текущей операции; скрытых часов и продления срока нет.
+После begin tracking read root фиксирует исходные EF concurrency values. Проверяются access/token ID, существование, ordinal owner, incarnation/revision и срок текущей scoped политики от CreatedAtUtc. При null срока истечения нет. Явное удаление допускает истёкший диалог; системное удаление одного кандидата повторно проверяет истечение (включая равенство) и token, при отключённом сроке отказывает. Время передаётся приложением для текущей операции; скрытых часов и продления срока активностью нет.
 
 `DialogStateLoader` читает всю историю turns/contexts базовыми запросами. `Dialog.Restore` валидирует revision, LastChangedAtUtc, последовательности, статусы/времена и каждую версию terminal prefix без фиктивных mutations. `TryAppendTurn` повышает revision выполняющегося обращения. Доменный snapshot остаётся локальным экземпляру; его получение после Restore не заменяет проверку исходного persisted token.
 

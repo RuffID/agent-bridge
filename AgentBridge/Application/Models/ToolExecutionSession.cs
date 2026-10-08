@@ -15,14 +15,14 @@ public class ToolExecutionSession
     private ToolExecutionBatch? _lastResult;
 
     /// <summary>Фиксирует принадлежность и limits; не создаёт timers, транзакций или бизнес-сервисов.</summary>
-    internal ToolExecutionSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset expiresAtUtc,
+    internal ToolExecutionSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset? expiresAtUtc,
         IEnumerable<string> selectedToolNames, ToolExecutionLimits limits, TimeProvider timeProvider, IToolExecutionCheckpoint? checkpoint)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(token);
         ArgumentNullException.ThrowIfNull(limits);
         ArgumentNullException.ThrowIfNull(selectedToolNames);
-        if (!token.DialogId.Equals(call.DialogId) || expiresAtUtc.Offset != TimeSpan.Zero)
+        if (!token.DialogId.Equals(call.DialogId) || (expiresAtUtc is { } expiry && expiry.Offset != TimeSpan.Zero))
         {
             throw new ArgumentException("Требуются тот же диалог и срок в UTC.");
         }
@@ -46,7 +46,7 @@ public class ToolExecutionSession
     /// <summary>Идентичность жизни исходного диалога.</summary>
     public Guid IncarnationId { get; }
     /// <summary>Фиксированный срок, не продлеваемый шагами.</summary>
-    public DateTimeOffset ExpiresAtUtc { get; }
+    public DateTimeOffset? ExpiresAtUtc { get; }
     /// <summary>Неизменяемые ограничения сессии.</summary>
     public ToolExecutionLimits Limits { get; }
     /// <summary>Последний полный отчёт, включая исходы перед исключением/отменой; не логировать аргументы/outputs.</summary>
@@ -60,7 +60,7 @@ public class ToolExecutionSession
     /// <summary>Проверяет fixed expiry и общий monotonic бюджет.</summary>
     internal ServiceError? CheckTime()
     {
-        if (TimeProvider.GetUtcNow() >= ExpiresAtUtc) return new(ServiceErrorType.Expired, "Срок диалога истёк.");
+        if (ExpiresAtUtc is { } expiry && TimeProvider.GetUtcNow() >= expiry) return new(ServiceErrorType.Expired, "Срок диалога истёк.");
         return Remaining <= TimeSpan.Zero ? new(ServiceErrorType.Timeout, "Истёк срок выполнения инструментов.") : null;
     }
 

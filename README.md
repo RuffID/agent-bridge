@@ -74,7 +74,7 @@ AgentBridge получает готовый `IConfiguration` вашего при
       "MaxToolSteps": 8
     },
     "Retention": {
-      "RetentionPeriod": "7.00:00:00",
+      "RetentionPeriod": null,
       "SoftContentLimitBytes": 10485760
     },
     "Compaction": {
@@ -110,7 +110,7 @@ AgentBridge получает готовый `IConfiguration` вашего при
 | --- | --- |
 | `Instructions` | Инструкции поведения агента |
 | `MaxToolSteps` | Предел шагов модели с вызовами инструментов |
-| `RetentionPeriod` | Срок доступности диалога от момента создания; в примере — 7 дней |
+| `RetentionPeriod` | Опциональный срок от создания всех диалогов; отсутствие/null — бессрочное хранение |
 | `SoftContentLimitBytes` | Порог предупреждения об объёме содержимого; в примере — 10 МиБ |
 | `TokenThreshold` | Порог запуска сжатия рабочего контекста |
 | `InputTokenReserve` | Запас токенов для следующего ввода |

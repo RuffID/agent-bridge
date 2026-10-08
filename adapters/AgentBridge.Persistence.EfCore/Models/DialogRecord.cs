@@ -16,7 +16,7 @@ public class DialogRecord : IEntity<Guid>
     public string OwnerId { get; set; } = string.Empty;
     /// <summary>Фиксированное время создания в UTC.</summary>
     public DateTimeOffset CreatedAtUtc { get; set; }
-    /// <summary>Фиксированный срок, вычисленный при создании.</summary>
+    /// <summary>Legacy metadata срока при создании; MaxValue кодирует бессрочный режим. Текущий срок вычисляется по политике и CreatedAtUtc.</summary>
     public DateTimeOffset ExpiresAtUtc { get; set; }
     /// <summary>Последнее изменение для проверки хронологии при восстановлении.</summary>
     public DateTimeOffset LastChangedAtUtc { get; set; }

@@ -373,7 +373,7 @@ public class PersistenceIntegrationTests
     {
         using IServiceScope scope = database.Root.CreateScope();
         return Success(await scope.ServiceProvider.GetRequiredService<IDialogCreator>().CreateAsync(id ?? DialogId.From(Guid.NewGuid()), OWNER,
-            NOW, expiry ?? NOW.AddHours(36)));
+            (expiry ?? NOW.AddHours(36)).Subtract(TimeSpan.FromHours(36)), expiry ?? NOW.AddHours(36)));
     }
 
     /// <summary>Читает через публичный read port; token здесь служит только идентификатором.</summary>

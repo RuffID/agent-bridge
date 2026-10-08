@@ -84,7 +84,7 @@ public class ConfigurationTests
         using IServiceScope oldScope = provider.CreateScope();
         DialogRetentionOptions oldOptions = oldScope.ServiceProvider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>().Value;
         DateTimeOffset created = new(2026, 10, 3, 0, 0, 0, TimeSpan.Zero);
-        DateTimeOffset existingExpiration = oldOptions.CalculateExpiresAtUtc(created);
+        DateTimeOffset existingExpiration = oldOptions.CalculateExpiresAtUtc(created)!.Value;
         IOptionsMonitor<DialogRetentionOptions> monitor = provider.GetRequiredService<IOptionsMonitor<DialogRetentionOptions>>();
         Assert.Equal(TimeSpan.FromDays(14), monitor.CurrentValue.RetentionPeriod);
 
@@ -162,7 +162,6 @@ public class ConfigurationTests
     [Theory]
     [InlineData("Agent:MaxToolSteps")]
     [InlineData("Agent:InstructionsSource")]
-    [InlineData("Retention:RetentionPeriod")]
     [InlineData("Retention:SoftContentLimitBytes")]
     [InlineData("Compaction:TokenThreshold")]
     [InlineData("Compaction:InputTokenReserve")]
@@ -215,7 +214,7 @@ public class ConfigurationTests
         provider.GetRequiredService<IStartupValidator>().Validate();
         Assert.Equal(9, provider.GetRequiredService<IOptions<AgentOptions>>().Value.MaxToolSteps);
         Assert.Equal(0, provider.GetRequiredService<IOptions<ContextCompactionOptions>>().Value.InputTokenReserve);
-        Assert.Equal(7, provider.GetRequiredService<IOptions<DialogRetentionOptions>>().Value.RetentionPeriod.TotalDays);
+        Assert.Equal(7, provider.GetRequiredService<IOptions<DialogRetentionOptions>>().Value.RetentionPeriod!.Value.TotalDays);
         using IServiceScope scope = provider.CreateScope();
         Assert.Equal(0, scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ContextCompactionOptions>>().Value.InputTokenReserve);
         Assert.Equal(0, provider.GetRequiredService<IOptionsMonitor<ContextCompactionOptions>>().CurrentValue.InputTokenReserve);
@@ -225,7 +224,6 @@ public class ConfigurationTests
     [Theory]
     [InlineData("Agent.MaxToolSteps")]
     [InlineData("Agent.InstructionsSource")]
-    [InlineData("Retention.RetentionPeriod")]
     [InlineData("Retention.SoftContentLimitBytes")]
     [InlineData("Compaction.TokenThreshold")]
     [InlineData("Compaction.InputTokenReserve")]
@@ -269,7 +267,6 @@ public class ConfigurationTests
     [InlineData("Agent:MaxToolSteps")]
     [InlineData("Agent:InstructionsSource")]
     [InlineData("Agent:Instructions")]
-    [InlineData("Retention:RetentionPeriod")]
     [InlineData("Retention:SoftContentLimitBytes")]
     [InlineData("Compaction:TokenThreshold")]
     [InlineData("Compaction:InputTokenReserve")]
@@ -292,6 +289,44 @@ public class ConfigurationTests
         services.AddAgentBridgeConfiguration(config);
         using ServiceProvider provider = services.BuildServiceProvider();
         Assert.Contains(key.Replace(':', '.'), Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate()).Message);
+    }
+
+    /// <summary>Отсутствующий и null период включают бессрочное хранение через обычный options pipeline.</summary>
+    [Fact]
+    public void OmittedRetentionIsUnlimited()
+    {
+        IConfigurationRoot config = ValidConfiguration();
+        config["Retention:RetentionPeriod"] = null;
+        ServiceCollection services = new();
+        services.AddAgentBridgeConfiguration(config);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IStartupValidator>().Validate();
+        using IServiceScope scope = provider.CreateScope();
+        DialogRetentionPolicy policy = scope.ServiceProvider.GetRequiredService<DialogRetentionPolicy>();
+        Assert.Null(policy.CalculateExpiresAtUtc(DateTimeOffset.UnixEpoch));
+        Assert.False(policy.IsExpired(DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddYears(100)));
+    }
+
+    /// <summary>Новый scope после reload применяет срок к той же старой дате; отключение снова снимает срок.</summary>
+    [Fact]
+    public void ReloadAppliesRetentionToExistingCreationDate()
+    {
+        IConfigurationRoot config = ValidConfiguration();
+        ServiceCollection services = new();
+        services.AddAgentBridgeConfiguration(config);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        DateTimeOffset created = DateTimeOffset.UnixEpoch;
+        using IServiceScope first = provider.CreateScope();
+        DialogRetentionPolicy original = first.ServiceProvider.GetRequiredService<DialogRetentionPolicy>();
+        config["Retention:RetentionPeriod"] = "1.00:00:00";
+        config.Reload();
+        using IServiceScope second = provider.CreateScope();
+        Assert.True(second.ServiceProvider.GetRequiredService<DialogRetentionPolicy>().IsExpired(created, created.AddDays(2)));
+        Assert.False(original.IsExpired(created, created.AddDays(2)));
+        config["Retention:RetentionPeriod"] = null;
+        config.Reload();
+        using IServiceScope third = provider.CreateScope();
+        Assert.Null(third.ServiceProvider.GetRequiredService<DialogRetentionPolicy>().CalculateExpiresAtUtc(created));
     }
 
     /// <summary>Создаёт явную полную конфигурацию, в том числе значения прежних defaults.</summary>

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AgentBridge.Application.Models;
+using AgentBridge.Configuration;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Repositories;
@@ -24,20 +25,22 @@ internal class FakeWriteFixture
     public DialogContextUnitOfWork ContextWriter { get; }
     public DialogDeletionUnitOfWork Deletion { get; }
     public Action? BeforeSave { get; set; }
+    public DialogRetentionPolicy Retention { get; }
     private Dictionary<Guid, DialogRecord> _initial = [];
 
     /// <summary>Подключает настоящие сценарии к exact base API fakes и отделённой committed памяти.</summary>
-    public FakeWriteFixture()
+    public FakeWriteFixture(DialogRetentionOptions? retentionOptions = null)
     {
+        Retention = new(retentionOptions ?? new() { RetentionPeriod = TimeSpan.FromDays(1) });
         UnitOfWorkScope scope = new(Session, Gate);
-        DialogRecordQueries roots = new(new FakeDialogByIdRepository(Roots.Repository), Roots.Repository);
-        DialogWriteGuard guard = new(roots);
-        DialogStateLoader state = new(new(Turns.Repository), new(Contexts.Repository));
+        DialogRecordQueries roots = new(new FakeDialogByIdRepository(Roots.Repository), Roots.Repository, Retention);
+        DialogWriteGuard guard = new(roots, Retention);
+        DialogStateLoader state = new(new(Turns.Repository), new(Contexts.Repository), Retention);
         TurnContentStaging content = new(new(Items.Repository), new(Steps.Repository), Items.Staging(), Steps.Staging());
         Creator = new(scope, roots, Roots.Staging());
         Writer = new(scope, guard, state, content, Roots.Staging(), Turns.Staging(), new(Turns.Repository));
         ContextWriter = new(scope, guard, state, Roots.Staging(), Contexts.Staging());
-        Deletion = new(scope, guard, roots, Roots.Staging());
+        Deletion = new(scope, guard, roots, Roots.Staging(), Retention);
         Session.OnBegin = () =>
         {
             Roots.Begin(); Turns.Begin(); Items.Begin(); Steps.Begin(); Contexts.Begin();

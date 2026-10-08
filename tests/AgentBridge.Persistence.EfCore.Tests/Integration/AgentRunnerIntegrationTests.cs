@@ -216,7 +216,7 @@ public class AgentRunnerIntegrationTests
             if (boundary == "delete") Assert.True((await deletion.ServiceProvider.GetRequiredService<IDialogDeletion>().DeleteAsync(Access(probe.Call), current.Token)).Success);
             else
             {
-                probe.Clock.Now = current.ExpiresAtUtc;
+                probe.Clock.Now = current.ExpiresAtUtc!.Value;
                 if (boundary == "cleanup") Assert.True((await deletion.ServiceProvider.GetRequiredService<IExpiredDialogDeletion>().DeleteAsync(current.Token, probe.Clock.Now)).Success);
             }
             return Confirmed();

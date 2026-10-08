@@ -1,4 +1,5 @@
 using AgentBridge.Application.Models;
+using AgentBridge.Configuration;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.Persistence.EfCore.Models;
@@ -9,7 +10,7 @@ namespace AgentBridge.Persistence.EfCore.UnitOfWork;
 /// <inheritdoc cref="IDialogDeletion"/>
 /// <remarks>Общий набор удаления для явного запроса и одного кандидата очистки; расписания и batch orchestration здесь нет.</remarks>
 public class DialogDeletionUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard,
-    DialogRecordQueries dialogs, RecordStaging<DialogRecord> staging) : IDialogDeletion, IExpiredDialogDeletion
+    DialogRecordQueries dialogs, RecordStaging<DialogRecord> staging, DialogRetentionPolicy retention) : IDialogDeletion, IExpiredDialogDeletion
 {
     /// <inheritdoc/>
     public Task<ServiceResult> DeleteAsync(DialogAccess access, DialogWriteToken expected, CancellationToken cancellationToken = default) =>
@@ -39,7 +40,7 @@ public class DialogDeletionUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard gu
             {
                 return ServiceResult.Fail(new ServiceError(ServiceErrorType.NotFound, "Диалог не найден."));
             }
-            if (root.IncarnationId != expected.IncarnationId || root.Revision != expected.Revision || nowUtc < root.ExpiresAtUtc)
+            if (root.IncarnationId != expected.IncarnationId || root.Revision != expected.Revision || !retention.IsExpired(root.CreatedAtUtc, nowUtc))
             {
                 return ServiceResult.Fail(new ServiceError(ServiceErrorType.Conflict, "Кандидат очистки неактуален или ещё доступен."));
             }

@@ -23,11 +23,11 @@ ExpiredDialogCleanupResult result = await cleanup.CleanupAsync(100, cancellation
 
 ## Граница пакета и времени
 
-Один вызов выполняет одну ограниченную выборку в порядке ExpiresAtUtc/Id. Scope чтения освобождается до deletion. Каждый кандидат последовательно получает новый async scope; UTC читается непосредственно перед портом. Нет общего tracked context, длинной transaction всего пакета или внешнего I/O внутри write UoW.
+Один вызов выполняет одну ограниченную выборку по текущему cutoff CreatedAtUtc <= now-period в порядке CreatedAtUtc/Id. Null период даёт пустой пакет без чтения кандидатов. Scope чтения освобождается до deletion. Каждый кандидат получает новый scope и fresh UTC; deletion атомарно повторяет проверку текущей политики. Общей длинной transaction и внешнего I/O внутри UoW нет.
 
 Истечение включает `nowUtc == ExpiresAtUtc`. Порт удаления повторно проверяет root incarnation/revision/expiry в Serializable transaction и каскадно удаляет Dialogs, DialogTurns, ModelSteps, CanonicalItems, DialogContexts и DialogSettings. Guard активного AgentRunner отказывает поздней записи без восстановления удалённого root или обновления stale token. Новая incarnation того же ID сохраняется.
 
-Срок задаётся при создании диалога. Новая конфигурация RetentionPeriod, активность, compact и выбор модели не переносят существующий ExpiresAtUtc. ContentBytes/мягкий лимит не участвуют в очистке. Новый вызов приложения может обработать следующую порцию; внутри вызова нет повторного read, refresh или retry, даже при Conflict/NotFound.
+Положительный RetentionPeriod действует на все даты создания; новая конфигурация применяется в новых scopes, отсутствие/null отключает expiry и автоматическое удаление. Активность, compact и выбор модели срок не продлевают. Legacy NOT NULL ExpiresAtUtc сохраняется для совместимости схемы и CAS; MaxValue кодирует новый бессрочный диалог, public nullable expiry вычисляется из текущей политики. ContentBytes не запускает очистку. Внутри пакета нет refresh/retry даже при Conflict/NotFound.
 
 ## Отчёт
 

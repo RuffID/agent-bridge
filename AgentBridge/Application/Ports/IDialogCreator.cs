@@ -9,5 +9,5 @@ public interface IDialogCreator
 {
     /// <summary>Атомарно создаёт диалог с фиксированными датами и новым сохраняемым incarnation; существующий ID — Conflict.</summary>
     Task<ServiceResult<DialogWriteToken>> CreateAsync(DialogId dialogId, DialogOwnerId ownerId,
-        DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc, CancellationToken cancellationToken = default);
+        DateTimeOffset createdAtUtc, DateTimeOffset? expiresAtUtc, CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,5 @@
 using AgentBridge.Application.Ports;
+using AgentBridge.Configuration;
 using AgentBridge.Persistence.EfCore.Reading;
 using AgentBridge.Persistence.EfCore.Repositories;
 using AgentBridge.Persistence.EfCore.UnitOfWork;
@@ -17,6 +18,8 @@ public static class PersistenceRegistrationExtensions
     public static IServiceCollection AddAgentBridgePersistence(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.AddOptions<DialogRetentionOptions>();
+        services.TryAddScoped(provider => new DialogRetentionPolicy(provider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>().Value));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DatabaseOptions>, DatabaseProviderOptionsValidator>());
         services.AddDbContext<AgentBridgeDbContext>((provider, builder) =>
         {

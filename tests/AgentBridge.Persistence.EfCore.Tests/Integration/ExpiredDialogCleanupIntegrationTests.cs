@@ -208,7 +208,7 @@ public class ExpiredDialogCleanupIntegrationTests
             active = Success(await observe.ServiceProvider.GetRequiredService<IDialogReader>().ReadAsync(Access(original)));
             Assert.Equal(DialogTurnStatus.InProgress, active.Turns[0].Status);
             Assert.Equal("gpt-5", active.Turns[0].Settings!.Model);
-            probe.Clock.Now = active.ExpiresAtUtc;
+            probe.Clock.Now = active.ExpiresAtUtc!.Value;
             using IServiceScope caller = root.CreateScope();
             Assert.Equal(1, (await caller.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>().CleanupAsync(1)).DeletedCount);
             await AssertRowsAsync(database, original, 0);
@@ -251,7 +251,7 @@ public class ExpiredDialogCleanupIntegrationTests
         {
             services.AddSingleton(probe);
             services.AddSingleton<TimeProvider>(probe.Clock);
-            services.Configure<DialogRetentionOptions>(options => { options.SoftContentLimitBytes = 1; options.RetentionPeriod = TimeSpan.FromDays(99); });
+            services.Configure<DialogRetentionOptions>(options => { options.SoftContentLimitBytes = 1; options.RetentionPeriod = TimeSpan.FromHours(36); });
             services.AddScoped<ExpiredDialogReader>();
             services.AddScoped<IExpiredDialogReader, ObservedReader>();
             services.AddScoped<IExpiredDialogDeletion, ObservedDeletion>();

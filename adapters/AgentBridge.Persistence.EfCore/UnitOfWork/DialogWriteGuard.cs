@@ -1,4 +1,5 @@
 using AgentBridge.Application.Models;
+using AgentBridge.Configuration;
 using AgentBridge.Application.Results;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Repositories;
@@ -6,7 +7,7 @@ using AgentBridge.Persistence.EfCore.Repositories;
 namespace AgentBridge.Persistence.EfCore.UnitOfWork;
 
 /// <summary>Проверяет внешние условия записи внутри уже открытого scope; root читается с исходными concurrency values.</summary>
-public class DialogWriteGuard(DialogRecordQueries dialogs)
+public class DialogWriteGuard(DialogRecordQueries dialogs, DialogRetentionPolicy retention)
 {
     /// <summary>Проверяет caller, token и срок; явное удаление может разрешать истёкший диалог.</summary>
     public async Task<ServiceResult<DialogRecord>> LoadAsync(DialogAccess access, DialogWriteToken expected,
@@ -27,7 +28,7 @@ public class DialogWriteGuard(DialogRecordQueries dialogs)
         {
             return Fail(ServiceErrorType.Forbidden, "Диалог принадлежит другому владельцу.");
         }
-        if (!allowExpired && access.NowUtc >= root.ExpiresAtUtc)
+        if (!allowExpired && retention.IsExpired(root.CreatedAtUtc, access.NowUtc))
         {
             return Fail(ServiceErrorType.Expired, "Срок диалога истёк.");
         }

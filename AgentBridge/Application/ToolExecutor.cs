@@ -22,7 +22,7 @@ public class ToolExecutor : IToolExecutor
     }
 
     /// <inheritdoc/>
-    public ToolExecutionSession CreateSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset expiresAtUtc,
+    public ToolExecutionSession CreateSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset? expiresAtUtc,
         IEnumerable<string> selectedToolNames, ToolExecutionLimits limits, IToolExecutionCheckpoint? checkpoint = null) =>
         new(call, token, expiresAtUtc, selectedToolNames, limits, _timeProvider, checkpoint);
 
@@ -41,7 +41,8 @@ public class ToolExecutor : IToolExecutor
 
         // Общий monotonic budget и fixed expiry. Срок не обновляется после каждого handler.
         TimeSpan remaining = session.Remaining;
-        TimeSpan untilExpiry = session.ExpiresAtUtc - session.TimeProvider.GetUtcNow();
+        TimeSpan untilExpiry = session.ExpiresAtUtc is { } expiry
+            ? expiry - session.TimeProvider.GetUtcNow() : session.Remaining;
         TimeSpan budget = remaining < untilExpiry ? remaining : untilExpiry;
         if (budget <= TimeSpan.Zero)
         {

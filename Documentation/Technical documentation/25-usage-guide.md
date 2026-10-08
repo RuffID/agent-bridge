@@ -48,7 +48,7 @@ Import подключает managed DLL из lib и доставляет XML/nat
 
 `Database:ConnectionString` для своего SQL Server с согласованными authentication/TLS приходит из secret configuration приложения; выбранная migrations DLL — SqlServer. SQLite/PostgreSQL остаются явными альтернативами с собственной configuration/migrations identity. `CodexLb:SharedApiKey` также приходит из secret store/configuration, а не из коммитимого примера. Строки подключения, ключи, raw headers/body и canonical payload не выводятся в logs/UI.
 
-Все операционные значения задаются явно; пропуск больше не получает прежний default. Для миграции выберите InstructionsSource=Configuration/PerRequest и KeySource=Shared/Individual. В Shared общий ключ обязателен, индивидуальный сохраняет приоритет; Individual не применяет общий fallback. PerRequest требует инструкции каждого run. `RetentionPeriod` положителен и фиксирует expiry при создании; новая конфигурация не пересчитывает старые сроки. `SoftContentLimitBytes` положителен, даёт предупреждение при `bytes >= limit`, не запрещает запись и не вызывает cleanup. `TokenThreshold` положителен, explicit `InputTokenReserve >= 0`, `MaxPasses > 0`. Проверенный threshold+reserve должен укладываться в **input_context_window**. [Полный options API и breaking migration](05-configuration-and-lifecycle.md), [бюджет/tokenizer](07-tokenizer-and-settings.md).
+Операционные значения задаются явно, кроме опционального `RetentionPeriod`: отсутствие/null означает бессрочное хранение. Для миграции выберите InstructionsSource=Configuration/PerRequest и KeySource=Shared/Individual. В Shared общий ключ обязателен, индивидуальный сохраняет приоритет; Individual не применяет общий fallback. PerRequest требует инструкции каждого run. Заданный `RetentionPeriod` положителен и вычисляет expiry от создания также для существующих диалогов; новый scope использует текущую конфигурацию. `SoftContentLimitBytes` положителен, даёт предупреждение при `bytes >= limit`, не запрещает запись и не вызывает cleanup. `TokenThreshold` положителен, explicit `InputTokenReserve >= 0`, `MaxPasses > 0`. Проверенный threshold+reserve должен укладываться в **input_context_window**. [Полный options API и breaking migration](05-configuration-and-lifecycle.md), [бюджет/tokenizer](07-tokenizer-and-settings.md).
 
 Logging/Serilog provider и его redaction настраивает приложение. Фабрики DI не выполняют I/O, HttpClient/handlers принадлежат приложению; не добавляйте retry или замену ключа/аккаунта. Scoped зависимости не разделяются между параллельными tools. Для ASP.NET Core вызывайте групповую регистрацию в composition root; development DI validation остаётся включённой. В приложении без host явно проверяйте полученные options и lifetimes: compile-check не исполняет `ValidateOnStart` или контейнер.
 
@@ -170,7 +170,7 @@ public static class AgentBridgeEndpoints
 
         DialogId id = DialogId.From(Guid.NewGuid());
         DateTimeOffset created = time.GetUtcNow();
-        DateTimeOffset expires = retention.Value.CalculateExpiresAtUtc(created);
+        DateTimeOffset? expires = retention.Value.CalculateExpiresAtUtc(created);
         ServiceResult<DialogWriteToken> result = await creator.CreateAsync(
             id, DialogOwnerId.From(userId), created, expires, ct);
         if (!result.Success)

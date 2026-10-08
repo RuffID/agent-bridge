@@ -605,7 +605,7 @@ public class ToolExecutorTests
         Assert.Throws<ArgumentException>(() => executor.CreateSession(valid.Call,
             new(DialogId.From(Guid.NewGuid()), Guid.NewGuid(), 0), valid.ExpiresAtUtc, [DEFINITION.Name], valid.Limits));
         Assert.Throws<ArgumentException>(() => executor.CreateSession(valid.Call,
-            new(valid.Call.DialogId, valid.IncarnationId, 0), valid.ExpiresAtUtc.ToOffset(TimeSpan.FromHours(1)), [DEFINITION.Name], valid.Limits));
+            new(valid.Call.DialogId, valid.IncarnationId, 0), valid.ExpiresAtUtc!.Value.ToOffset(TimeSpan.FromHours(1)), [DEFINITION.Name], valid.Limits));
         Assert.Throws<ArgumentException>(() => executor.CreateSession(valid.Call,
             new(valid.Call.DialogId, valid.IncarnationId, 0), valid.ExpiresAtUtc, [DEFINITION.Name, DEFINITION.Name], valid.Limits));
         Assert.Throws<ArgumentOutOfRangeException>(() => new ToolExecutionLimits(0, 1, 1, TimeSpan.FromSeconds(1)));

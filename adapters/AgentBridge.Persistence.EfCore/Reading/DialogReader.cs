@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AgentBridge.Configuration;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
@@ -14,7 +15,8 @@ namespace AgentBridge.Persistence.EfCore.Reading;
 /// <remarks>Повторное чтение root отклоняет изменившуюся жизнь/версию без скрытого retry.
 /// Это не транзакционный снимок; token требует атомарной проверки сценарием записи этапа 10.</remarks>
 public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
-    ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate, SettingsRecordQueries settings) : IDialogReader
+    ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate, SettingsRecordQueries settings,
+    DialogRetentionPolicy retention) : IDialogReader
 {
     /// <inheritdoc/>
     public async Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default)
@@ -37,7 +39,7 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         long revision = dialog.Revision;
         string ownerId = dialog.OwnerId;
         DateTimeOffset createdAtUtc = dialog.CreatedAtUtc;
-        DateTimeOffset expiresAtUtc = dialog.ExpiresAtUtc;
+        DateTimeOffset? expiresAtUtc = retention.CalculateExpiresAtUtc(dialog.CreatedAtUtc);
         long contentBytes = dialog.ContentBytes;
 
         List<DialogTurnRecord> turnRecords = await turns.ReadAsync(dialogId, cancellationToken);

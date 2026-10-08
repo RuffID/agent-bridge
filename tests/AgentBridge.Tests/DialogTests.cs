@@ -41,8 +41,8 @@ public class DialogTests
         Dialog dialog = Create();
         Guid turnId = Guid.NewGuid();
         DialogStateVersion version = Begin(dialog, turnId, CREATED_AT_UTC);
-        Assert.True(dialog.IsAvailable(OWNER, dialog.ExpiresAtUtc.AddTicks(-1)));
-        DateTimeOffset expired = dialog.ExpiresAtUtc.AddTicks(ticksAfterExpiration);
+        Assert.True(dialog.IsAvailable(OWNER, dialog.ExpiresAtUtc!.Value.AddTicks(-1)));
+        DateTimeOffset expired = dialog.ExpiresAtUtc!.Value.AddTicks(ticksAfterExpiration);
         Assert.True(dialog.IsExpired(expired));
         Assert.False(dialog.IsAvailable(OWNER, expired));
         Assert.Equal(DialogMutationResult.Expired, dialog.TryCaptureVersion(OWNER, expired, out DialogStateVersion? missing));
@@ -247,7 +247,7 @@ public class DialogTests
         DialogStateVersion version = Begin(dialog, turnId, CREATED_AT_UTC);
         Assert.Equal(DialogMutationResult.Success, dialog.TryApplyContext(OWNER, version, 0, CREATED_AT_UTC));
         version = Capture(dialog, CREATED_AT_UTC);
-        DateTimeOffset deletionTime = expired ? dialog.ExpiresAtUtc : CREATED_AT_UTC.AddMinutes(1);
+        DateTimeOffset deletionTime = expired ? dialog.ExpiresAtUtc!.Value : CREATED_AT_UTC.AddMinutes(1);
         Assert.Equal(DialogMutationResult.Success, dialog.TryDelete(OWNER, deletionTime));
         Assert.True(dialog.IsDeleted);
         Assert.Empty(dialog.Turns);

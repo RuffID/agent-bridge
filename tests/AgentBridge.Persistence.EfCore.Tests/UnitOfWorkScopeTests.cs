@@ -186,7 +186,7 @@ public class UnitOfWorkScopeTests
         PersistenceOperationGate gate = new();
         UnitOfWorkScope scope = new(session, gate);
         FakeBaseRepository<DialogRecord> rows = new();
-        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(rows), rows), gate);
+        ExpiredDialogReader reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(rows), rows, new(new())), gate);
         Task<ServiceResult> first = scope.ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), default);
         Exception? primary = null;
         try

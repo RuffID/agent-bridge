@@ -129,7 +129,6 @@ public class IntegrationRegistrationTests
     [InlineData("AgentBridge:Agent:MaxToolSteps")]
     [InlineData("AgentBridge:Agent:InstructionsSource")]
     [InlineData("AgentBridge:Agent:Instructions")]
-    [InlineData("AgentBridge:Retention:RetentionPeriod")]
     [InlineData("AgentBridge:Retention:SoftContentLimitBytes")]
     [InlineData("AgentBridge:Compaction:TokenThreshold")]
     [InlineData("AgentBridge:Compaction:InputTokenReserve")]

@@ -7,7 +7,7 @@ namespace AgentBridge.Application.Ports;
 public interface IToolExecutor
 {
     /// <summary>Создаёт сессию с фиксированной принадлежностью, выбором имён и сроком; не подтверждает авторизацию.</summary>
-    ToolExecutionSession CreateSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset expiresAtUtc,
+    ToolExecutionSession CreateSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset? expiresAtUtc,
         IEnumerable<string> selectedToolNames, ToolExecutionLimits limits, IToolExecutionCheckpoint? checkpoint = null);
     /// <summary>Ожидает все начатые handlers; неожиданные исключения и caller cancellation распространяются после сохранения LastResult.</summary>
     Task<ServiceResult<ToolExecutionBatch>> ExecuteAsync(ToolExecutionSession session, StoredModelStep step,

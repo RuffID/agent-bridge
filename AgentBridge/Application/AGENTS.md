@@ -1,5 +1,7 @@
 # Application
 
+- Public ExpiresAtUtc и RetentionPeriod nullable: null означает бессрочный диалог. Reader вычисляет срок текущей политики для всех CreatedAtUtc; runner/tools фиксируют его на текущий snapshot/session. Monotonic execution deadline остаётся обязательным даже без срока хранения. Автоматическое расписание удаления принадлежит приложению.
+
 - ExpiredDialogCleanup22 обрабатывает один явный bounded пакет без scheduler/drain-loop/retry. Один read и каждый sequential delete имеют отдельный async scope/fresh UTC; existing ports и guards не подменяются. Expected refusals продолжают пакет и дают Partial; canceled/exception прекращают следующие операции. Immutable LastResult сохраняет Deleted/Failed/Unknown/NotAttempted; successful acknowledgement фиксируется до DisposeAsync. Неожиданные exceptions и primary+cleanup aggregate распространяются, OCE cleanup не маскируется caller cancellation. Limit/port contract fail-fast; один экземпляр не допускает concurrent вызовов. ContentBytes и settings selection не триггер очистки.
 
 - AgentSettingsService21 читает safe limits/status и сохраняет exact model/effort для конкретного owner/dialog через IDialogSettingsWriter. SelectionVersion независима от history revision: смена выбора не инвалидирует active run. Reader snapshot задаёт приоритет request override → saved dialog selection → defaults приложения. Read/status возвращают safe dialog token того же snapshot; stale root/settings — Conflict без refresh/retry.

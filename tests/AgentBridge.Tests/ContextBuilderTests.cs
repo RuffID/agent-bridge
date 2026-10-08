@@ -245,7 +245,7 @@ public class ContextBuilderTests
         Provider provider = new((_, _) => Success([]));
         DialogSnapshot dialog = Snapshot();
 
-        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), dialog, Request(), dialog.ExpiresAtUtc.AddTicks(ticks), cancellationToken: TestContext.Current.CancellationToken);
+        ServiceResult<ModelRequest> result = await new ContextBuilder([provider]).BuildAsync(Call(), dialog, Request(), dialog.ExpiresAtUtc!.Value.AddTicks(ticks), cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(success, result.Success);
         Assert.Equal(success ? 1 : 0, provider.Calls);

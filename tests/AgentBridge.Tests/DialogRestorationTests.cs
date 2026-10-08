@@ -88,7 +88,7 @@ public class DialogRestorationTests
         Assert.Equal(original.ContextStates.Select(item => item.CreatedAtUtc), restored.ContextStates.Select(item => item.CreatedAtUtc));
         Assert.Equal(DialogMutationResult.StaleOperation, restored.TryApplyContext(OWNER, old!, 0, Now(stage)));
         Assert.Equal(DialogMutationResult.OwnerMismatch, restored.TryCaptureVersion(DialogOwnerId.From("other"), Now(stage), out _));
-        Assert.Equal(DialogMutationResult.Expired, restored.TryCaptureVersion(OWNER, original.ExpiresAtUtc, out _));
+        Assert.Equal(DialogMutationResult.Expired, restored.TryCaptureVersion(OWNER, original.ExpiresAtUtc!.Value, out _));
     }
 
     /// <summary>Context-only compact допускает повторные версии и одинаковое время без изменения срока.</summary>

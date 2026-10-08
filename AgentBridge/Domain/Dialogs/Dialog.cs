@@ -14,7 +14,7 @@ public class Dialog
     private DateTimeOffset _lastChangedAtUtc;
 
     /// <summary>Создаёт начальное состояние после проверки фабрикой.</summary>
-    private Dialog(DialogId id, DialogOwnerId ownerId, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
+    private Dialog(DialogId id, DialogOwnerId ownerId, DateTimeOffset createdAtUtc, DateTimeOffset? expiresAtUtc)
     {
         Id = id;
         OwnerId = ownerId;
@@ -31,8 +31,8 @@ public class Dialog
     public DialogOwnerId OwnerId { get; }
     /// <summary>Время создания в UTC.</summary>
     public DateTimeOffset CreatedAtUtc { get; }
-    /// <summary>Фиксированное время истечения, рассчитанное из настроек при создании.</summary>
-    public DateTimeOffset ExpiresAtUtc { get; }
+    /// <summary>Срок текущего снимка; null означает бессрочный диалог.</summary>
+    public DateTimeOffset? ExpiresAtUtc { get; }
     /// <summary>Версия агрегата; каждое успешное изменение делает предыдущие снимки устаревшими.</summary>
     public long Revision { get; private set; }
     /// <summary>Время последнего принятого изменения; сохраняется вместе с revision.</summary>
@@ -47,12 +47,15 @@ public class Dialog
     public DialogContextState? ActiveContext => _contextStates.Count == 0 ? null : _contextStates[^1];
 
     /// <summary>Создаёт диалог с уже вычисленным из конфигурации сроком; не содержит пробного периода.</summary>
-    public static Dialog Create(DialogId id, DialogOwnerId ownerId, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
+    public static Dialog Create(DialogId id, DialogOwnerId ownerId, DateTimeOffset createdAtUtc, DateTimeOffset? expiresAtUtc)
     {
         ArgumentNullException.ThrowIfNull(id);
         ArgumentNullException.ThrowIfNull(ownerId);
         EnsureUtc(createdAtUtc, nameof(createdAtUtc));
-        EnsureUtc(expiresAtUtc, nameof(expiresAtUtc));
+        if (expiresAtUtc is { } expiry)
+        {
+            EnsureUtc(expiry, nameof(expiresAtUtc));
+        }
         if (expiresAtUtc <= createdAtUtc)
         {
             throw new ArgumentOutOfRangeException(nameof(expiresAtUtc), "Срок истечения должен быть позже создания.");
@@ -67,7 +70,7 @@ public class Dialog
     /// Дополнительные revision могут принадлежать append без отдельного timestamp, но последняя такая mutation
     /// возможна только при наличии выполняющегося обращения.</remarks>
     public static Dialog Restore(DialogId id, DialogOwnerId ownerId, DateTimeOffset createdAtUtc,
-        DateTimeOffset expiresAtUtc, long revision, DateTimeOffset lastChangedAtUtc,
+        DateTimeOffset? expiresAtUtc, long revision, DateTimeOffset lastChangedAtUtc,
         IEnumerable<DialogTurnSnapshot> turns, IEnumerable<DialogContextSnapshot> contexts)
     {
         ArgumentNullException.ThrowIfNull(turns);
@@ -75,7 +78,8 @@ public class Dialog
         Dialog dialog = Create(id, ownerId, createdAtUtc, expiresAtUtc);
         ArgumentOutOfRangeException.ThrowIfNegative(revision);
         EnsureUtc(lastChangedAtUtc, nameof(lastChangedAtUtc));
-        if (lastChangedAtUtc < createdAtUtc || lastChangedAtUtc >= expiresAtUtc)
+        // Текущая политика может сократить срок уже сохранённой истории.
+        if (lastChangedAtUtc < createdAtUtc)
         {
             throw new ArgumentException("Время сохранённого изменения вне жизни диалога.");
         }
@@ -164,7 +168,7 @@ public class Dialog
     public bool IsExpired(DateTimeOffset nowUtc)
     {
         EnsureUtc(nowUtc, nameof(nowUtc));
-        return nowUtc >= ExpiresAtUtc;
+        return ExpiresAtUtc is { } expiry && nowUtc >= expiry;
     }
 
     /// <summary>Проверяет доступность продолжения для указанного владельца.</summary>

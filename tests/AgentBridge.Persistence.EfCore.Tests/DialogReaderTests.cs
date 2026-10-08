@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AgentBridge.Application.Models;
+using AgentBridge.Configuration;
 using AgentBridge.Application.Results;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Persistence.EfCore.Models;
@@ -307,8 +308,9 @@ public class DialogReaderTests
         public Fixture()
         {
             Dialogs.Records.Add(Dialog);
-            Reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(Dialogs), Dialogs),
-                new(Turns), new(Items), new(Steps), new(Contexts), new(), new(new FakeSettingsByIdRepository(Settings)));
+            DialogRetentionPolicy retention = new(new() { RetentionPeriod = TimeSpan.FromHours(36) });
+            Reader = new(new DialogRecordQueries(new FakeDialogByIdRepository(Dialogs), Dialogs, retention),
+                new(Turns), new(Items), new(Steps), new(Contexts), new(), new(new FakeSettingsByIdRepository(Settings)), retention);
         }
 
         /// <summary>Фиксирует владельца и явное время; системные часы не используются.</summary>

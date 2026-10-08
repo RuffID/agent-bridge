@@ -18,7 +18,7 @@ public class AgentSettingsService(IDialogReader dialogs, IDialogSettingsWriter w
         ServiceResult<DialogSnapshot> read = await ReadDialogAsync(call, cancellationToken);
         if (!read.Success) return ServiceResult<AgentSettingsSnapshot>.Fail(read.Error!);
         DialogModelSelection? selection = read.Data!.Selection;
-        (TimeSpan period, long limit, int passes, int steps) = CaptureLimits();
+        (TimeSpan? period, long limit, int passes, int steps) = CaptureLimits();
         ServiceResult<ModelSettingsSnapshot> selected = await models.ReadAsync(call.OwnerId, selection?.Model, selection?.Effort, cancellationToken);
         return selected.Success ? ServiceResult<AgentSettingsSnapshot>.Ok(Snapshot(selected.Data!, selection?.Version ?? 0, period, limit, passes, steps, read.Data.Token))
             : ServiceResult<AgentSettingsSnapshot>.Fail(selected.Error!);
@@ -52,7 +52,7 @@ public class AgentSettingsService(IDialogReader dialogs, IDialogSettingsWriter w
         ServiceResult<DialogSnapshot> read = await ReadDialogAsync(call, cancellationToken);
         if (!read.Success) return ServiceResult<DialogStatus>.Fail(read.Error!);
         DialogSnapshot dialog = read.Data!;
-        (TimeSpan period, long limit, int passes, int steps) = CaptureLimits();
+        (TimeSpan? period, long limit, int passes, int steps) = CaptureLimits();
         ServiceResult<ModelSettingsSnapshot> selected = await models.ReadAsync(call.OwnerId, dialog.Selection?.Model, dialog.Selection?.Effort, cancellationToken);
         AgentSettingsSnapshot? settings = null;
         ContextTokenCount? size = null;
@@ -99,10 +99,10 @@ public class AgentSettingsService(IDialogReader dialogs, IDialogSettingsWriter w
     }
 
     /// <summary>Фиксирует лимиты до external I/O; не возвращает instructions/options с секретами.</summary>
-    private (TimeSpan Period, long Limit, int Passes, int Steps) CaptureLimits() =>
+    private (TimeSpan? Period, long Limit, int Passes, int Steps) CaptureLimits() =>
         (retention.Value.RetentionPeriod, retention.Value.SoftContentLimitBytes, compaction.Value.MaxPasses, agent.Value.MaxToolSteps);
 
     /// <summary>Создаёт безопасный immutable UI snapshot.</summary>
-    private static AgentSettingsSnapshot Snapshot(ModelSettingsSnapshot selected, long version, TimeSpan period, long limit, int passes, int steps, DialogWriteToken token) =>
+    private static AgentSettingsSnapshot Snapshot(ModelSettingsSnapshot selected, long version, TimeSpan? period, long limit, int passes, int steps, DialogWriteToken token) =>
         new(selected, version, period, limit, passes, steps, token);
 }

@@ -99,7 +99,7 @@ public class CrossComponentFixture : IAsyncDisposable
         await Database.InitializeAsync();
         BuildRoot();
         await using AsyncServiceScope scope = Root.CreateAsyncScope();
-        DateTimeOffset expiry = scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>().Value.CalculateExpiresAtUtc(NOW);
+        DateTimeOffset expiry = scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>().Value.CalculateExpiresAtUtc(NOW)!.Value;
         Assert.True((await scope.ServiceProvider.GetRequiredService<IDialogCreator>().CreateAsync(Call.DialogId, Call.OwnerId, NOW, expiry)).Success);
     }
 

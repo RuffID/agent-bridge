@@ -7,13 +7,16 @@ public class DialogSnapshot
 {
     /// <summary>Фиксирует метаданные, всю историю и активное окно без фильтрации по terminal prefix.</summary>
     public DialogSnapshot(DialogWriteToken token, DialogOwnerId ownerId, DateTimeOffset createdAtUtc,
-        DateTimeOffset expiresAtUtc, long contentBytes, IEnumerable<StoredDialogTurn> turns, StoredDialogContext? activeContext,
+        DateTimeOffset? expiresAtUtc, long contentBytes, IEnumerable<StoredDialogTurn> turns, StoredDialogContext? activeContext,
         DialogModelSelection? selection = null)
     {
         ArgumentNullException.ThrowIfNull(token);
         ArgumentNullException.ThrowIfNull(ownerId);
         ContractSnapshot.Utc(createdAtUtc);
-        ContractSnapshot.Utc(expiresAtUtc);
+        if (expiresAtUtc is { } expiry)
+        {
+            ContractSnapshot.Utc(expiry);
+        }
         ArgumentOutOfRangeException.ThrowIfNegative(contentBytes);
         Token = token;
         OwnerId = ownerId;
@@ -31,8 +34,8 @@ public class DialogSnapshot
     public DialogOwnerId OwnerId { get; }
     /// <summary>Фиксированное время создания.</summary>
     public DateTimeOffset CreatedAtUtc { get; }
-    /// <summary>Фиксированное время истечения, рассчитанное при создании.</summary>
-    public DateTimeOffset ExpiresAtUtc { get; }
+    /// <summary>Срок по текущей политике для этого снимка; null означает бессрочное хранение.</summary>
+    public DateTimeOffset? ExpiresAtUtc { get; }
     /// <summary>Байты сохраняемого содержимого, без overhead провайдера.</summary>
     public long ContentBytes { get; }
     /// <summary>Вся история в порядке начала обращений; без поиска и скрытого отбрасывания элементов.</summary>
@@ -45,6 +48,6 @@ public class DialogSnapshot
     public bool IsExpired(DateTimeOffset nowUtc)
     {
         ContractSnapshot.Utc(nowUtc);
-        return nowUtc >= ExpiresAtUtc;
+        return ExpiresAtUtc is { } expiry && nowUtc >= expiry;
     }
 }

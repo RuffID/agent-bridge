@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace AgentBridge.Configuration;
@@ -13,6 +14,7 @@ public static class AgentBridgeConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+        services.TryAddScoped(provider => new DialogRetentionPolicy(provider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>().Value));
 
         ValidateAgent(services.AddOptions<AgentOptions>().BindSafely(configuration.GetSection("Agent"), "Agent",
             nameof(AgentOptions.MaxToolSteps), nameof(AgentOptions.InstructionsSource)).Configure(options =>
@@ -21,7 +23,7 @@ public static class AgentBridgeConfigurationExtensions
                     SafeOptionsBindingExtensions.RequireValues<AgentOptions>(configuration.GetSection("Agent"), "Agent", Options.DefaultName, nameof(AgentOptions.Instructions));
             }));
         ValidateRetention(services.AddOptions<DialogRetentionOptions>().BindSafely(configuration.GetSection("Retention"), "Retention",
-            nameof(DialogRetentionOptions.RetentionPeriod), nameof(DialogRetentionOptions.SoftContentLimitBytes)));
+            nameof(DialogRetentionOptions.SoftContentLimitBytes)));
         ValidateCompaction(services.AddOptions<ContextCompactionOptions>().BindSafely(configuration.GetSection("Compaction"), "Compaction",
             nameof(ContextCompactionOptions.TokenThreshold), nameof(ContextCompactionOptions.InputTokenReserve), nameof(ContextCompactionOptions.MaxPasses)));
         return services;
@@ -36,6 +38,7 @@ public static class AgentBridgeConfigurationExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configureAgent);
+        services.TryAddScoped(provider => new DialogRetentionPolicy(provider.GetRequiredService<IOptionsSnapshot<DialogRetentionOptions>>().Value));
 
         ValidateAgent(services.AddOptions<AgentOptions>().Configure(configureAgent));
         OptionsBuilder<DialogRetentionOptions> retention = services.AddOptions<DialogRetentionOptions>();
@@ -66,7 +69,8 @@ public static class AgentBridgeConfigurationExtensions
 
     /// <summary>Регистрирует проверку периода хранения и мягкого порога содержимого.</summary>
     private static void ValidateRetention(OptionsBuilder<DialogRetentionOptions> builder) => builder
-        .Validate(options => options.RetentionPeriod > TimeSpan.Zero, "Retention.RetentionPeriod должен быть положительным; required_or_range.")
+        .Validate(options => options.RetentionPeriod is null || options.RetentionPeriod > TimeSpan.Zero,
+            "Retention.RetentionPeriod должен быть null или положительным; invalid_range.")
         .Validate(options => options.SoftContentLimitBytes > 0, "Retention.SoftContentLimitBytes должен быть положительным; required_or_range.")
         .ValidateOnStart();
 

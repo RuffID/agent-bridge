@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AgentBridge.Configuration;
 using AgentBridge.Persistence.EfCore.Configuration;
 using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Coordination;
@@ -36,6 +37,7 @@ public class SqlServerIntegrationDatabase : IAsyncDisposable
             options.ConnectionString = settings.ConnectionString;
         });
         services.AddAgentBridgePersistence();
+        services.Configure<DialogRetentionOptions>(options => options.RetentionPeriod = TimeSpan.FromHours(1));
         services.AddAgentBridgeDatabaseMaintenance(options =>
         {
             options.SqlServerBackupDirectory = settings.ServerBackupDirectory;

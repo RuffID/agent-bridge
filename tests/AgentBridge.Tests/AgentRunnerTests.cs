@@ -274,7 +274,7 @@ public class AgentRunnerTests
         probe.Action = (_, _) =>
         {
             if (deleted) probe.Deleted = true;
-            else probe.Clock.Now = probe.Dialog.ExpiresAtUtc;
+            else probe.Clock.Now = probe.Dialog.ExpiresAtUtc!.Value;
             return Task.FromResult(Success());
         };
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
@@ -697,7 +697,7 @@ public class AgentRunnerTests
         /// <summary>Сессия actual executor для наблюдения public LastResult без доступа к внутреннему state runner.</summary>
         public ToolExecutionSession? Session { get; private set; }
         /// <inheritdoc/>
-        public ToolExecutionSession CreateSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset expiresAtUtc,
+        public ToolExecutionSession CreateSession(ApplicationCallContext call, DialogWriteToken token, DateTimeOffset? expiresAtUtc,
             IEnumerable<string> selectedToolNames, ToolExecutionLimits limits, IToolExecutionCheckpoint? checkpoint = null) =>
             Session = actual.CreateSession(call, token, expiresAtUtc, selectedToolNames, limits, checkpoint);
         /// <inheritdoc/>

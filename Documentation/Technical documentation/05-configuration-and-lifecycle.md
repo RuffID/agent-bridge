@@ -15,7 +15,7 @@ SQL Server добавлен Audit Remediation12 как явный Database.Provi
 | Agent.InstructionsSource | AgentInstructionsSource?: Configuration / PerRequest | Всегда; required / required_or_invalid |
 | Agent.Instructions | Непустая строка | Configuration: обязательно; PerRequest: обязательны instructions обращения без options fallback; required |
 | Agent.MaxToolSteps | int > 0 | Всегда; required / required_or_range |
-| Retention.RetentionPeriod | TimeSpan > 0 | Всегда; required / required_or_range; overflow даты отдельно в CalculateExpiresAtUtc |
+| Retention.RetentionPeriod | TimeSpan?; null либо > 0 | Опционален; отсутствие/null — бессрочно; период применяется ко всем CreatedAtUtc |
 | Retention.SoftContentLimitBytes | long > 0, байты | Всегда; required / required_or_range |
 | Compaction.TokenThreshold | int > 0, токены | Всегда; required / required_or_range |
 | Compaction.InputTokenReserve | int >= 0, токены | Всегда, включая explicit zero; required / required_or_range |
@@ -85,9 +85,9 @@ Shared требует общий ключ, но сохраняет приори�
 
 `ContextCompactionOptions` содержит порог в токенах, запас бюджета и максимальное число проходов на обращение. Объём в `DialogRetentionOptions` измеряется на диалог в байтах содержимого; его порог мягкий. Провайдер и подключение задаются через `DatabaseOptions`.
 
-`DialogRetentionOptions.CalculateExpiresAtUtc(DateTimeOffset createdAtUtc)` уже вычисляет время создания плюс настроенный период, включая нестандартные 14 дней или 36 часов. Требуется нулевое UTC-смещение; неправильный UTC, неположительный период и переполнение даты дают явные ошибки. Метод не создаёт сущность, не меняет ранее вычисленную дату и не обращается к хранилищу.
+`DialogRetentionOptions.CalculateExpiresAtUtc(DateTimeOffset createdAtUtc)` возвращает nullable срок: null для бессрочного хранения, иначе создание плюс положительный период. Неверный UTC, неположительный заданный период и переполнение дают ошибки. Scoped DialogRetentionPolicy фиксирует текущие options и применяется reader/guards ко всем ранее созданным строкам без их переписывания. Регистрация не выполняет I/O.
 
-На этапе 06 `Dialog.Create` фиксирует `CreatedAtUtc` и вычисленный из конфигурации `ExpiresAtUtc` в доменной сущности; сохранение через EFCoreLibrary/scenario UoW реализовано этапами08–10, actual SQLite/PostgreSQL evidence см. в [карте00–25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>). Срок задаётся явно; активность и compact его не продлевают. UTC используется для хранения и сравнения, отображение в часовом поясе пользователя выполняет приложение. [Публичный доменный API](08-dialog-domain-state.md).
+`Dialog.Create` фиксирует `CreatedAtUtc` и nullable `ExpiresAtUtc` в доменной сущности; при чтении существующего диалога срок вычисляется по политике текущего scope. Сохраняемое обязательное поле expiry остаётся метаданной создания; новые бессрочные строки используют DateTimeOffset.MaxValue, миграция схемы не требуется. Активность и compact не продлевают срок. UTC используется для хранения и сравнения, отображение в часовом поясе пользователя выполняет приложение. [Публичный доменный API](08-dialog-domain-state.md).
 
 Чтение безопасных настроек, выбор модели/effort, ключи и Serilog описаны в [отдельном разделе](07-tokenizer-and-settings.md).
 
@@ -108,7 +108,7 @@ Cleanup schedule, bounded batch и logger принадлежат приложе�
 
 Эти имена — пример configuration приложения, а не новый API библиотеки. При отключённом cleanup schedule/batch не обязательны; console/custom ILogger не требует file path. При обязательном файловом режиме приложение отклоняет missing path в своей регистрации logging до работы. AgentBridge получает ILogger приложения без собственного logger/file writer/sinks. Валидация13 не запускает file logger и не открывает файл.
 
-Приложение само вызывает ExpiredDialogCleanup.CleanupAsync в short scope с bounded batch по своему расписанию; AddAgentBridgeDialogCleanup не запускает scheduler/host/background job. RetentionPeriod фиксирует expiry диалога от создания, а compaction limits задают рабочий token budget; они не определяют расписание, backup retention или физический размер БД.
+Приложение само вызывает ExpiredDialogCleanup.CleanupAsync в short scope с bounded batch по своему расписанию; AddAgentBridgeDialogCleanup не запускает scheduler/host/background job. Заданный RetentionPeriod вычисляет expiry диалога от создания; null отключает автоматическую очистку. Compaction limits задают рабочий token budget; они не определяют расписание, backup retention или физический размер БД.
 
 ## Жизненный цикл данных
 

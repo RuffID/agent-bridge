@@ -13,7 +13,7 @@ public class DialogCreationUnitOfWork(UnitOfWorkScope scope, DialogRecordQueries
 {
     /// <inheritdoc/>
     public Task<ServiceResult<DialogWriteToken>> CreateAsync(DialogId dialogId, DialogOwnerId ownerId,
-        DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc, CancellationToken cancellationToken = default)
+        DateTimeOffset createdAtUtc, DateTimeOffset? expiresAtUtc, CancellationToken cancellationToken = default)
     {
         Dialog dialog = Dialog.Create(dialogId, ownerId, createdAtUtc, expiresAtUtc);
         return scope.ExecuteAsync<DialogWriteToken>(async ct =>
@@ -25,7 +25,8 @@ public class DialogCreationUnitOfWork(UnitOfWorkScope scope, DialogRecordQueries
             DialogRecord root = new()
             {
                 Id = dialog.Id.Value, OwnerId = dialog.OwnerId.Value, IncarnationId = Guid.NewGuid(),
-                CreatedAtUtc = dialog.CreatedAtUtc, ExpiresAtUtc = dialog.ExpiresAtUtc,
+                // Legacy NOT NULL столбец хранит срок при создании; текущая политика вычисляется по CreatedAtUtc.
+                CreatedAtUtc = dialog.CreatedAtUtc, ExpiresAtUtc = dialog.ExpiresAtUtc ?? DateTimeOffset.MaxValue,
                 LastChangedAtUtc = dialog.LastChangedAtUtc, Revision = dialog.Revision
             };
             staging.StageCreate(root);

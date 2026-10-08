@@ -226,7 +226,7 @@ public class AgentSettingsTests
     {
         Probe probe = new();
         probe.Dialog = Copy(probe.Dialog, active: new(3, 0, ModelResponse.Completed([Opaque()]), "gpt-5"), bytes: 10_485_760);
-        probe.Clock.Now = probe.Dialog.ExpiresAtUtc;
+        probe.Clock.Now = probe.Dialog.ExpiresAtUtc!.Value;
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>().GetStatusAsync(probe.Call, cancellationToken: TestContext.Current.CancellationToken));
@@ -281,7 +281,7 @@ public class AgentSettingsTests
     public async Task ExpiryDuringValidationRefusesWrite()
     {
         Probe probe = new();
-        probe.AfterCatalog = () => probe.Clock.Now = probe.Dialog.ExpiresAtUtc;
+        probe.AfterCatalog = () => probe.Clock.Now = probe.Dialog.ExpiresAtUtc!.Value;
         await using ServiceProvider root = Services(probe).BuildServiceProvider();
         using IServiceScope scope = root.CreateScope();
         ServiceResult<DialogModelSelection> result = await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()

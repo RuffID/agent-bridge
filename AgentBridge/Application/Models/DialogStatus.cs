@@ -4,7 +4,7 @@ using AgentBridge.Application.Results;
 namespace AgentBridge.Application.Models;
 
 /// <summary>Безопасный read-only статус; размер относится к сохраняемому рабочему окну без transient providers/new input/tools.</summary>
-public class DialogStatus(DialogWriteToken token, DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc, bool isExpired,
+public class DialogStatus(DialogWriteToken token, DateTimeOffset createdAtUtc, DateTimeOffset? expiresAtUtc, bool isExpired,
     long contentBytes, long softContentLimitBytes, long compactionCount, AgentSettingsSnapshot? settings,
     string? serverModel, ContextTokenCount? contextSize, ServiceError? contextError, DialogModelSelection? savedSelection = null)
 {
@@ -14,8 +14,8 @@ public class DialogStatus(DialogWriteToken token, DateTimeOffset createdAtUtc, D
     public DialogWriteToken Token { get; } = token;
     /// <summary>Фиксированное создание.</summary>
     public DateTimeOffset CreatedAtUtc { get; } = createdAtUtc;
-    /// <summary>Фиксированный срок.</summary>
-    public DateTimeOffset ExpiresAtUtc { get; } = expiresAtUtc;
+    /// <summary>Текущий срок либо null для бессрочного хранения.</summary>
+    public DateTimeOffset? ExpiresAtUtc { get; } = expiresAtUtc;
     /// <summary>Истечение на fresh UTC момента возврата.</summary>
     public bool IsExpired { get; } = isExpired;
     /// <summary>Объём сохраняемого содержимого в байтах, не физический размер БД.</summary>
