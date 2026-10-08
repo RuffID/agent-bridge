@@ -142,6 +142,7 @@
     <Project Path="tests/AgentBridge.Tests/AgentBridge.Tests.csproj" />
     <Project Path="tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj" />
     <Project Path="tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj" />
+    <Project Path="tests/AgentBridge.Hosting.Tests/AgentBridge.Hosting.Tests.csproj" />
   </Folder>
   <Folder Name="/Tests/Delivery/">
     <File Path="tests/Delivery/AGENTS.md" />
