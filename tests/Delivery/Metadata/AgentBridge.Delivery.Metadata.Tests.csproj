@@ -8,6 +8,8 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**</DefaultItemExcludes>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+    <AgentBridgeDeliveryTestsRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../../artifacts/delivery-tests'))</AgentBridgeDeliveryTestsRoot>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
@@ -16,4 +18,11 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.9.0" />
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="AgentBridgeDeliveryTestsRoot" Value="$(AgentBridgeDeliveryTestsRoot)" />
+  </ItemGroup>
+  <Target Name="PrepareAgentBridgeDeliveryTests" BeforeTargets="BeforeCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(AgentBridgeSkipDeliveryPreparation)' != 'true'">
+    <Exec Command="pwsh -NoLogo -NoProfile -File &quot;$(MSBuildProjectDirectory)/../Build/Prepare-DeliveryTests.ps1&quot;" />
+  </Target>
 </Project>

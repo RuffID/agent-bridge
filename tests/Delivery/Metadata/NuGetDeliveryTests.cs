@@ -18,8 +18,7 @@ public class NuGetDeliveryTests
     public void LocalClosureAndRequiredPackagesMatchSourceGraph(string provider, string rid)
     {
         string root = Path.Combine(Root(), provider);
-        string sourceRoot = Environment.GetEnvironmentVariable("AGENTBRIDGE_DELIVERY_ROOT")
-            ?? throw new InvalidOperationException("Нужен каталог исходных SDK-комплектов.");
+        string sourceRoot = DeliveryTestPaths.SdkRoot;
         string source = Path.Combine(sourceRoot, provider, rid);
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "delivery.manifest.json")));
         using JsonDocument sourceManifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(source, "delivery.manifest.json")));
@@ -109,9 +108,8 @@ public class NuGetDeliveryTests
         }
     }
 
-    /// <summary>Получает корень подготовленной матрицы DLL/NuGet-комплектов.</summary>
-    private static string Root() => Environment.GetEnvironmentVariable("AGENTBRIDGE_NUGET_DELIVERY_ROOT")
-        ?? throw new InvalidOperationException("Нужен каталог DLL/NuGet-поставки.");
+    /// <summary>Получает корень подготовленной проектной матрицы DLL/NuGet-комплектов.</summary>
+    private static string Root() => DeliveryTestPaths.NuGetRoot;
 
     /// <summary>Считает SHA256 фактических файлов без загрузки сборки.</summary>
     private static string Hash(string file) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file))).ToLowerInvariant();

@@ -113,9 +113,8 @@ public class SharedDeliveryTests
         Assert.Equal(expected.Order(StringComparer.Ordinal), actual.Order(StringComparer.Ordinal));
     }
 
-    /// <summary>Читает явно выбранную поставку без загрузки DLL и исполнения native.</summary>
-    private static string Root() => Environment.GetEnvironmentVariable("AGENTBRIDGE_SHARED_DELIVERY_ROOT")
-        ?? throw new InvalidOperationException("Нужен каталог общей поставки.");
+    /// <summary>Выбирает подготовленную проектную поставку без загрузки DLL и исполнения native.</summary>
+    private static string Root() => DeliveryTestPaths.SharedRoot;
 
     /// <summary>Считает SHA256 фактических bytes.</summary>
     private static string Hash(string file) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file))).ToLowerInvariant();

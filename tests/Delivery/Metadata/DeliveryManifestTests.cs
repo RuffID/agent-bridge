@@ -203,7 +203,6 @@ public class DeliveryManifestTests
     /// <summary>Вычисляет SHA256 исходных bytes.</summary>
     private static string Hash(string file) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file))).ToLowerInvariant();
 
-    /// <summary>Требует явный каталог выбранного комплекта.</summary>
-    private static string GetKit(string provider, string rid) => Path.Combine(
-        Environment.GetEnvironmentVariable("AGENTBRIDGE_DELIVERY_ROOT") ?? throw new InvalidOperationException("Нужен каталог поставки."), provider, rid);
+    /// <summary>Выбирает проектный SDK-комплект нужного провайдера и RID.</summary>
+    private static string GetKit(string provider, string rid) => Path.Combine(DeliveryTestPaths.SdkRoot, provider, rid);
 }

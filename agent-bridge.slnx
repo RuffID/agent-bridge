@@ -152,6 +152,7 @@
   </Folder>
   <Folder Name="/Tests/Delivery/">
     <File Path="tests/Delivery/AGENTS.md" />
+    <File Path="tests/Delivery/README.md" />
     <File Path="tests/Delivery/AgentBridge.Delivery.props" />
     <File Path="tests/Delivery/AgentBridge.SharedDelivery.props" />
     <File Path="tests/Delivery/AgentBridge.NuGetDelivery.props" />
@@ -159,6 +160,7 @@
     <File Path="tests/Delivery/Build/Assemble-Delivery.ps1" />
     <File Path="tests/Delivery/Build/Assemble-SharedDelivery.ps1" />
     <File Path="tests/Delivery/Build/Assemble-NuGetDelivery.ps1" />
+    <File Path="tests/Delivery/Build/Prepare-DeliveryTests.ps1" />
     <File Path="tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj" />
     <Project Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
   </Folder>

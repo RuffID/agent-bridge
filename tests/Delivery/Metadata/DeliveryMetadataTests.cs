@@ -114,13 +114,12 @@ public class DeliveryMetadataTests
         Assert.Matches("[\u0400-\u04ff]", summary);
     }
 
-    /// <summary>Принимает только явный существующий каталог поставки, без поиска соседних исходников.</summary>
+    /// <summary>Принимает только подготовленную проектную матрицу SDK-комплектов.</summary>
     private static string GetRoot()
     {
-        string? root = Environment.GetEnvironmentVariable("AGENTBRIDGE_DELIVERY_ROOT");
-        Assert.False(string.IsNullOrWhiteSpace(root));
-        Assert.True(Path.IsPathFullyQualified(root));
+        string root = DeliveryTestPaths.SdkRoot;
         Assert.True(Directory.Exists(root));
+
         return root;
     }
 

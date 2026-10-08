@@ -10,7 +10,7 @@ public class NativeAssetMetadataTests
     [InlineData("linux-x64", "linux-arm64")]
     public void ElfRejectsWrongArchitectureAndMalformedHeaders(string rid, string otherRid)
     {
-        string root = Environment.GetEnvironmentVariable("AGENTBRIDGE_DELIVERY_ROOT") ?? throw new InvalidOperationException("Нужен каталог поставки.");
+        string root = DeliveryTestPaths.SdkRoot;
         byte[] bytes = File.ReadAllBytes(Path.Combine(root, "SqlServer", rid, "native", rid, "libmsalruntime.so"));
         NativeAssetMetadata.Validate(bytes, rid);
         Assert.Throws<InvalidDataException>(() => NativeAssetMetadata.Validate(bytes, otherRid));
@@ -27,7 +27,7 @@ public class NativeAssetMetadataTests
     [Fact]
     public void NativeRejectsManagedAndMixedOperatingSystems()
     {
-        string root = Environment.GetEnvironmentVariable("AGENTBRIDGE_DELIVERY_ROOT") ?? throw new InvalidOperationException("Нужен каталог поставки.");
+        string root = DeliveryTestPaths.SdkRoot;
         byte[] managed = File.ReadAllBytes(Path.Combine(root, "SqlServer", "win-x64", "lib", "AgentBridge.dll"));
         byte[] windows = File.ReadAllBytes(Path.Combine(root, "SqlServer", "win-x64", "native", "win-x64", "Microsoft.Data.SqlClient.SNI.dll"));
         byte[] linux = File.ReadAllBytes(Path.Combine(root, "SqlServer", "linux-x64", "native", "linux-x64", "libmsalruntime.so"));
