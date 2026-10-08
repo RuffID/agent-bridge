@@ -52,6 +52,7 @@ public class DatabaseMaintenanceRegistrationTests
     public void PersistenceRegistrationAloneDoesNotAddMaintenance()
     {
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.SQLite; options.ConnectionString = "Data Source=never-open.db"; });
         services.AddAgentBridgePersistence();
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IDatabaseMaintenance<AgentBridgeContextKey>));
@@ -141,6 +142,7 @@ public class DatabaseMaintenanceRegistrationTests
             ["Backup:BackupRetentionPeriod"] = "30.00:00:00"
         }).Build();
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.SQLite; options.ConnectionString = "Data Source=never-open.db"; });
         services.AddAgentBridgePersistence();
         services.AddAgentBridgeDatabaseMaintenance(configuration.GetSection("Backup"), MaintenanceExecutionMode.SingleInitializer);
@@ -166,6 +168,7 @@ public class DatabaseMaintenanceRegistrationTests
         {
             IConfigurationRoot config = BackupConfiguration(); config[field] = value;
             ServiceCollection services = new();
+            services.AddTestDatabaseProviders();
             services.Configure<DatabaseBackupOptions>(options =>
             {
                 options.BackupDirectory = Path.GetFullPath("prior-backups"); options.SqlServerBackupDirectory = "/prior-backups";
@@ -190,6 +193,7 @@ public class DatabaseMaintenanceRegistrationTests
     {
         IConfigurationRoot config = BackupConfiguration(); config[field] = value;
         ServiceCollection services = new(); services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = "Password=synthetic-secret"; });
+        services.AddTestDatabaseProviders();
         services.AddAgentBridgeDatabaseMaintenance(config, MaintenanceExecutionMode.SingleInitializer);
         using ServiceProvider provider = services.BuildServiceProvider();
         OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
@@ -208,6 +212,7 @@ public class DatabaseMaintenanceRegistrationTests
     internal static ServiceCollection Services(DatabaseProvider provider, Action<DatabaseBackupOptions>? change = null)
     {
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options =>
         {
             options.Provider = provider;

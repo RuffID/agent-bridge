@@ -1,5 +1,7 @@
 # Runtime delivery probe
 
+- SelectedProviderRegistration компилирует только модуль выбранного kit через provider symbol из generated props; runtime аргумент должен совпадать. Reflection/provider DLL discovery не использовать. Изменение consumer source требует compile-check; запуск probe по-прежнему отдельно разрешается и не следует из сборки.
+
 - Выделенный framework-dependent net10.0 test executable; binary references только из одного verified kit. Без ProjectReference/PackageReference, hosting, реальных HTTP/БД/SQL, maintenance или бизнес-операций.
 - Копировать source/project и kit вне repo. Перед каждым запуском сверять kit manifest и copied output size/SHA; несовпадение, missing dependency и RID отклонять fail-fast, без fallback. Запуск только после fresh successful Build того же output.
 - Actual app graph этого probe: kit closure плюс framework Microsoft.NETCore.App; app ILogger в памяти, IConfiguration in-memory, HTTP blocking handler. Это не graph production ASP.NET Core приложения.

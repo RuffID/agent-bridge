@@ -127,6 +127,9 @@
     <File Path="Documentation/Technical documentation/24-dll-delivery.md" />
     <File Path="Documentation/Technical documentation/25-usage-guide.md" />
     <File Path="Documentation/Technical documentation/26-integration-registration.md" />
+    <File Path="Documentation/Technical documentation/27-auxiliary-model-operations.md" />
+    <File Path="Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md" />
+    <File Path="Documentation/Technical documentation/29-dll-and-nuget-delivery.md" />
     <File Path="Documentation/Technical documentation/README.md" />
   </Folder>
   <Project Path="AgentBridge/agent-bridge.csproj" />
@@ -134,6 +137,9 @@
     <Project Path="adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
     <Project Path="adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.SqlServer/AgentBridge.Persistence.SqlServer.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.Sqlite/AgentBridge.Persistence.Sqlite.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.PostgreSql/AgentBridge.Persistence.PostgreSql.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.Migrations.SqlServer/AgentBridge.Persistence.Migrations.SqlServer.csproj" />
@@ -147,8 +153,12 @@
   <Folder Name="/Tests/Delivery/">
     <File Path="tests/Delivery/AGENTS.md" />
     <File Path="tests/Delivery/AgentBridge.Delivery.props" />
+    <File Path="tests/Delivery/AgentBridge.SharedDelivery.props" />
+    <File Path="tests/Delivery/AgentBridge.NuGetDelivery.props" />
     <File Path="tests/Delivery/Build/AgentBridge.Delivery.csproj" />
     <File Path="tests/Delivery/Build/Assemble-Delivery.ps1" />
+    <File Path="tests/Delivery/Build/Assemble-SharedDelivery.ps1" />
+    <File Path="tests/Delivery/Build/Assemble-NuGetDelivery.ps1" />
     <File Path="tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj" />
     <Project Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
   </Folder>

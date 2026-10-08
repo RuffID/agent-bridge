@@ -19,6 +19,8 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 ## Техническая документация
 
+[Usage, документы, изображения и явная серверная проверка opaque бюджета](<Technical documentation/27-auxiliary-model-operations.md>) описывают optional расширение для Telegram consumer.
+
 Actual короткое подключение — [Integration facade](<Technical documentation/26-integration-registration.md>); [fresh evidence16](<Plans/AgentBridge Audit Remediation/16-isolated-regression-and-delivery.md#результаты>) подтверждает пять binary kits/external compile-only consumers. [Windows runtime18](<Plans/AgentBridge Audit Remediation/18-runtime-delivery.md#результаты>) проверен в loader/DI/BPE границе; provider/Linux/live/crash evidence остаётся открытым.
 
 [Навигатор Technical documentation](<Technical documentation/README.md>)

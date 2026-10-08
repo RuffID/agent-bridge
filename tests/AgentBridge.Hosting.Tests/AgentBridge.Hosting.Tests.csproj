@@ -15,6 +15,7 @@
     <PackageReference Include="xunit.v3" Version="4.0.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" PrivateAssets="all" />
     <ProjectReference Include="../../adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
+    <ProjectReference Include="../../adapters/AgentBridge.Persistence.SqlServer/AgentBridge.Persistence.SqlServer.csproj" />
     <Compile Include="../AgentBridge.Persistence.EfCore.Tests/FakeBaseRepository.cs" Link="Infrastructure/FakeBaseRepository.cs" />
     <Compile Include="../AgentBridge.Persistence.EfCore.Tests/FakeSettingsByIdRepository.cs" Link="Infrastructure/FakeSettingsByIdRepository.cs" />
   </ItemGroup>

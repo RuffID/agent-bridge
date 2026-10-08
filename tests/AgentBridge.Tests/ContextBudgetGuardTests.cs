@@ -72,6 +72,38 @@ public class ContextBudgetGuardTests
         Assert.DoesNotContain("secret", result.Error.Message);
     }
 
+    /// <summary>Явная серверная проверка допускает opaque без вымышленной полной оценки и защищает известную часть.</summary>
+    [Theory]
+    [InlineData(89, true, false)]
+    [InlineData(90, true, true)]
+    [InlineData(91, false, false)]
+    public async Task ExplicitServerValidationKeepsUnknownEstimate(long known, bool success, bool threshold)
+    {
+        ContextTokenCount count = new("o200k_base", known, null, true);
+        ServiceResult<ContextBudgetAssessment> result = await new ContextBudgetGuard(new Counter(count),
+            ContextBudgetPolicy.ServerValidation).CheckAsync(Request(), Settings(100, 90, 10),
+                cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(success, result.Success);
+        if (success)
+        {
+            Assert.Same(count, result.Data!.TokenCount);
+            Assert.Null(result.Data.TokenCount.EstimatedInputTokens);
+            Assert.True(result.Data.RequiresServerValidation);
+            Assert.Equal(threshold, result.Data.ThresholdReached);
+        }
+        else
+            Assert.Equal(ServiceErrorType.Rejected, result.Error!.Type);
+    }
+
+    /// <summary>Маркер серверной проверки не разрешает произвольный известный или не-opaque результат.</summary>
+    [Fact]
+    public void ServerAssessmentRequiresUnknownOpaqueCount()
+    {
+        Assert.Throws<ArgumentException>(() => new ContextBudgetAssessment(new("o200k_base", 1, 1, false),
+            100, 10, false, requiresServerValidation: true));
+    }
+
     /// <summary>Публичный DTO не обходит catalog validation, ContextWindow не подменяет input limit.</summary>
     [Theory]
     [InlineData(null, 1, 0, ServiceErrorType.Unsupported)]

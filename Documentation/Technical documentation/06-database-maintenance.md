@@ -125,12 +125,14 @@ Backup является отдельной копией данных. Удале
 ```csharp
 using AgentBridge.Persistence.EfCore;
 using AgentBridge.Persistence.EfCore.Configuration;
+using AgentBridge.Persistence.SqlServer;
 using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 services.AddDatabaseConfiguration(configuration.GetSection("AgentBridge:Database"));
+services.AddAgentBridgeSqlServer(); // для выбранного Database.Provider=SqlServer
 services.AddAgentBridgePersistence();
 services.AddAgentBridgeDatabaseMaintenance(
     configuration.GetSection("AgentBridge:Backup"), MaintenanceExecutionMode.SingleInitializer);

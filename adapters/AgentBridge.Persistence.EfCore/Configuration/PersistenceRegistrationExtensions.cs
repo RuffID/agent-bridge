@@ -5,6 +5,7 @@ using AgentBridge.Persistence.EfCore.UnitOfWork;
 using EFCoreLibrary.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace AgentBridge.Persistence.EfCore.Configuration;
@@ -16,6 +17,7 @@ public static class PersistenceRegistrationExtensions
     public static IServiceCollection AddAgentBridgePersistence(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DatabaseOptions>, DatabaseProviderOptionsValidator>());
         services.AddDbContext<AgentBridgeDbContext>((provider, builder) =>
         {
             DatabaseOptions options = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
@@ -23,26 +25,7 @@ public static class PersistenceRegistrationExtensions
             {
                 throw new InvalidOperationException("Database.ConnectionString обязателен.");
             }
-            switch (options.Provider)
-            {
-                case DatabaseProvider.SQLite:
-                    builder.UseSqlite(options.ConnectionString, sqlite => sqlite
-                        .MigrationsAssembly(AgentBridgeMigrationsAssemblies.SQLITE)
-                        .MigrationsHistoryTable(AgentBridgeMigrationsHistory.TABLE_NAME));
-                    break;
-                case DatabaseProvider.PostgreSql:
-                    builder.UseNpgsql(options.ConnectionString, postgres => postgres
-                        .MigrationsAssembly(AgentBridgeMigrationsAssemblies.POSTGRESQL)
-                        .MigrationsHistoryTable(AgentBridgeMigrationsHistory.TABLE_NAME));
-                    break;
-                case DatabaseProvider.SqlServer:
-                    builder.UseSqlServer(options.ConnectionString, sqlServer => sqlServer
-                        .MigrationsAssembly(AgentBridgeMigrationsAssemblies.SQLSERVER)
-                        .MigrationsHistoryTable(AgentBridgeMigrationsHistory.TABLE_NAME));
-                    break;
-                default:
-                    throw new InvalidOperationException("Требуется явный провайдер SQLite/PostgreSQL/SQL Server.");
-            }
+            DatabaseProviderResolver.Resolve(provider, options).Configure(builder, options);
             builder.EnableSensitiveDataLogging(false);
         });
         services.AddEfCoreContext<AgentBridgeDbContext, AgentBridgeContextKey>();

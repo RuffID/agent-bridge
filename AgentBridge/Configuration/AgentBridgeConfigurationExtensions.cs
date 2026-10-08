@@ -72,6 +72,7 @@ public static class AgentBridgeConfigurationExtensions
 
     /// <summary>Регистрирует проверку локальных лимитов сжатия, без обещания модельного бюджета.</summary>
     private static void ValidateCompaction(OptionsBuilder<ContextCompactionOptions> builder) => builder
+        .Validate(options => Enum.IsDefined(options.BudgetPolicy), "Compaction.BudgetPolicy: invalid.")
         .Validate(options => options.TokenThreshold > 0, "Compaction.TokenThreshold должен быть положительным; required_or_range.")
         .Validate(options => options.InputTokenReserve >= 0, "Compaction.InputTokenReserve не может быть отрицательным; required_or_range.")
         .Validate(options => (long)options.TokenThreshold + options.InputTokenReserve <= int.MaxValue,

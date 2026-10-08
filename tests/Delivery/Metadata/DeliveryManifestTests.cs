@@ -82,16 +82,16 @@ public class DeliveryManifestTests
                 }
             }
         }
-        Assert.Equal(13, entries.Values.Count(entry => entry.GetProperty("kind").GetString() == "resource"));
+        Assert.Equal(provider == "SqlServer" ? 13 : 0, entries.Values.Count(entry => entry.GetProperty("kind").GetString() == "resource"));
     }
 
-    /// <summary>Cross-build сохраняет public types/method signatures и generated XML всех пяти AgentBridge assembly.</summary>
+    /// <summary>Cross-build сохраняет public types/method signatures и generated XML шести AgentBridge assembly выбранного провайдера.</summary>
     [Fact]
     public void SqlServerManagedApiAndXmlAreIdenticalAcrossRids()
     {
         string baseline = Path.Combine(GetKit("SqlServer", "win-x64"), "lib");
         string[] names = Directory.GetFiles(baseline, "AgentBridge*.dll").Select(Path.GetFileName).OfType<string>().Order(StringComparer.Ordinal).ToArray();
-        Assert.Equal(5, names.Length);
+        Assert.Equal(6, names.Length);
         foreach (string rid in new[] { "linux-x64", "linux-arm64" })
         {
             string other = Path.Combine(GetKit("SqlServer", rid), "lib");
@@ -117,8 +117,8 @@ public class DeliveryManifestTests
     public void RequiredNativeAssetUsesExactCaseAndCannotBeMissing()
     {
         string root = GetKit("SqlServer", "win-x64");
-        RequireExactFile(root, "native/win-x64/e_sqlite3.dll");
-        Assert.Throws<InvalidDataException>(() => RequireExactFile(root, "native/win-x64/E_SQLITE3.DLL"));
+        RequireExactFile(root, "native/win-x64/Microsoft.Data.SqlClient.SNI.dll");
+        Assert.Throws<InvalidDataException>(() => RequireExactFile(root, "native/win-x64/MICROSOFT.DATA.SQLCLIENT.SNI.DLL"));
         Assert.Throws<InvalidDataException>(() => RequireExactFile(root, "native/win-x64/missing.dll"));
     }
 

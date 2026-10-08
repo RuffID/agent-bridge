@@ -27,6 +27,7 @@ public class ProviderDesignTimeTests
         IDesignTimeDbContextFactory<AgentBridgeDbContext> factory = CreateFactory(selected);
         using AgentBridgeDbContext design = factory.CreateDbContext([]);
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options =>
         {
             options.Provider = selected;

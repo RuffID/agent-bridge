@@ -12,12 +12,18 @@ namespace AgentBridge.Application;
 public class ContextCompactor(ContextBuilder builder, IContextTokenCounter counter, IModelGateway gateway,
     IDialogContextWriter writer, TimeProvider time, IOptionsSnapshot<ContextCompactionOptions> options)
 {
+    /// <summary>Сжимает по настроенному автоматическому порогу; сохраняет прежнюю бинарную сигнатуру.</summary>
+    public Task<ServiceResult<ContextCompactionResult>> CompactAsync(ApplicationCallContext call,
+        DialogSnapshot dialog, ModelRequest newRequest, ModelSettingsSnapshot settings, ModelAccess access,
+        CancellationToken cancellationToken = default) =>
+        CompactAsync(call, dialog, newRequest, settings, access, cancellationToken, force: false);
+
     /// <summary>Фиксирует provider-вклады один раз; ошибка позднего прохода оставляет последний успешный save.</summary>
     /// <remarks>Ok означает получение отчёта, а не разрешение генерации: проверяются Status/Error и отдельный guard17.
     /// Неожиданные исключения и caller cancellation распространяются; сохранённые ранее проходы не откатываются.</remarks>
     public async Task<ServiceResult<ContextCompactionResult>> CompactAsync(ApplicationCallContext call,
         DialogSnapshot dialog, ModelRequest newRequest, ModelSettingsSnapshot settings, ModelAccess access,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken, bool force)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(dialog);
@@ -26,6 +32,7 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
         ArgumentNullException.ThrowIfNull(access);
         cancellationToken.ThrowIfCancellationRequested();
         int maxPasses = options.Value.MaxPasses;
+        ContextBudgetPolicy budgetPolicy = options.Value.BudgetPolicy;
         if (maxPasses <= 0 || newRequest.Model != settings.Model.Id || newRequest.ReasoningEffort != settings.ReasoningEffort)
         {
             return ServiceResult<ContextCompactionResult>.Fail(new(ServiceErrorType.Validation,
@@ -71,8 +78,11 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
         if (!counted.Success) { return Report(ContextCompactionStatus.Failed, counted.Error!); }
         cancellationToken.ThrowIfCancellationRequested();
         count = counted.Data!;
-        if (count.EstimatedInputTokens is not long estimate) { return Report(ContextCompactionStatus.UnknownBudget); }
-        if (estimate < settings.TokenThreshold) { return Report(ContextCompactionStatus.NotRequired); }
+        long? estimate = count.EstimatedInputTokens;
+        if (estimate is null && (budgetPolicy != ContextBudgetPolicy.ServerValidation || !count.HasOpaqueContent))
+            return Report(ContextCompactionStatus.UnknownBudget);
+        if (!force && (estimate ?? count.KnownTokens) < settings.TokenThreshold)
+            return Report(estimate is null ? ContextCompactionStatus.UnknownBudget : ContextCompactionStatus.NotRequired);
         if (history.Count == 0) { return Report(ContextCompactionStatus.NoPersistableHistory); }
 
         while (passes < maxPasses)
@@ -86,7 +96,7 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
             if (pairError is not null) { return Report(ContextCompactionStatus.Failed, pairError); }
             ModelRequest compactRequest = new(prepared.Model, prepared.ReasoningEffort, prepared.Instructions,
                 history, [], parameters: CompactParameters(prepared.Parameters));
-            ServiceResult<ContextBudgetAssessment> compactBudget = await new ContextBudgetGuard(counter)
+            ServiceResult<ContextBudgetAssessment> compactBudget = await new ContextBudgetGuard(counter, budgetPolicy)
                 .CheckAsync(compactRequest, settings, cancellationToken);
             if (!compactBudget.Success) { return Report(ContextCompactionStatus.Failed, compactBudget.Error!); }
             passes++;
@@ -119,7 +129,8 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
             if (!counted.Success) { return Report(ContextCompactionStatus.Failed, counted.Error!); }
             cancellationToken.ThrowIfCancellationRequested();
             ContextTokenCount candidateCount = counted.Data!;
-            if (candidateCount.EstimatedInputTokens is long candidateEstimate && candidateEstimate >= estimate)
+            if (estimate is long previousEstimate && candidateCount.EstimatedInputTokens is long candidateEstimate
+                && candidateEstimate >= previousEstimate)
             {
                 return Report(ContextCompactionStatus.NoReduction);
             }

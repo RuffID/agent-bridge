@@ -1,4 +1,5 @@
 using AgentBridge.Persistence.EfCore.Configuration;
+using AgentBridge.Persistence.SqlServer;
 using EFCoreLibrary.Maintenance.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public static class SqlServerRegistration
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         services.AddDatabaseConfiguration(configuration.GetSection("Database"));
+        services.AddAgentBridgeSqlServer();
         services.AddAgentBridgePersistence();
         services.AddAgentBridgeDatabaseMaintenance(configuration.GetSection("Backup"), MaintenanceExecutionMode.SingleInitializer);
         return services;

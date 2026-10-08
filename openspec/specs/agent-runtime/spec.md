@@ -6,6 +6,22 @@
 
 ## Requirements
 
+### Requirement: Optional usage, files и images
+
+Ядро MUST предоставлять независимый IModelAuxiliaryGateway для usage, регистрации/upload/finalize файла и генерации/редактирования изображений. Реализация CodexLb MUST подключаться отдельно через AddCodexLbAuxiliary, использовать existing HttpClientLibrary, per-call ModelAccess и отдельные конечные deadlines. Telegram/HTTP/wire типы MUST NOT попадать в ядро. Gateway MUST NOT повторять операции или менять доступ; raw errors/URL/секреты MUST NOT публиковаться.
+
+#### Scenario: Подтверждённая загрузка документа
+
+- **WHEN** приложение передаёт файл и ключ
+- **THEN** gateway фиксирует bytes до await, регистрирует файл, отправляет signed PUT без Bearer и подтверждает finalize success для того же file_id
+- **AND** отказ стадии прекращает последующие стадии без retry; caller cancellation и cleanup failure не маскируются обычным успехом.
+
+#### Scenario: Изображения и usage
+
+- **WHEN** приложение вызывает usage или image generation/edit
+- **THEN** gateway использует отдельный deadline, возвращает immutable JSON result либо безопасный typed failure
+- **AND** image generation использует JSON, edit — fresh multipart, пустой/невалидный image result не признаётся успехом.
+
 ### Requirement: Проверяемое руководство бинарного потребителя
 
 Руководство AgentBridge MUST предоставлять короткий вход и последовательность бинарного подключения, DI/options, создания диалога, нового run, инструментов, exact model/effort, shared/individual keys, status/expiry и bounded cleanup.
@@ -287,7 +303,7 @@ Instructions/tools/controls MUST сохраняться в полном generati
 
 ### Requirement: Ограниченное принятие compact
 
-Сценарий MUST проверять exact settings, считать полный request и запускать compact при estimate >= threshold. Unknown estimate MUST NOT заменяться KnownTokens либо прошлым usage. Число проходов MUST ограничиваться MaxPasses; known non-reduction MUST останавливать проходы без принятия увеличенного окна.
+Сценарий MUST проверять exact settings, считать полный request и запускать compact при estimate >= threshold. Unknown estimate MUST NOT заменяться KnownTokens либо прошлым usage. Явный force MUST разрешать ручное сжатие ниже threshold без обхода остальных guards. При explicit ServerValidation и opaque input сценарий MAY запустить compact по известной части или force, сохраняя null full estimate. Число проходов MUST ограничиваться MaxPasses; known non-reduction MUST останавливать проходы без принятия увеличенного окна.
 
 #### Scenario: Неизвестный opaque бюджет
 
@@ -404,22 +420,28 @@ KnownTokens MUST сохранять локально посчитанную из
 
 ### Requirement: Проверка полного входного бюджета
 
-Guard MUST использовать exact model/effort и положительный InputContextWindow из проверенного каталога, configured threshold и reserve. ContextWindow/MaxOutputTokens MUST NOT подменять входной лимит. Guard MUST отклонять неизвестную полную оценку, некорректные настройки и превышение без integer overflow; ошибка counter MUST передаваться тем же ServiceError.
+Guard MUST использовать exact model/effort и положительный InputContextWindow из проверенного каталога, configured threshold и reserve. ContextWindow/MaxOutputTokens MUST NOT подменять входной лимит. Default RequireLocalEstimate MUST отклонять неизвестную полную оценку. Explicit ServerValidation MAY разрешать opaque input с null estimate и допустимой KnownTokens+reserve, MUST сохранять null estimate и RequiresServerValidation=true, MUST NOT объявлять серверный приём гарантированным. Некорректные настройки и превышение известной части MUST отклоняться без integer overflow; ошибка counter MUST передаваться тем же ServiceError.
 
 #### Scenario: Граница и неизвестный бюджет
 
 - **WHEN** estimate с резервом равен входному лимиту
 - **THEN** guard возвращает результат оценки и отдельный признак достижения threshold
-- **AND** при null estimate вместо успеха возвращает Unsupported.
+- **AND** при null estimate в default RequireLocalEstimate вместо успеха возвращает Unsupported.
 
 #### Scenario: Проверка правила — Проверка полного входного бюджета
 
-- **WHEN** полная оценка неизвестна или каталог не даёт допустимый input window
+- **WHEN** полная оценка неизвестна в default policy или каталог не даёт допустимый input window
 - **THEN** guard отклоняет проверку без подмены лимита или ServiceError.
 
 ### Requirement: Резерв и порог полного бюджета
 
-Reserve MUST применяться отдельно от KnownTokens; estimate+reserve == input_context_window MUST быть допустимо по оценке. Threshold MUST достигаться при estimate >= threshold; guard MUST NOT запускать compact, HTTP, DB или orchestration.
+Reserve MUST применяться отдельно от KnownTokens; estimate+reserve == input_context_window MUST быть допустимо по оценке. Threshold MUST достигаться при estimate >= threshold (при explicit ServerValidation с null estimate — по KnownTokens); guard MUST NOT запускать compact, HTTP, DB или orchestration.
+
+#### Scenario: Явная серверная проверка opaque бюджета
+
+- **WHEN** приложение выбрало ServerValidation, input opaque и full estimate неизвестна
+- **THEN** guard проверяет KnownTokens+reserve против input window и возвращает RequiresServerValidation=true при допустимой известной части
+- **AND** estimate остаётся null; превышение известной части даёт Rejected, HTTP-отказ не повторяется и не меняет доступ.
 
 #### Scenario: Проверка правила — Резерв и порог полного бюджета
 

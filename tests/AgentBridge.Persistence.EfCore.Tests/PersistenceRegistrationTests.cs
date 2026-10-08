@@ -26,6 +26,7 @@ public class PersistenceRegistrationTests
     public void RepositoriesUseSelectedProviderAndSharedScopedContext(DatabaseProvider selected, string providerName)
     {
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options =>
         {
             options.Provider = selected;
@@ -113,6 +114,7 @@ public class PersistenceRegistrationTests
     public void ResolvingContextWithoutProviderFailsBeforeDatabase()
     {
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options => options.ConnectionString = "synthetic-connection-secret");
         services.AddAgentBridgePersistence();
         using ServiceProvider provider = services.BuildServiceProvider();

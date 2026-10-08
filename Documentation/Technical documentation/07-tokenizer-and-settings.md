@@ -27,9 +27,12 @@ AgentBridge использует tokenizer, соответствующий из�
 | Exact ID | Encoding | Подтверждение |
 | --- | --- | --- |
 | `gpt-5`, `gpt-4.1`, `gpt-4o`, `o1`, `o3`, `o4-mini` | `o200k_base` | Прямые MODEL_TO_ENCODING entries OpenAI tiktoken0.12.0 |
+| `gpt-5.5` | `o200k_base` | Точный existing Telegram default, official tiktoken main family rule gpt-5 (проверка 2026-10-08) |
 | `gpt-4`, `gpt-3.5-turbo` | `cl100k_base` | Прямые MODEL_TO_ENCODING entries того же source |
 
 [OpenAI model.py, release0.12.0](https://github.com/openai/tiktoken/blob/0.12.0/tiktoken/model.py), SHA256 UTF-8 source `779ee48b1b24b08bfa5444a77558ef9860518fc2eb485180c14095e7166dc519`. Прочитан также actual main: прямые entries совпадают. Prefix resolver намеренно не используется: source прямо отмечает, что prefix способен принять несуществующий ID. Любые suffix/date/version, другой регистр, `gpt-5.4`, `gpt-6`/`gpt-6.1`, произвольные codex-lb aliases и fine-tuned IDs пока явно Unsupported. Пользователь не задал дополнительных обязательных ID; координатор подтвердил конечный прямой список до dependent mapping work. Это ограничение локального tokenizer, а не утверждение о недоступности модели сервером.
+
+При внедрении Telegram consumer 2026-10-08 добавлен exact gpt-5.5, чтобы сохранить существующую default model. [Official model page](https://developers.openai.com/api/docs/models/gpt-5.5) подтверждает модель; actual local codex-lb model_registry.py также содержит её. Official tiktoken main model.py задаёт `MODEL_PREFIX_TO_ENCODING["gpt-5"] = "o200k_base"` и применяет его к этому имени; snapshot SHA256 UTF-8 `600f26902d1cf6a1a5f54e37be988b3e0d911f1ff17ba7060bb361f9b5295521`. Эта проверка расширяет конечную literal карту одним именем, а не runtime prefix fallback; gpt-5.5-FAKE и прочие suffix по-прежнему Unsupported. Live доступность/effort/window остаются проверкой каталога, словари не изменены. Fixed BPE vectors и bot actual DLL tests проходят с gpt-5.5.
 
 [OpenAI openai_public.py0.12.0](https://github.com/openai/tiktoken/blob/0.12.0/tiktoken_ext/openai_public.py), SHA256 source `954392738e60d0fb6dca1dad80872efc47c8e2733babecbbf0a23970ed66c2cb`, фиксирует canonical словари:
 

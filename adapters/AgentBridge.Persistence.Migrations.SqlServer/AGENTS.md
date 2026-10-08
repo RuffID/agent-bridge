@@ -1,7 +1,8 @@
 # Схема Microsoft SQL Server
 
 - Отдельный SDK library target/startup для общего AgentBridgeDbContext и текущей модели шести таблиц. Identity соответствует AgentBridgeMigrationsAssemblies.SQLSERVER; runtime использует __AgentBridgeMigrationsHistory. Обратной ссылки из общего адаптера нет.
-- Factory принимает только пустые arguments, создаёт options/model с синтетическим подключением, не читает secrets и не открывает БД/host. Design/runtime EF 10.0.11; Design PrivateAssets=all, GenerateRuntimeConfigurationFiles=true. CLI tooling согласуется точной командой отдельно.
+- Проект зависит от AgentBridge.Persistence.SqlServer, который подключает общий EF-адаптер и SQL Server provider/maintenance; остальные провайдеры не подтягиваются.
+- Factory принимает только пустые arguments, создаёт options/model с синтетическим подключением, не читает secrets и не открывает БД/host. Design/runtime EF 10.0.12; Design PrivateAssets=all, GenerateRuntimeConfigurationFiles=true. CLI tooling согласуется точной командой отдельно.
 - Generated migration/designer/snapshot создаются только tooling после разрешения; вручную не править. Existing SQLite/PostgreSQL history не регенерировать.
 - OwnerId хранится varbinary(max) как исходные UTF-16 code units для ordinal CAS; остальные строковые payload — nvarchar(max). UTC — bigint, локальные parent keys и единственный cascade path к каждой таблице сохраняются. Не добавлять raw SQL operations, собственный контекст или provider fallback.
 - Build/test конкретных проектов с GeneratePackageOnBuild=false и artifacts/compile-check. Изолированные metadata/factory проверки без подключения не доказывают SQL enforcement. Actual migrations/CRUD/CAS/journal/backup/restore — отдельный этап17 и разрешение реальных ресурсов.

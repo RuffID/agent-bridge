@@ -1,6 +1,7 @@
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
+using AgentBridge.Configuration;
 
 namespace AgentBridge.Application;
 
@@ -8,15 +9,23 @@ namespace AgentBridge.Application;
 public class ContextBudgetGuard
 {
     private readonly IContextTokenCounter counter;
+    private readonly ContextBudgetPolicy policy;
 
     /// <summary>Принимает единственный счётчик; сеть, хранение и часы не используются.</summary>
-    public ContextBudgetGuard(IContextTokenCounter counter)
+    public ContextBudgetGuard(IContextTokenCounter counter) : this(counter, ContextBudgetPolicy.RequireLocalEstimate) { }
+
+    /// <summary>Принимает явную политику; ServerValidation не гарантирует серверный приём.</summary>
+    public ContextBudgetGuard(IContextTokenCounter counter, ContextBudgetPolicy policy)
     {
         ArgumentNullException.ThrowIfNull(counter);
         this.counter = counter;
+        if (!Enum.IsDefined(policy))
+            throw new ArgumentOutOfRangeException(nameof(policy));
+
+        this.policy = policy;
     }
 
-    /// <summary>Отклоняет неизвестный полный бюджет; успешная локальная оценка не является server count.</summary>
+    /// <summary>Проверяет локальный бюджет; явный ServerValidation делегирует неизвестную opaque часть серверу.</summary>
     public async Task<ServiceResult<ContextBudgetAssessment>> CheckAsync(ModelRequest request,
         ModelSettingsSnapshot settings, CancellationToken cancellationToken = default)
     {
@@ -45,6 +54,15 @@ public class ContextBudgetGuard
         ContextTokenCount count = counted.Data ?? throw new InvalidOperationException("Подсчёт должен содержать данные.");
         if (count.EstimatedInputTokens is not long estimate)
         {
+            if (policy == ContextBudgetPolicy.ServerValidation && count.HasOpaqueContent)
+            {
+                if (count.KnownTokens > (long)settings.Model.InputContextWindow!.Value - settings.InputTokenReserve)
+                    return Fail(ServiceErrorType.Rejected, "Известная часть входа с резервом превышает входной бюджет модели.");
+
+                return ServiceResult<ContextBudgetAssessment>.Ok(new(count, settings.Model.InputContextWindow.Value,
+                    settings.InputTokenReserve, count.KnownTokens >= settings.TokenThreshold, requiresServerValidation: true));
+            }
+
             return Fail(ServiceErrorType.Unsupported, "Полная оценка входного бюджета недоступна.");
         }
         int inputWindow = settings.Model.InputContextWindow

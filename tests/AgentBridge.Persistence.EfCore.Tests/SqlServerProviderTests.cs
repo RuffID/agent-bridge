@@ -189,6 +189,7 @@ public class SqlServerProviderTests
     private static ServiceCollection Services(string? destination)
     {
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options =>
         {
             options.Provider = DatabaseProvider.SqlServer;

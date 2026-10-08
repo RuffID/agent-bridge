@@ -1,8 +1,12 @@
 # Изолированные тесты
 
+- DatabaseProviderModuleTests проверяет required selected module, mismatch/ambiguity/idempotency, отсутствие provider references в общей сборке и exact SQLite/PostgreSQL PK classification. Existing общая test matrix явно регистрирует три модуля через TestDatabaseProviders; production потребитель подключает только нужный модуль.
+
+- AuxiliaryGatewayTests проверяет actual HTTP pipeline для usage, JSON images/multipart edits и трёх стадий upload, подтверждение ID, Content disposal, отказ без retry и caller/deadline. ContextBudgetGuardTests/ContextCompactorTests проверяют explicit ServerValidation и force compact при сохранённой неизвестной оценке/history; default strict cases остаются. Только локальные doubles, без live API/БД.
+
 - DatabaseMaintenanceTests проверяет исходные причины coordinator и EF pin cleanup через InnerException, обе причины двойного отказа через AggregateException и сохранение прежней классификации/poisoning. Message и ILogger остаются безопасными; ToString цепочки исключений может содержать текст драйвера. Реальные БД и процессы эти проверки не запускают.
 
-- `Delivery/` проверяет текущую поставку Audit Remediation15: SDK runtime closure, external compile-only consumer без ProjectReference/PackageReference и isolated PE/ELF/XML/manifest tests. Три SQL Server RID и SQLite/PostgreSQL win-x64; native/HTTP/БД не исполняются. Правила — `Delivery/AGENTS.md`.
+- Delivery/ проверяет SDK runtime closure полной и DLL/NuGet поставки, external compile-only consumer без source ProjectReference и isolated PE/ELF/XML/manifest tests. Компактная поставка импортирует обязательные PackageReference и locks; полная использует готовые runtime DLL. Три SQL Server RID и SQLite/PostgreSQL win-x64; native/HTTP/БД не исполняются. Правила — Delivery/AGENTS.md.
 
 - CrossComponentIntegrationTests23 соединяет actual AgentRunner/CodexLb/HttpClientLibrary/offline BPE с реальными SQLite/PostgreSQL через existing Integration fixtures. Persistence test project имеет дополнительный test-only ProjectReference на CodexLb; production зависимости не меняются. Эти проверки имеют Dependency=Database и не входят в isolated filter. Матрица/границы/команды — в отчёте23; HTTP всегда local handler/streams, без hosting.
 

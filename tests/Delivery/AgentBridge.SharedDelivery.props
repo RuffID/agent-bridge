@@ -1,0 +1,8 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)platform/$(RuntimeIdentifier)/AgentBridge.Delivery.variant.props"
+          Condition="Exists('$(MSBuildThisFileDirectory)platform/$(RuntimeIdentifier)/AgentBridge.Delivery.variant.props')" />
+  <Target Name="ValidateAgentBridgeSharedDeliveryRid" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(AgentBridgeDeliveryRid)' == '' or '$(AgentBridgeDeliveryRid)' != '$(RuntimeIdentifier)'"
+           Text="AgentBridge delivery requires a supplied platform matching RuntimeIdentifier." />
+  </Target>
+</Project>

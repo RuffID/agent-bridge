@@ -8,8 +8,10 @@ AgentBridge — C#-библиотека для приложений на **.NET 
 
 ## Что понадобится
 
+Для usage, загрузки документов и генерации/редактирования изображений доступен optional [дополнительный шлюз](<Documentation/Technical documentation/27-auxiliary-model-operations.md>). Там же описаны ручной compact и явный opt-in серверной проверки неизвестного multimodal бюджета; строгий режим по умолчанию сохранён.
+
 - .NET 10 SDK для сборки и подходящий .NET 10 runtime на машине приложения.
-- Полный комплект DLL для выбранной БД, операционной системы и архитектуры.
+- Комплект наших DLL с обязательными NuGet-зависимостями либо полный DLL-комплект для выбранной БД и платформы.
 - Адрес работающего codex-lb, ключ доступа и доступная этому ключу модель.
 - Собственная БД и строка подключения к ней.
 - Настроенные конфигурация, логирование и DI-контейнер приложения.
@@ -17,6 +19,18 @@ AgentBridge — C#-библиотека для приложений на **.NET 
 Для первого подключения достаточно общего ключа и обычного текстового диалога. Свои инструменты и источники дополнительного контекста можно добавить позже.
 
 ## 1. Подключите DLL к проекту
+
+Для SDK-style net10.0 рекомендуется [поставка собственных DLL с NuGet](<Documentation/Technical documentation/29-dll-and-nuget-delivery.md>). Комплекты находятся в `artifacts/nuget-delivery/{Provider}`: в lib только наши DLL/XML, сторонние пакеты автоматически добавляет импорт. Скопируйте весь комплект и импортируйте его после остальных PackageReference:
+
+```xml
+<PropertyGroup>
+  <TargetFramework>net10.0</TargetFramework>
+  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+</PropertyGroup>
+<Import Project="vendor/AgentBridge/AgentBridge.Delivery.props" />
+```
+
+Restore создаёт packages.lock.json; при существующем lock импорт включает locked mode. SQL Server kit поддерживает три RID, SQLite/PostgreSQL — win-x64. Native/resources выбирает SDK. Вариант с полным DLL-комплектом описан ниже.
 
 Выберите комплект, соответствующий **машине приложения**, и скопируйте его целиком, например в `vendor/AgentBridge/SqlServer/win-x64`.
 
@@ -26,7 +40,7 @@ AgentBridge — C#-библиотека для приложений на **.NET 
 | SQLite | `win-x64` |
 | PostgreSQL | `win-x64` |
 
-В текущем локальном checkout комплекты находятся в `artifacts/delivery/stage16/{Provider}/{RID}`, где `Provider` — `SqlServer`, `Sqlite` или `PostgreSql`. Это игнорируемые сборочные артефакты: при клонировании репозитория они не появятся. Порядок подготовки и состав комплектов описаны в [руководстве по поставке DLL](<Documentation/Technical documentation/24-dll-delivery.md>).
+Свежие Release-комплекты с отдельным модулем выбранного провайдера находятся в `artifacts/provider-split-matrix/{Provider}/{RID}`. Общая SQL Server поставка трёх RID — `artifacts/provider-shared-delivery`: совпадающие файлы хранятся один раз, platform выбирается RuntimeIdentifier. Это игнорируемые сборочные артефакты: при клонировании репозитория они не появятся. Состав и подключение описаны в [модулях провайдеров и общей поставке](<Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md>); прежние stage16 kits относятся к историческим отчётам.
 
 Добавьте в `.csproj` приложения свойства и импорт комплекта. Пример для Windows x64 и SQL Server:
 
@@ -138,9 +152,11 @@ public static class ApplicationAgentHttpExtensions
 ```csharp
 using System.Net.Http;
 using AgentBridge.Integration;
+using AgentBridge.Persistence.SqlServer;
 using Microsoft.Extensions.DependencyInjection;
 
 builder.Services.AddApplicationAgentHttp();
+builder.Services.AddAgentBridgeSqlServer();
 builder.Services.AddAgentBridge(builder.Configuration,
     provider => provider.GetRequiredService<HttpClient>());
 ```
@@ -150,6 +166,8 @@ builder.Services.AddAgentBridge(builder.Configuration,
 В примере DI освобождает `HttpClient` при завершении scope, а `IHttpClientFactory` управляет обработчиками. Время операций ограничивается настройками AgentBridge; поэтому собственный общий таймаут клиента отключён. Не добавляйте автоматические повторы запросов, способные повторить действие инструмента.
 
 Регистрация подключает хранение, транспорт, работу с контекстом и прикладные сценарии. Она **не обращается к БД или codex-lb и не запускает миграции**. Подробности владения зависимостями — в [руководстве регистрации](<Documentation/Technical documentation/26-integration-registration.md>).
+
+Модуль БД регистрируется явно: для SQLite используйте `AgentBridge.Persistence.Sqlite` / `AddAgentBridgeSqlite`, для PostgreSQL — `AgentBridge.Persistence.PostgreSql` / `AddAgentBridgePostgreSql`. Значение Database.Provider должно соответствовать подключённому модулю; одной строки конфигурации недостаточно.
 
 ## 4. Подготовьте базу данных
 

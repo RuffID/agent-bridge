@@ -1,0 +1,22 @@
+<Project>
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <Import Project="$(MSBuildThisFileDirectory)AgentBridge.References.props" Condition="'$(AgentBridgeNuGetDeliveryImported)' != 'true'" />
+  <Import Project="$(MSBuildThisFileDirectory)AgentBridge.Dependencies.props" Condition="'$(AgentBridgeNuGetDeliveryImported)' != 'true'" />
+  <PropertyGroup>
+    <AgentBridgeNuGetDeliveryImported>true</AgentBridgeNuGetDeliveryImported>
+    <RuntimeIdentifiers>$(AgentBridgeDeliveryRids)</RuntimeIdentifiers>
+    <RestoreLockedMode Condition="'$(RestoreLockedMode)' == '' and Exists('$(MSBuildProjectDirectory)/packages.lock.json')">true</RestoreLockedMode>
+  </PropertyGroup>
+  <Target Name="ValidateAgentBridgeNuGetDelivery" BeforeTargets="CollectPackageReferences;PrepareForBuild">
+    <Error Condition="'$(TargetFramework)' != 'net10.0'" Text="AgentBridge requires TargetFramework=net10.0." />
+    <Error Condition="'$(RestorePackagesWithLockFile)' != 'true'" Text="AgentBridge requires packages.lock.json generation." />
+    <Error Condition="'$(ManagePackageVersionsCentrally)' == 'true'" Text="This AgentBridge delivery supplies exact PackageReference versions; central package management requires a separately prepared delivery." />
+  </Target>
+  <Target Name="ValidateAgentBridgeNuGetDeliveryRid" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(RuntimeIdentifier)' == '' or ! $([System.String]::Copy(';$(AgentBridgeDeliveryRids);').Contains(';$(RuntimeIdentifier);'))"
+           Text="AgentBridge requires an explicitly supported RuntimeIdentifier: $(AgentBridgeDeliveryRids). Actual: $(RuntimeIdentifier)." />
+  </Target>
+</Project>

@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory)][string] $Destination,
     [Parameter(Mandatory)][ValidateSet('SqlServer', 'Sqlite', 'PostgreSql')][string] $Provider,
     [Parameter(Mandatory)][ValidateSet('win-x64', 'linux-x64', 'linux-arm64')][string] $Rid,
+    [ValidateSet('Debug', 'Release')][string] $Configuration = 'Debug',
     [Parameter(Mandatory)][string] $SourceRevision,
     [Parameter(Mandatory)][string] $EfRevision,
     [Parameter(Mandatory)][string] $HttpRevision,
@@ -109,6 +110,6 @@ $variantPath = Join-Path $destinationRoot 'AgentBridge.Delivery.variant.props'
 [IO.File]::WriteAllText($variantPath, "<Project><PropertyGroup><AgentBridgeDeliveryRid>$Rid</AgentBridgeDeliveryRid><AgentBridgeDeliveryProvider>$Provider</AgentBridgeDeliveryProvider></PropertyGroup></Project>`n", [Text.UTF8Encoding]::new($false))
 $entries.Add([ordered]@{ path = 'AgentBridge.Delivery.variant.props'; kind = 'props'; origin = 'generated'; asset = $Rid; size = (Get-Item -LiteralPath $variantPath).Length; sha256 = (Get-FileHash -LiteralPath $variantPath).Hash.ToLowerInvariant() })
 Add-DeliveryFile $depsFile 'evidence/AgentBridge.Delivery.deps.json' 'deps' 'sdk' $targetName
-$manifest = [ordered]@{ schemaVersion = 1; framework = 'net10.0'; frameworkDependent = $true; configuration = 'Debug'; rid = $Rid; provider = $Provider; sdkVersion = $SdkVersion; sourceRevision = $SourceRevision; efRevision = $EfRevision; httpRevision = $HttpRevision; assetsSha256 = (Get-FileHash -LiteralPath $AssetsFile).Hash.ToLowerInvariant(); generatorSha256 = (Get-FileHash -LiteralPath $PSCommandPath).Hash.ToLowerInvariant(); files = @($entries.ToArray() | Sort-Object -Property path -CaseSensitive) }
+$manifest = [ordered]@{ schemaVersion = 1; framework = 'net10.0'; frameworkDependent = $true; configuration = $Configuration; rid = $Rid; provider = $Provider; sdkVersion = $SdkVersion; sourceRevision = $SourceRevision; efRevision = $EfRevision; httpRevision = $HttpRevision; assetsSha256 = (Get-FileHash -LiteralPath $AssetsFile).Hash.ToLowerInvariant(); generatorSha256 = (Get-FileHash -LiteralPath $PSCommandPath).Hash.ToLowerInvariant(); files = @($entries.ToArray() | Sort-Object -Property path -CaseSensitive) }
 [IO.File]::WriteAllText((Join-Path $destinationRoot 'delivery.manifest.json'), ($manifest | ConvertTo-Json -Depth 20) + "`n", [Text.UTF8Encoding]::new($false))
 Write-Output "Assembled $Provider/$Rid : $($entries.Count) files at $destinationRoot"

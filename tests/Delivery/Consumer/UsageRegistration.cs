@@ -14,7 +14,8 @@ public static class UsageRegistration
     /// <remarks>Приложение владеет HttpClient/handlers без retry и смены ключа. Фабрики не выполняют I/O.
     /// Провайдеры возвращаются в нужном порядке, scoped бизнес-сервис не разделяется между tool tasks.
     /// ILoggerFactory заранее зарегистрирован приложением; callback получает app-owned client с управляемым сроком.
-    /// Logging provider, авторизация, инициализация БД и расписание очистки остаются у приложения.</remarks>
+    /// Модуль провайдера БД регистрируется приложением заранее. Logging provider, авторизация,
+    /// инициализация БД и расписание очистки остаются у приложения.</remarks>
     public static IServiceCollection AddUsageGuide(this IServiceCollection services, IConfiguration configuration,
         Func<IServiceProvider, HttpClient> httpClientFactory,
         Func<IServiceProvider, IIndividualModelKeySource> individualKeyFactory,

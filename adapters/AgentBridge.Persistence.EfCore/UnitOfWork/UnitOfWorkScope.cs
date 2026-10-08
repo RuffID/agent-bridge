@@ -1,18 +1,21 @@
 using System.Runtime.ExceptionServices;
 using AgentBridge.Application.Results;
 using AgentBridge.Persistence.EfCore.Models;
-using Microsoft.Data.Sqlite;
+using AgentBridge.Persistence.EfCore.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Npgsql;
 
 namespace AgentBridge.Persistence.EfCore.UnitOfWork;
 
 /// <summary>Общая техническая граница сценариев: transaction, save, rollback и очистка; делегаты принадлежат только Infrastructure.</summary>
 /// <remarks>Не передавать сюда модель/инструмент/внешний I/O. Не использовать base staging вне этого scope.
 /// Успех возвращается только после commit и cleanup. Неизвестный commit или cleanup блокирует scoped gate.</remarks>
-public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGate gate)
+public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGate gate,
+    IEnumerable<IAgentBridgeDatabaseProvider> databaseProviders)
 {
+    /// <summary>Сохраняет прежний конструктор изолированного scope; provider-specific PK classification требует модулей.</summary>
+    public UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGate gate) : this(session, gate, []) { }
+
     /// <summary>Выполняет короткую операцию с данными; распознаёт только доказанный root concurrency conflict.</summary>
     public Task<ServiceResult<T>> ExecuteAsync<T>(Func<CancellationToken, Task<ServiceResult<T>>> action,
         CancellationToken cancellationToken, bool creatingDialog = false, bool writingSettings = false) where T : class =>
@@ -92,7 +95,7 @@ public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGat
     }
 
     /// <summary>Не классифицирует driver/network/serialization failures и нарушения дочерних ограничений как stale token.</summary>
-    private static bool IsRootConflict(DbUpdateException error, bool creatingDialog)
+    private bool IsRootConflict(DbUpdateException error, bool creatingDialog)
     {
         if (error.Entries.Count != 1 || error.Entries[0].Entity is not DialogRecord)
         {
@@ -102,25 +105,14 @@ public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGat
         {
             return error is DbUpdateConcurrencyException;
         }
-        return error.InnerException switch
-        {
-            SqliteException sqlite => sqlite.SqliteExtendedErrorCode == 1555,
-            PostgresException postgres => postgres.SqlState == PostgresErrorCodes.UniqueViolation &&
-                postgres.TableName == "Dialogs" && postgres.ConstraintName == "PK_Dialogs",
-            _ => false
-        };
+        return databaseProviders.Any(provider => provider.IsPrimaryKeyViolation(error, "Dialogs", "PK_Dialogs"));
     }
 
     /// <summary>Распознаёт только CAS/PK конкретной строки выбора, без маскировки FK/driver/serialization ошибок.</summary>
-    private static bool IsSettingsConflict(DbUpdateException error)
+    private bool IsSettingsConflict(DbUpdateException error)
     {
         if (error.Entries.Count != 1 || error.Entries[0].Entity is not DialogSettingsRecord) return false;
-        return error is DbUpdateConcurrencyException || error.InnerException switch
-        {
-            SqliteException sqlite => sqlite.SqliteExtendedErrorCode == 1555,
-            PostgresException postgres => postgres.SqlState == PostgresErrorCodes.UniqueViolation
-                && postgres.TableName == "DialogSettings" && postgres.ConstraintName == "PK_DialogSettings",
-            _ => false
-        };
+        return error is DbUpdateConcurrencyException || databaseProviders.Any(provider =>
+            provider.IsPrimaryKeyViolation(error, "DialogSettings", "PK_DialogSettings"));
     }
 }

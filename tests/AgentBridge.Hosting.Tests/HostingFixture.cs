@@ -5,6 +5,7 @@ using AgentBridge.Integration;
 using AgentBridge.Persistence.EfCore;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Tests;
+using AgentBridge.Persistence.SqlServer;
 using EFCoreLibrary.Abstractions.Database.Repository.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -60,6 +61,7 @@ internal class HostingFixture
         builder.UseDefaultServiceProvider(options => { options.ValidateScopes = true; options.ValidateOnBuild = true; });
         builder.ConfigureServices(services =>
         {
+            services.AddAgentBridgeSqlServer();
             services.AddSingleton<ILoggerFactory>(Logger);
             if (source) services.AddScoped<IIndividualModelKeySource>(_ =>
             {

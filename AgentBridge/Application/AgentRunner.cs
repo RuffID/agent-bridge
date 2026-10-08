@@ -40,6 +40,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                 return Report(AgentRunStatus.Failed, new(ServiceErrorType.Validation, "Agent.Instructions: required — инструкции обращения не предоставлены."));
             int maxSteps = options.Value.MaxToolSteps;
             int maxPasses = compactionOptions.Value.MaxPasses;
+            ContextBudgetPolicy budgetPolicy = compactionOptions.Value.BudgetPolicy;
             if (maxSteps <= 0 || maxPasses <= 0) return Report(AgentRunStatus.Failed, new(ServiceErrorType.Validation, "Некорректные ограничения агента."));
             ToolExecutionLimits limits = new(Math.Min(maxSteps, request.ToolLimits.MaxSteps), request.ToolLimits.MaxCallsPerStep,
                 request.ToolLimits.MaxConcurrency, request.ToolLimits.Timeout);
@@ -84,7 +85,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             ToolExecutionSession toolSession = executor.CreateSession(request.Call, session.Snapshot.Token, dialog.ExpiresAtUtc,
                 request.SelectedToolNames, limits, session);
             ContextCompactor compactor = new(frozen, counter, gateway, session, time,
-                new FrozenOptions<ContextCompactionOptions>(new() { MaxPasses = maxPasses }));
+                new FrozenOptions<ContextCompactionOptions>(new() { MaxPasses = maxPasses, BudgetPolicy = budgetPolicy }));
             ModelRequest next = new(settings.Model.Id, settings.ReasoningEffort, instructions, [], tools, parameters: request.Parameters);
             while (true)
             {
@@ -94,7 +95,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                 if (!compacted.Success) return await FinishAsync(AgentRunStatus.Failed, compacted.Error!);
                 ContextCompactionResult compact = compacted.Data!;
                 // Даже Failed/Unknown/NoReduction не заменяют full generation guard.
-                ServiceResult<ContextBudgetAssessment> budget = await new ContextBudgetGuard(counter).CheckAsync(
+                ServiceResult<ContextBudgetAssessment> budget = await new ContextBudgetGuard(counter, budgetPolicy).CheckAsync(
                     compact.PreparedRequest, settings, cancellationToken);
                 if (!budget.Success) return await FinishAsync(AgentRunStatus.Failed, budget.Error!);
                 if (session.Blocked) return Report(AgentRunStatus.Failed, session.Error);

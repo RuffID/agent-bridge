@@ -25,6 +25,9 @@
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.14.0" />
     <PackageReference Include="Testcontainers.MsSql" Version="4.14.0" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
+    <ProjectReference Include="../../adapters/AgentBridge.Persistence.Sqlite/AgentBridge.Persistence.Sqlite.csproj" />
+    <ProjectReference Include="../../adapters/AgentBridge.Persistence.PostgreSql/AgentBridge.Persistence.PostgreSql.csproj" />
+    <ProjectReference Include="../../adapters/AgentBridge.Persistence.SqlServer/AgentBridge.Persistence.SqlServer.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj" />

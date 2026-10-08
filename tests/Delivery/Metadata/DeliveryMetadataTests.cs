@@ -24,7 +24,8 @@ public class DeliveryMetadataTests
             .ToDictionary(path => Path.GetFileNameWithoutExtension(path), StringComparer.OrdinalIgnoreCase);
         Dictionary<string, string> framework = GetFrameworkFiles();
         string resourceDirectory = Path.Combine(GetRoot(), provider, rid, "resources");
-        foreach (string file in files.Values.Concat(Directory.GetFiles(resourceDirectory, "*.dll", SearchOption.AllDirectories)))
+        string[] resources = Directory.Exists(resourceDirectory) ? Directory.GetFiles(resourceDirectory, "*.dll", SearchOption.AllDirectories) : [];
+        foreach (string file in files.Values.Concat(resources))
         {
             using FileStream stream = File.OpenRead(file);
             using PEReader pe = new(stream);
@@ -47,10 +48,10 @@ public class DeliveryMetadataTests
         Assert.DoesNotContain("Microsoft.CodeAnalysis", files.Keys);
         Assert.DoesNotContain("AgentBridge.Delivery", files.Keys);
         Assert.Contains("AgentBridge.Integration", files.Keys);
-        Assert.Contains("EFCoreLibrary.Maintenance.Sqlite", files.Keys);
-        Assert.Contains("EFCoreLibrary.Maintenance.PostgreSql", files.Keys);
-        Assert.Contains("EFCoreLibrary.Maintenance.SqlServer", files.Keys);
-        Assert.Contains("Microsoft.Data.SqlClient", files.Keys);
+        Assert.Contains($"EFCoreLibrary.Maintenance.{provider}", files.Keys);
+        Assert.Contains($"AgentBridge.Persistence.{provider}", files.Keys);
+        Assert.Single(files.Keys, name => name.StartsWith("EFCoreLibrary.Maintenance.", StringComparison.Ordinal));
+        if (provider == "SqlServer") Assert.Contains("Microsoft.Data.SqlClient", files.Keys);
         foreach (string name in new[] { "O200kBase", "Cl100kBase" })
         {
             using FileStream stream = File.OpenRead(files[$"Microsoft.ML.Tokenizers.Data.{name}"]);
@@ -58,8 +59,7 @@ public class DeliveryMetadataTests
             Assert.NotEmpty(pe.GetMetadataReader().ManifestResources);
         }
         string nativeDirectory = Path.Combine(GetRoot(), provider, rid, "native", rid);
-        string sqliteFile = rid == "win-x64" ? "e_sqlite3.dll" : "libe_sqlite3.so";
-        Assert.True(File.Exists(Path.Combine(nativeDirectory, sqliteFile)));
+        if (provider == "Sqlite") Assert.True(File.Exists(Path.Combine(nativeDirectory, "e_sqlite3.dll")));
         foreach (string nativeFile in Directory.GetFiles(nativeDirectory))
         {
             NativeAssetMetadata.Validate(File.ReadAllBytes(nativeFile), rid);

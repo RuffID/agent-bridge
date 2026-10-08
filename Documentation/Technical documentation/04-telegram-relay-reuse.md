@@ -4,6 +4,8 @@
 
 Источник: `D:\Media\User\source\repos\TelegramCodexRelayBot`. Изучены клиент codex-lb, wire DTO, построитель контекста, сервис памяти и настройки диалога. Сравнение с текущими исходниками codex-lb выполнено 2026-10-03 без запуска приложений и интеграционных тестов.
 
+Наблюдения ниже относятся к состоянию на дату анализа. После внедрения DLL AgentBridge 2026-10-08 прежний `CodexLbClient` удалён, DTO перенесены в `Clients/AgentBridge`. Текущая реализация — [AgentBridgeClient](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Infrastructure/Clients/AgentBridgeClient.cs), обязанности и ограничения — [интеграция AgentBridge](../../../TelegramCodexRelayBot/Documentation/Technical/AgentBridge%20integration.md).
+
 Этап 00 повторно подтвердил маршруты бота `/v1/responses`, `/v1/responses/compact` и `/v1/models` по константам `CodexLbClient` и актуальному роутеру шлюза. Это подтверждает адреса, но не полную совместимость старой памяти и всех DTO. Прежняя дата сверки 2026-09-07 не используется как доказательство актуального контракта.
 
 Код и DLL на этом этапе не копировались. Переиспользование означает выборочную адаптацию проверенных решений под независимую библиотеку.
@@ -21,7 +23,7 @@
 
 WebSocket-клиент бота использует отдельный transport и соединение на один turn. Его наличие не обязывает AgentBridge вводить WS: публичные Responses/SSE доступны через HttpClientLibrary.
 
-Проверенные участки [CodexLbClient](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Infrastructure/Clients/CodexLbClient.cs): `SendAsync` (строка 444) делает один `SendWithResponseAsync`, использует конечный deadline и сохраняет исходный caller cancellation; `CreateOperationCancellation` (1114) связан также с `IHostApplicationLifetime`, эту host-зависимость ядро AgentBridge не получает. `ExtractSafeCorrelationId` (1097) принимает до 128 ASCII-букв/цифр и `-_.`; это образец проверки, а не гарантия серверного ID. Для HTTP-отказов клиент использует локально созданный correlation ID и парсит ограниченный snippet; заголовки ошибки библиотека не предоставляет. `ReadResponseStreamAsync` (654) и `BuildCreateResponseResult` (755) требуют переработки, а не буквального переноса.
+Проверенные участки прежнего `CodexLbClient` на дату анализа: `SendAsync` (строка 444) делает один `SendWithResponseAsync`, использует конечный deadline и сохраняет исходный caller cancellation; `CreateOperationCancellation` (1114) связан также с `IHostApplicationLifetime`, эту host-зависимость ядро AgentBridge не получает. `ExtractSafeCorrelationId` (1097) принимает до 128 ASCII-букв/цифр и `-_.`; это образец проверки, а не гарантия серверного ID. Для HTTP-отказов клиент использует локально созданный correlation ID и парсит ограниченный snippet; заголовки ошибки библиотека не предоставляет. `ReadResponseStreamAsync` (654) и `BuildCreateResponseResult` (755) требуют переработки, а не буквального переноса.
 
 ## Что требует переработки
 
@@ -42,13 +44,13 @@ WebSocket-клиент бота использует отдельный transpor
 
 Старая схема БД, миграции, Telegram-команды и outbox доставки не становятся требованиями универсальной библиотеки только потому, что существуют в боте.
 
-Проверка совместимости ограничена исходниками. [Infrastructure.csproj бота](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Infrastructure/TelegramCodexRelayBot.Infrastructure.csproj) использует `net10.0`, EF SqlServer `10.0.8`, Telegram.Bot `22.10.0.1` и локальные DLL обеих библиотек из `libs`. Эти DLL не проверялись и не считаются эквивалентом текущих исходных контрактов EFCoreLibrary/HttpClientLibrary. Анализ не подтверждает работоспособность старой сборки с новыми DLL.
+Проверка совместимости на дату анализа ограничена исходниками. [Infrastructure.csproj бота](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Infrastructure/TelegramCodexRelayBot.Infrastructure.csproj) тогда использовал `net10.0`, EF SqlServer `10.0.8`, Telegram.Bot `22.10.0.1` и локальные DLL обеих библиотек из `libs`. Эти DLL тогда не проверялись и не считались эквивалентом текущих исходных контрактов EFCoreLibrary/HttpClientLibrary. Анализ не подтверждает работоспособность старой сборки с новыми DLL; результаты последующего внедрения описаны отдельно в документе интеграции.
 
 ## Источники
 
-- [CodexLbClient](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Infrastructure/Clients/CodexLbClient.cs)
+- Прежний `CodexLbClient` удалён при внедрении AgentBridge; текущий [AgentBridgeClient](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Infrastructure/Clients/AgentBridgeClient.cs) вызывает public API DLL.
 - [Сервис памяти](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Application/UseCases/ProcessTelegramUpdate/Memory/TelegramDialogMemoryService.cs)
 - [Построитель контекста](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Application/Services/DialogContextBuilder.cs)
-- [DTO запроса](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Application/Clients/CodexLb/CodexCreateResponseRequest.cs)
-- [DTO инструмента](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Application/Clients/CodexLb/CodexResponseToolRequest.cs)
+- [DTO запроса](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Application/Clients/AgentBridge/CodexCreateResponseRequest.cs)
+- [DTO инструмента](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Application/Clients/AgentBridge/CodexResponseToolRequest.cs)
 - [Оценка токенов](../../../TelegramCodexRelayBot/TelegramCodexRelayBot.Application/UseCases/ProcessTelegramUpdate/Common/DialogTokenEstimator.cs)

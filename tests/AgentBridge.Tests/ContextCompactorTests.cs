@@ -631,6 +631,46 @@ public class ContextCompactorTests
     private static CanonicalModelItem PairOutput(string value) => new(JsonSerializer.SerializeToElement(new
         { type = "function_call_output", call_id = "x", output = value }));
 
+    /// <summary>Ручной compact сжимает сохранённую историю даже ниже автоматического порога.</summary>
+    [Fact]
+    public async Task ForceCompactsBelowThresholdWithoutDeletingHistory()
+    {
+        using Fixture fixture = new();
+        DialogSnapshot snapshot = Snapshot([Turn(1, DialogTurnStatus.Completed, [Text("some history")])]);
+        ContextCompactionResult automatic = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken)).Data!;
+        Assert.Equal(ContextCompactionStatus.NotRequired, automatic.Status);
+        Assert.Empty(fixture.Gateway.Requests);
+
+        ContextCompactionResult manual = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken, force: true)).Data!;
+        Assert.Equal(ContextCompactionStatus.TargetReached, manual.Status);
+        Assert.Single(fixture.Gateway.Requests);
+        Assert.Single(fixture.Writer.Tokens);
+        Assert.Same(snapshot.Turns[0], snapshot.Turns.Single());
+        Assert.Equal("some history", Content(snapshot.Turns[0].Items.Single()));
+    }
+
+    /// <summary>Повторное ручное сжатие opaque окна требует opt-in, сохраняет canonical данные и неизвестную оценку.</summary>
+    [Fact]
+    public async Task ForceOpaqueCompactionUsesExplicitServerPolicy()
+    {
+        using Fixture fixture = new(policy: ContextBudgetPolicy.ServerValidation);
+        CanonicalModelItem opaque = Item("""{"type":"compaction","encrypted_content":"old-opaque"}""");
+        DialogSnapshot snapshot = Snapshot([], new StoredDialogContext(1, 0, ModelResponse.Completed([opaque])));
+        fixture.FakeCounter.Evaluate = _ => new("custom", 5, null, true);
+        CanonicalModelItem replacement = Item("""{"type":"compaction","encrypted_content":"new-opaque"}""");
+        fixture.Gateway.Next = _ => Success(ModelResponse.Completed([replacement]));
+
+        ContextCompactionResult result = (await fixture.Run(snapshot, ct: TestContext.Current.CancellationToken, force: true)).Data!;
+        Assert.Equal(ContextCompactionStatus.UnknownBudget, result.Status);
+        Assert.Single(fixture.Writer.Tokens);
+        Assert.Equal(2, result.ActiveContext!.Version);
+        Assert.Equal(replacement.Content.GetRawText(), result.ActiveContext.Items.Single().Content.GetRawText());
+        Assert.Null(result.Count!.EstimatedInputTokens);
+        Assert.Equal(opaque.Content.GetRawText(), snapshot.ActiveContext!.Items.Single().Content.GetRawText());
+        Assert.True((await new ContextBudgetGuard(fixture.Counter, ContextBudgetPolicy.ServerValidation)
+            .CheckAsync(result.PreparedRequest, Settings(), cancellationToken: TestContext.Current.CancellationToken)).Data!.RequiresServerValidation);
+    }
+
     /// <summary>Создаёт стандартное неизменяемое состояние диалога.</summary>
     private static DialogSnapshot Snapshot(IEnumerable<StoredDialogTurn>? turns = null, StoredDialogContext? active = null) =>
         new(new(ID, Guid.NewGuid(), 10), OWNER, NOW.AddHours(-1), NOW.AddHours(1), 100,
@@ -665,7 +705,7 @@ public class ContextCompactorTests
         internal readonly IServiceScope Scope;
         internal readonly IContextTokenCounter Counter;
         /// <summary>Собирает реальные DI/scenario и явный ordered provider selection.</summary>
-        internal Fixture(int maxPasses = 3, bool actualCounter = false)
+        internal Fixture(int maxPasses = 3, bool actualCounter = false, ContextBudgetPolicy policy = ContextBudgetPolicy.RequireLocalEstimate)
         {
             Counter = actualCounter ? new ContextTokenCounter() : FakeCounter;
             ServiceCollection services = new();
@@ -674,7 +714,7 @@ public class ContextCompactorTests
             services.AddSingleton<IModelGateway>(Gateway);
             services.AddSingleton<IDialogContextWriter>(Writer);
             services.AddSingleton<TimeProvider>(Time);
-            services.AddOptions<ContextCompactionOptions>().Configure(value => value.MaxPasses = maxPasses);
+            services.AddOptions<ContextCompactionOptions>().Configure(value => { value.MaxPasses = maxPasses; value.BudgetPolicy = policy; });
             services.AddAgentBridgeTokenization();
             services.AddAgentBridgeCompaction();
             Root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
@@ -682,8 +722,8 @@ public class ContextCompactorTests
         }
         /// <summary>Вызывает публичный прикладной API.</summary>
         internal Task<ServiceResult<ContextCompactionResult>> Run(DialogSnapshot? snapshot = null, ModelRequest? request = null,
-            CancellationToken ct = default) => Scope.ServiceProvider.GetRequiredService<ContextCompactor>()
-            .CompactAsync(new(ID, OWNER, Guid.NewGuid(), "agent"), snapshot ?? Snapshot(), request ?? Request(), Settings(), new("synthetic-key"), ct);
+            CancellationToken ct = default, bool force = false) => Scope.ServiceProvider.GetRequiredService<ContextCompactor>()
+            .CompactAsync(new(ID, OWNER, Guid.NewGuid(), "agent"), snapshot ?? Snapshot(), request ?? Request(), Settings(), new("synthetic-key"), ct, force);
         /// <inheritdoc/>
         public void Dispose() { Scope.Dispose(); Root.Dispose(); }
     }

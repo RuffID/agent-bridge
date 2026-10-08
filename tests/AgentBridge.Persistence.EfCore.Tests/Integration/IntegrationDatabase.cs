@@ -93,6 +93,7 @@ public class IntegrationDatabase : IAsyncDisposable
         string? connection = null)
     {
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddLogging();
         services.AddDatabaseConfiguration(options =>
         {

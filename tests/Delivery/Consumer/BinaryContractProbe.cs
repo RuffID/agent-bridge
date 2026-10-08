@@ -16,7 +16,7 @@ namespace AgentBridge.BinaryConsumer;
 /// <summary>Проверяет доступность бинарных контрактов компилятору; методы в этапе24 не исполняются.</summary>
 public static class BinaryContractProbe
 {
-    /// <summary>Компилирует ссылки на регистрацию и настройки; не является полным composition root приложения.</summary>
+    /// <summary>Компилирует ссылки на регистрацию и настройки после явного подключения модуля БД; не является полным composition root приложения.</summary>
     public static IServiceCollection Register(IServiceCollection services, IConfiguration configuration,
         DatabaseProvider provider, string connectionString, Func<IServiceProvider, HttpClient> httpClientFactory,
         Action<DatabaseBackupOptions> backup)

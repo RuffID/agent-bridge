@@ -207,6 +207,7 @@ public class IntegrationRegistrationTests
         Assert.Throws<InvalidOperationException>(() => services.AddAgentBridge(Config(), _ => throw new InvalidOperationException()));
         Assert.Empty(services);
         using LoggerFactory logger = new();
+        services.AddTestDatabaseProviders();
         services.AddSingleton<ILoggerFactory>(logger);
         services.AddAgentBridge(Config(), _ => throw new InvalidOperationException());
         using ServiceProvider provider = Build(services);
@@ -419,7 +420,7 @@ public class IntegrationRegistrationTests
     }
 
     /// <summary>Создаёт app-owned logging без sink/files и host.</summary>
-    private static ServiceCollection Services() { ServiceCollection services = new(); services.AddLogging(); return services; }
+    private static ServiceCollection Services() { ServiceCollection services = new(); services.AddTestDatabaseProviders(); services.AddLogging(); return services; }
 
     /// <summary>Включает обе стандартные проверки scope/graph.</summary>
     private static ServiceProvider Build(IServiceCollection services) => services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });

@@ -2,6 +2,8 @@
 
 Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Текущий compile/metadata checkpoint — [Audit Remediation15](<../Plans/AgentBridge Audit Remediation/15-multiplatform-delivery.md#результаты>), 2026-10-06. Первоначальные [поставка24](<../Plans/AgentBridge Initial Implementation/24-dll-delivery.md>) и [consumer25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>) сохраняются как историческое evidence.
 
+С 2026-10-08 используется [разделение провайдеров и общая поставка](28-provider-modules-and-shared-delivery.md). Текущий комплект содержит шесть AgentBridge DLL, включая модуль выбранной БД; остальные драйверы отсутствуют. Таблица состава и результаты15 ниже описывают исторические комплекты до разделения, а не текущую поставку бота.
+
 ## Комплекты и граница проверки
 
 Комплекты лежат в игнорируемом `artifacts/delivery/stage15-v2/<Provider>/<RID>`. Основной provider — `SqlServer`; `Sqlite` и `PostgreSql` сохранены. Промежуточные stage15 kits не включали satellites и сохранены только как before evidence.
@@ -35,7 +37,7 @@ Manifest содержит RID/provider, framework/configuration, провере�
 
 Closure разрешает стандартный SDK Build [Delivery project](../../tests/Delivery/Build/AgentBridge.Delivery.csproj), который ссылается на Integration facade и выбранную migrations library. [Assemble-Delivery.ps1](../../tests/Delivery/Build/Assemble-Delivery.ps1) читает fresh RID-specific deps/assets/output, сверяет package/output hashes и генерирует комплект в новом каталоге; DLL/native не загружаются. Скрипт не запускается автоматически из Build. Перед каждым вариантом выполняется отдельный restore; runtime/native package assets не удаляются вручную.
 
-Общий EF adapter статически ссылается на SQLite/PostgreSQL/SQL Server и их maintenance-модули. Поэтому **все** kits содержат эти managed зависимости; выбор provider не делает комплект минимальным и не разрешает выкидывать соседние зависимости. Основные packages: EF10.0.11, Npgsql10.0.3, SqlClient6.1.6, SQLitePCLRaw2.1.12, tokenizers/data2.0.0, Microsoft.Extensions10.0.11/Configuration Binder и Options.ConfigurationExtensions10.0.3, HttpClientLibrary FileVersion0.0.0.5, EFCoreLibrary0.0.5. Дополнительные Azure/MSAL/IdentityModel/BCL dependencies перечислены в actual deps/manifest, а не подбираются вручную.
+До разделения общий EF adapter статически ссылался на SQLite/PostgreSQL/SQL Server и их maintenance-модули, поэтому все kits15 содержали эти managed зависимости. Текущие kits разрешают только зависимости выбранного модуля. Основные packages прежнего checkpoint: EF10.0.11, Npgsql10.0.3, SqlClient6.1.6, SQLitePCLRaw2.1.12, tokenizers/data2.0.0, Microsoft.Extensions10.0.11/Configuration Binder и Options.ConfigurationExtensions10.0.3, HttpClientLibrary FileVersion0.0.0.5, EFCoreLibrary0.0.5. Текущие версии и Azure/MSAL/IdentityModel/BCL dependencies фиксируются в actual deps/manifest, а не подбираются вручную.
 
 | Native source | win-x64 | linux-x64 | linux-arm64 |
 | --- | --- | --- | --- |

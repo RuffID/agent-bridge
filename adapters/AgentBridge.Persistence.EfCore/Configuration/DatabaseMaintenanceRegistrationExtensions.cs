@@ -1,17 +1,8 @@
-using System.Globalization;
 using AgentBridge.Configuration;
 using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Errors;
 using EFCoreLibrary.Maintenance.Extensions;
 using EFCoreLibrary.Maintenance.Models;
-using EFCoreLibrary.Maintenance.Options;
-using EFCoreLibrary.Maintenance.PostgreSql.Providers;
-using EFCoreLibrary.Maintenance.Sqlite.Abstractions;
-using EFCoreLibrary.Maintenance.Sqlite.Backup;
-using EFCoreLibrary.Maintenance.Sqlite.Options;
-using EFCoreLibrary.Maintenance.Sqlite.Providers;
-using EFCoreLibrary.Maintenance.SqlServer.Options;
-using EFCoreLibrary.Maintenance.SqlServer.Providers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -61,26 +52,11 @@ public static class DatabaseMaintenanceRegistrationExtensions
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<DatabaseBackupOptions>, DatabaseBackupOptionsValidator>());
         services.AddRelationalMaintenance<AgentBridgeContextKey>(mode);
-        services.TryAddSingleton<ISqliteBackupApi, SqliteBackupApi>();
         services.AddScoped<IDatabaseMaintenanceProvider<AgentBridgeContextKey>>(provider =>
         {
             DatabaseBackupOptions backup = provider.GetRequiredService<IOptions<DatabaseBackupOptions>>().Value;
             DatabaseOptions database = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-            IRelationalMigrationOperations<AgentBridgeContextKey> migrations = provider.GetRequiredService<IRelationalMigrationOperations<AgentBridgeContextKey>>();
-            IDatabaseCommands commands = provider.GetRequiredService<IDatabaseCommands>();
-            return database.Provider switch
-            {
-                DatabaseProvider.SQLite => new SqliteMaintenanceProvider<AgentBridgeContextKey>(migrations, commands,
-                    new SqliteMaintenanceOptions(backup.BackupDirectory!), provider.GetRequiredService<ISqliteBackupApi>(),
-                    provider.GetRequiredService<IMaintenanceRecovery>()),
-                DatabaseProvider.PostgreSql => new PostgreSqlMaintenanceProvider<AgentBridgeContextKey>(migrations, commands,
-                    new DumpOptions(backup.PostgreSqlDumpExecutablePath!, backup.BackupDirectory!,
-                        backup.PostgreSqlServerMajorVersion!.Value.ToString(CultureInfo.InvariantCulture), backup.PostgreSqlCleanupTimeout!.Value),
-                    provider.GetRequiredService<IBackupProcessRunner>()),
-                DatabaseProvider.SqlServer => new SqlServerMaintenanceProvider<AgentBridgeContextKey>(migrations, commands,
-                    new SqlServerMaintenanceOptions(backup.SqlServerBackupDirectory!)),
-                _ => throw new MaintenanceException(MaintenanceError.Configuration)
-            };
+            return DatabaseProviderResolver.Resolve(provider, database).CreateMaintenance(provider, backup);
         });
         return services;
     }

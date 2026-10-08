@@ -24,6 +24,7 @@ public static class ProbeChecks
         int factoryCalls = 0;
         Func<IServiceProvider, HttpClient> factory = _ => { factoryCalls++; return client; };
         ServiceCollection services = new();
+        services.AddSelectedProvider(databaseProvider);
         services.AddSingleton(logger);
         IConfiguration configuration = Configuration(databaseProvider);
         services.AddAgentBridge(configuration, factory);
@@ -63,6 +64,7 @@ public static class ProbeChecks
         }
         bool rejected = false;
         ServiceCollection invalid = new();
+        invalid.AddSelectedProvider(databaseProvider);
         invalid.AddSingleton(logger);
         try
         {

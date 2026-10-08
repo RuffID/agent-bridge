@@ -1,6 +1,7 @@
 # Стандартная интеграция
 
 - SDK library net10.0 собирает существующие ядро, CodexLb и EF adapters. Обратные зависимости из ядра запрещены; ASP.NET Core/host не требуется.
+- Конкретные провайдеры не входят в facade dependencies. Приложение явно регистрирует AddAgentBridgeSqlServer/Sqlite/PostgreSql до фасада; Database.Provider выбирает ровно один подключённый модуль. При переносе descriptors IValidateOptions сохраняются через TryAddEnumerable, чтобы не потерять required/module validators.
 - `AddAgentBridge(configuration, httpClientFactory)` принимает root/выбранный раздел с AgentBridge, CodexLb, Database. Options проходят existing required binding/validation13; IConfiguration не становится runtime dependency.
 - Приложение заранее регистрирует ILoggerFactory и optional индивидуальный источник. HTTP callback обязателен, scoped и без I/O при создании; приложение владеет HttpClient/handlers/timeout/disposal. Pipeline — actual AddCodexLbResponses/HttpClientLibrary, не собственный HTTP.
 - Shared без app source использует внутренний null source; Individual без заранее зарегистрированного app source отклоняется options validation. Ошибки источника не меняют ключ.

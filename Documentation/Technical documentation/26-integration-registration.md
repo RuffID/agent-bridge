@@ -11,6 +11,8 @@ IServiceCollection AddAgentBridge(this IServiceCollection services,
 
 ## Обязательные зависимости приложения
 
+До фасада приложение явно подключает модуль выбранной БД: `AddAgentBridgeSqlServer`, `AddAgentBridgeSqlite` либо `AddAgentBridgePostgreSql` из соответствующего `AgentBridge.Persistence.<Provider>`. Общий EF-адаптер и facade не подтягивают остальные драйверы. Missing/wrong/ambiguous module отклоняется options validation; [состав и API](28-provider-modules-and-shared-delivery.md).
+
 `ILoggerFactory` регистрируется **до** фасада; отсутствие descriptor немедленно отклоняется без изменений контейнера. `AddLogging` либо logging builder приложения предоставляет factory; sinks/Serilog, levels, redaction, файловый путь/rotation/retention принадлежат приложению. Наличие factory не доказывает наличие sink. Console/custom factory не требует file path. Фасад не создаёт собственный logger.
 
 HTTP factory обязательна и вызывается внутри scope только при разрешении default pipeline. Она возвращает **принадлежащий приложению** HttpClient; фасад и actual HttpApiClient его не освобождают. У приложения остаются timeout, handler lifetime, disposal, отсутствие retry/смены аккаунта. Для стандартного IHttpClientFactory возвращаемый client можно регистрировать scoped в **расширении приложения**:
@@ -30,6 +32,7 @@ public static IServiceCollection AddApplicationAgentHttp(this IServiceCollection
 
 ```csharp
 builder.Services.AddApplicationAgentHttp();
+builder.Services.AddAgentBridgeSqlServer(); // namespace AgentBridge.Persistence.SqlServer
 builder.Services.AddAgentBridge(builder.Configuration,
     provider => provider.GetRequiredService<HttpClient>());
 ```

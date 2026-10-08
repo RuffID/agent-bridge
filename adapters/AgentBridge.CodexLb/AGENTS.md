@@ -19,6 +19,8 @@
 
 ## Документация и проверка
 
+- `Auxiliary/` реализует optional IModelAuxiliaryGateway usage/files/images через тот же HttpClientLibrary; регистрация AddCodexLbAuxiliary отдельна от facade/Responses. Все пять auxiliary deadlines обязательны. Signed upload без Bearer; содержимое/URL/errors не логировать. Границы — Auxiliary/AGENTS.md и технический документ27.
+
 - Самостоятельные типы и методы получают XML `<summary>` на русском; реализации интерфейсов — `<inheritdoc/>`. Wire-контракт сверять с текущими исходниками и [технической документацией](../../Documentation/Technical%20documentation/03-http-and-codex-lb.md).
 - Изолированные проверки относятся к `tests/AgentBridge.CodexLb.Tests`: подставные ответы и локальные потоки, без живого шлюза, OpenAI и сети.
 - Compile-check выполняется по конкретному проекту после проверки build-файлов; при изменении транспортной границы обновлять этот документ.

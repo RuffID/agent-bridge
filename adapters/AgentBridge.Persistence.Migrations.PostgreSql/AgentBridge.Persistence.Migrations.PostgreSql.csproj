@@ -11,7 +11,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**;**\bin\**;**\obj\**;**\artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
+    <ProjectReference Include="../AgentBridge.Persistence.PostgreSql/AgentBridge.Persistence.PostgreSql.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
   </ItemGroup>
 </Project>

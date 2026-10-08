@@ -59,6 +59,9 @@ public static class AgentBridgeIntegrationExtensions
             if (descriptor.ServiceType.IsGenericType && descriptor.ServiceType.GetGenericTypeDefinition()
                 == typeof(IDbContextOptionsConfiguration<>))
                 services.Add(descriptor);
+            else if (descriptor.ServiceType.IsGenericType && descriptor.ServiceType.GetGenericTypeDefinition()
+                == typeof(IValidateOptions<>))
+                services.TryAddEnumerable(descriptor);
             else
                 services.TryAdd(descriptor);
         }

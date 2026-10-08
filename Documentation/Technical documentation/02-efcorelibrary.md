@@ -83,12 +83,14 @@ UTC DateTimeOffset хранится точными ticks через `UtcTicksCon
 
 ```csharp
 using AgentBridge.Persistence.EfCore.Configuration;
+using AgentBridge.Persistence.PostgreSql;
 
 services.AddDatabaseConfiguration(options =>
 {
     options.Provider = DatabaseProvider.PostgreSql; // либо DatabaseProvider.SQLite
     options.ConnectionString = applicationConnectionString;
 });
+services.AddAgentBridgePostgreSql(); // для SQLite — AddAgentBridgeSqlite из AgentBridge.Persistence.Sqlite
 services.AddAgentBridgePersistence();
 ```
 

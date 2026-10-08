@@ -28,6 +28,7 @@ public class SqlServerIntegrationDatabase : IAsyncDisposable
     public ServiceProvider BuildRoot(Action<ServiceCollection>? customize = null)
     {
         ServiceCollection services = new();
+        services.AddTestDatabaseProviders();
         services.AddLogging();
         services.AddDatabaseConfiguration(options =>
         {
