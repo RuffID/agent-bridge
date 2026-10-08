@@ -46,15 +46,27 @@ public class ContextTokenCounterTests
 
     /// <summary>Проверяет весь конечный подтверждённый mapping.</summary>
     [Theory]
-    [InlineData("gpt-5")]
-    [InlineData("gpt-4.1")]
-    [InlineData("gpt-4o")]
-    [InlineData("o1")]
-    [InlineData("o3")]
-    [InlineData("o4-mini")]
-    [InlineData("gpt-4")]
-    [InlineData("gpt-3.5-turbo")]
-    public async Task ExactConfirmedAliasesSupported(string model) => Assert.NotNull(await Count(new(model, null, "я", [], [])));
+    [InlineData("gpt-5", "o200k_base", 2L)]
+    [InlineData("gpt-4.1", "o200k_base", 2L)]
+    [InlineData("gpt-4o", "o200k_base", 2L)]
+    [InlineData("o1", "o200k_base", 2L)]
+    [InlineData("o3", "o200k_base", 2L)]
+    [InlineData("o4-mini", "o200k_base", 2L)]
+    [InlineData("gpt-4", "cl100k_base", 3L)]
+    [InlineData("gpt-3.5-turbo", "cl100k_base", 3L)]
+    public async Task ExactConfirmedAliasesSupported(string model, string encoding, long tokens)
+    {
+        ServiceResult<ContextTokenCount> result = await new ContextTokenCounter().CountAsync(
+            new(model, null, "Привет", [], []), TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Null(result.Error);
+        ContextTokenCount count = Assert.IsType<ContextTokenCount>(result.Data);
+        Assert.Equal(encoding, count.Encoding);
+        Assert.Equal(tokens, count.KnownTokens);
+        Assert.False(count.HasOpaqueContent);
+        Assert.True(count.EstimatedInputTokens >= tokens);
+    }
 
     /// <summary>Запрещает case folding, prefix fallback и утечку исходных значений.</summary>
     [Theory]

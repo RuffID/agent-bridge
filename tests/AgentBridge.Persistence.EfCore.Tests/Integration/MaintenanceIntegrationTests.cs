@@ -7,6 +7,7 @@ using EFCoreLibrary.Maintenance.Coordination;
 using EFCoreLibrary.Maintenance.Errors;
 using EFCoreLibrary.Maintenance.Models;
 using AgentBridge.Persistence.EfCore.Configuration;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -174,7 +175,7 @@ public class MaintenanceIntegrationTests
         Assert.Empty(Directory.EnumerateFiles(database.BackupDirectory));
     }
 
-    /// <summary>Настоящий конфликт DDL после backup сохраняет существующие данные и блокирует общий root gate.</summary>
+    /// <summary>Настоящий конфликт DDL после backup сохраняет исходную ошибку и данные, блокируя общий root gate.</summary>
     [DatabaseIntegrationTheory]
     [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
@@ -191,7 +192,16 @@ public class MaintenanceIntegrationTests
             MaintenanceException failure = await Assert.ThrowsAsync<MaintenanceException>(() => scope.ServiceProvider
                 .GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>().UpdateExistingAsync(TimeSpan.FromSeconds(45)));
             Assert.Equal(MaintenanceError.MigrationFailed, failure.Code);
-            Assert.Null(failure.InnerException);
+            if (provider == DatabaseProvider.SQLite)
+            {
+                SqliteException cause = Assert.IsType<SqliteException>(failure.InnerException);
+                Assert.Equal(1, cause.SqliteErrorCode);
+            }
+            else
+            {
+                PostgresException cause = Assert.IsType<PostgresException>(failure.InnerException);
+                Assert.Equal(PostgresErrorCodes.DuplicateTable, cause.SqlState);
+            }
         }
         using (IServiceScope another = database.Root.CreateScope())
         {

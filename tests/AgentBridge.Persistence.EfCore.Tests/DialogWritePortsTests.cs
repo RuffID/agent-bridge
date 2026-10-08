@@ -133,6 +133,7 @@ public class DialogWritePortsTests
         Assert.Equal(response.Continuation!.Content.GetRawText(), stored.Continuation!.Content.GetRawText());
         Assert.True(JsonElement.DeepEquals(response.Output[0].Content, stored.Output[0].Content));
         Assert.Equal(response.Error?.Message, stored.Error?.Message);
+        Assert.All(fixture.Items.Persisted, row => Assert.False(Item(row.ContentJson).Content.TryGetProperty("id", out _)));
         ModelResponseRecord report = fixture.Steps.Persisted[0].Response;
         long expectedBytes = fixture.Items.Persisted.Sum(row => Encoding.UTF8.GetByteCount(row.ContentJson)) +
             new[] { report.OutputJson, report.EnvelopeJson, report.ContinuationJson, report.ErrorMessage }
@@ -171,6 +172,44 @@ public class DialogWritePortsTests
         Assert.Equal(0, fixture.Turns.Repository.ReadCalls);
         Assert.DoesNotContain("save", fixture.Session.Events);
         Assert.Empty(fixture.Turns.Persisted);
+    }
+
+    /// <summary>Actual turn UoW отклоняет поздний finish по каждому guard без изменения сохранённых детей.</summary>
+    [Theory]
+    [InlineData("missing", ServiceErrorType.NotFound)]
+    [InlineData("owner", ServiceErrorType.Forbidden)]
+    [InlineData("id", ServiceErrorType.Conflict)]
+    [InlineData("incarnation", ServiceErrorType.Conflict)]
+    [InlineData("revision", ServiceErrorType.Conflict)]
+    [InlineData("expiry", ServiceErrorType.Expired)]
+    public async Task LateFinishGuardsPreserveCommittedChildren(string change, ServiceErrorType error)
+    {
+        FakeWriteFixture fixture = new();
+        DialogWriteToken token = await fixture.CreateAsync();
+        Guid turn = Guid.NewGuid();
+        token = (await fixture.Writer.BeginAsync(FakeWriteFixture.Access(token), token, turn,
+            [Item("{\"text\":\"original\"}")], cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        DialogAccess access = FakeWriteFixture.Access(token);
+        if (change == "missing") { fixture.Roots.Persisted.Clear(); }
+        if (change == "owner") { access = FakeWriteFixture.Access(token, owner: "other"); }
+        if (change == "id") { access = new(DialogId.From(Guid.NewGuid()), access.OwnerId, access.NowUtc); }
+        if (change == "incarnation") { token = new(token.DialogId, Guid.NewGuid(), token.Revision); }
+        if (change == "revision") { token = new(token.DialogId, token.IncarnationId, token.Revision - 1); }
+        if (change == "expiry") { access = FakeWriteFixture.Access(token, FakeWriteFixture.NOW.AddDays(1)); }
+        fixture.Session.Events.Clear();
+
+        ServiceResult<DialogWriteToken> result = await fixture.Writer.FinishAsync(access, token, turn,
+            DialogTurnStatus.Completed, [Item("{\"text\":\"late\"}")], [new(Guid.NewGuid(), Response(ModelResponseStatus.Completed))],
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Null(result.Data);
+        Assert.Equal(error, result.Error!.Type);
+        Assert.Equal(DialogTurnStatus.InProgress, Assert.Single(fixture.Turns.Persisted).Status);
+        Assert.Equal("original", Item(Assert.Single(fixture.Items.Persisted).ContentJson).Content.GetProperty("text").GetString());
+        Assert.Empty(fixture.Steps.Persisted);
+        Assert.DoesNotContain("save", fixture.Session.Events);
+        if (change != "missing") { Assert.Equal(1, Assert.Single(fixture.Roots.Persisted).Revision); }
     }
 
     /// <summary>После удаления и пересоздания старый результат не восстанавливает прежнюю историю.</summary>
@@ -254,6 +293,35 @@ public class DialogWritePortsTests
         await Assert.ThrowsAsync<IOException>(() => fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 1, Response(ModelResponseStatus.Completed), cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(3, fixture.Contexts.Persisted.Count);
         Assert.Equal(token.Revision, fixture.Roots.Persisted[0].Revision);
+    }
+
+    /// <summary>Actual context UoW отвергает любой noncompleted compact без изменения root, истории и контекста.</summary>
+    [Theory]
+    [InlineData(ModelResponseStatus.Incomplete)]
+    [InlineData(ModelResponseStatus.Failed)]
+    [InlineData(ModelResponseStatus.Canceled)]
+    public async Task NoncompletedCompactionPreservesAcceptedContext(ModelResponseStatus status)
+    {
+        FakeWriteFixture fixture = new();
+        DialogWriteToken token = await fixture.CreateAsync();
+        ModelResponse accepted = Response(ModelResponseStatus.Completed);
+        token = (await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token, 0, accepted,
+            cancellationToken: TestContext.Current.CancellationToken)).Data!;
+        DialogContextRecord before = Assert.Single(fixture.Contexts.Persisted);
+        fixture.Session.Events.Clear();
+
+        ServiceResult<DialogWriteToken> result = await fixture.ContextWriter.SaveAsync(FakeWriteFixture.Access(token), token,
+            0, Response(status), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Null(result.Data);
+        Assert.Equal(ServiceErrorType.Validation, result.Error!.Type);
+        Assert.Same(before, Assert.Single(fixture.Contexts.Persisted));
+        Assert.Equal(accepted.Envelope!.Content.GetRawText(), before.Compaction.ToModelResponse().Envelope!.Content.GetRawText());
+        Assert.Equal(token.Revision, Assert.Single(fixture.Roots.Persisted).Revision);
+        Assert.Empty(fixture.Items.Persisted);
+        Assert.Empty(fixture.Turns.Persisted);
+        Assert.DoesNotContain("save", fixture.Session.Events);
     }
 
     /// <summary>Старый кандидат очистки не удаляет свежую версию; точная граница expiry разрешает удаление.</summary>
