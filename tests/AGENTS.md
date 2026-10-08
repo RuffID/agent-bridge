@@ -1,5 +1,7 @@
 # Изолированные тесты
 
+- DatabaseMaintenanceTests проверяет исходные причины coordinator и EF pin cleanup через InnerException, обе причины двойного отказа через AggregateException и сохранение прежней классификации/poisoning. Message и ILogger остаются безопасными; ToString цепочки исключений может содержать текст драйвера. Реальные БД и процессы эти проверки не запускают.
+
 - `Delivery/` проверяет текущую поставку Audit Remediation15: SDK runtime closure, external compile-only consumer без ProjectReference/PackageReference и isolated PE/ELF/XML/manifest tests. Три SQL Server RID и SQLite/PostgreSQL win-x64; native/HTTP/БД не исполняются. Правила — `Delivery/AGENTS.md`.
 
 - CrossComponentIntegrationTests23 соединяет actual AgentRunner/CodexLb/HttpClientLibrary/offline BPE с реальными SQLite/PostgreSQL через existing Integration fixtures. Persistence test project имеет дополнительный test-only ProjectReference на CodexLb; production зависимости не меняются. Эти проверки имеют Dependency=Database и не входят в isolated filter. Матрица/границы/команды — в отчёте23; HTTP всегда local handler/streams, без hosting.

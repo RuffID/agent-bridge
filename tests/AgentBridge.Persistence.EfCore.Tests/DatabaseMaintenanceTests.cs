@@ -139,8 +139,16 @@ public class DatabaseMaintenanceTests
         else Assert.Null(error);
         Assert.Equal(1, connection.Closes);
         Assert.DoesNotContain("migrate", fake.Calls);
-        Assert.DoesNotContain("synthetic-secret", error?.ToString() ?? "");
-        Assert.Null(error?.InnerException);
+        Assert.DoesNotContain("synthetic-secret", error?.Message ?? "");
+        if (cleanupFails)
+        {
+            Exception cause = Assert.IsAssignableFrom<Exception>(error!.InnerException);
+            if (primary.HasValue) cause = Assert.IsType<AggregateException>(cause).InnerExceptions[1];
+            Assert.Equal(MaintenanceError.CleanupUnconfirmed, Assert.IsType<MaintenanceException>(cause).Code);
+            Assert.IsType<IOException>(cause.InnerException);
+        }
+        else if (failure == "deadline") Assert.IsAssignableFrom<OperationCanceledException>(error!.InnerException);
+        else Assert.Null(error?.InnerException);
         connection.FailClose = false;
         fake.BackupAction = null;
         if (cleanupFails)
@@ -199,7 +207,8 @@ public class DatabaseMaintenanceTests
                 failure == "deadline" ? MaintenanceError.DeadlineExceeded : MaintenanceError.ConnectionFailed;
             if (failure == "caller") Assert.Equal(caller.Token, Assert.IsType<OperationCanceledException>(error).CancellationToken);
             else Assert.Equal(expected, Assert.IsType<MaintenanceException>(error).Code);
-            Assert.DoesNotContain("synthetic-secret", error!.ToString());
+            Assert.DoesNotContain("synthetic-secret", error!.Message);
+            if (failure == "raw") Assert.IsType<InvalidOperationException>(error.InnerException);
             MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() => waiter);
             Assert.Equal(MaintenanceError.GatePoisoned, blocked.Code);
             Assert.False(fake.Pinned);
@@ -381,7 +390,7 @@ public class DatabaseMaintenanceTests
         Assert.False(fake.Pinned);
     }
 
-    /// <summary>Provider backup failure или collision не продолжают migration и не раскрывают raw error.</summary>
+    /// <summary>Provider backup failure или collision не продолжают migration; исходная причина доступна в InnerException.</summary>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -396,8 +405,9 @@ public class DatabaseMaintenanceTests
         using IServiceScope scope = root.CreateScope();
         MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(MaintenanceError.BackupFailed, error.Code);
-        Assert.DoesNotContain("synthetic-secret", error.ToString());
-        Assert.Null(error.InnerException);
+        Assert.DoesNotContain("synthetic-secret", error.Message);
+        if (collision) Assert.IsType<IOException>(error.InnerException);
+        else Assert.Null(error.InnerException);
         Assert.DoesNotContain("migrate", fake.Calls);
         Assert.Equal("unpin", fake.Calls.Last());
     }
@@ -433,7 +443,8 @@ public class DatabaseMaintenanceTests
         using IServiceScope second = root.CreateScope();
         MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(first).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
         Assert.Equal(expected, error.Code);
-        Assert.DoesNotContain("synthetic-secret", error.ToString());
+        Assert.DoesNotContain("synthetic-secret", error.Message);
+        if (failure == "migration") Assert.IsType<InvalidOperationException>(error.InnerException);
         if (failure == "backup-cleanup") Assert.Equal(MaintenanceError.BackupFailed, error.PrimaryError);
         int calls = fake.Calls.Count;
         MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() => Service(second).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken));
