@@ -28,11 +28,40 @@ AgentBridge использует tokenizer, соответствующий из�
 | --- | --- | --- |
 | `gpt-5`, `gpt-4.1`, `gpt-4o`, `o1`, `o3`, `o4-mini` | `o200k_base` | Прямые MODEL_TO_ENCODING entries OpenAI tiktoken0.12.0 |
 | `gpt-5.5` | `o200k_base` | Точный existing Telegram default, official tiktoken main family rule gpt-5 (проверка 2026-10-08) |
+| `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` | `o200k_base` | Точные модели local codex-lb, тот же official tiktoken main family rule gpt-5 (проверка 2026-10-09) |
 | `gpt-4`, `gpt-3.5-turbo` | `cl100k_base` | Прямые MODEL_TO_ENCODING entries того же source |
 
-[OpenAI model.py, release0.12.0](https://github.com/openai/tiktoken/blob/0.12.0/tiktoken/model.py), SHA256 UTF-8 source `779ee48b1b24b08bfa5444a77558ef9860518fc2eb485180c14095e7166dc519`. Прочитан также actual main: прямые entries совпадают. Prefix resolver намеренно не используется: source прямо отмечает, что prefix способен принять несуществующий ID. Любые suffix/date/version, другой регистр, `gpt-5.4`, `gpt-6`/`gpt-6.1`, произвольные codex-lb aliases и fine-tuned IDs пока явно Unsupported. Пользователь не задал дополнительных обязательных ID; координатор подтвердил конечный прямой список до dependent mapping work. Это ограничение локального tokenizer, а не утверждение о недоступности модели сервером.
+[OpenAI model.py, release0.12.0](https://github.com/openai/tiktoken/blob/0.12.0/tiktoken/model.py), SHA256 UTF-8 source `779ee48b1b24b08bfa5444a77558ef9860518fc2eb485180c14095e7166dc519`. Прочитан также actual main: прямые entries совпадают. Prefix resolver намеренно не используется: source прямо отмечает, что prefix способен принять несуществующий ID. Без явного оценочного режима ID вне builtin карты остаётся Unsupported, пока приложение не задаст точное соответствие в TokenizationOptions.ModelEncodings. Другой регистр/suffix не наследуют подтверждённую кодировку автоматически. Это ограничение локального tokenizer, а не утверждение о недоступности модели сервером.
 
 При внедрении Telegram consumer 2026-10-08 добавлен exact gpt-5.5, чтобы сохранить существующую default model. [Official model page](https://developers.openai.com/api/docs/models/gpt-5.5) подтверждает модель; actual local codex-lb model_registry.py также содержит её. Official tiktoken main model.py задаёт `MODEL_PREFIX_TO_ENCODING["gpt-5"] = "o200k_base"` и применяет его к этому имени; snapshot SHA256 UTF-8 `600f26902d1cf6a1a5f54e37be988b3e0d911f1ff17ba7060bb361f9b5295521`. Эта проверка расширяет конечную literal карту одним именем, а не runtime prefix fallback; gpt-5.5-FAKE и прочие suffix по-прежнему Unsupported. Live доступность/effort/window остаются проверкой каталога, словари не изменены. Fixed BPE vectors и bot actual DLL tests проходят с gpt-5.5.
+
+2026-10-09 добавлен exact `gpt-5.6-sol`: отсутствие этого ID в карте приводило к безопасному Unsupported до generation при выборе модели в Telegram. Повторно прочитан [official tiktoken main model.py](https://github.com/openai/tiktoken/blob/main/tiktoken/model.py), SHA256 UTF-8 `600f26902d1cf6a1a5f54e37be988b3e0d911f1ff17ba7060bb361f9b5295521`: правило семейства gpt-5 подтверждает `o200k_base`. ID и medium effort присутствуют в local codex-lb registry и сохранённом каталоге `scripts/traffic_analysis/catalogs/codex-models-20260911.json`; это не подтверждение текущей доступности production. Official model page при этой проверке недоступна (HTTP403); основание encoding — исходник tiktoken. Добавлен только этот literal ID, без prefix/case/suffix fallback; словари и правила opaque budget не меняются.
+
+### Дополнительные exact соответствия приложения
+
+Builtin карта дополнительно содержит точные `gpt-5.6-terra` и `gpt-5.6-luna` по тому же проверенному правилу gpt-5 tiktoken. Для GPT-6/6.1 соответствие не объявляется подтверждённым: применяется только явно включённый оценочный режим ниже.
+
+`TokenizationOptions.ModelEncodings` добавляет точные ID моделей к builtin карте. `AddAgentBridge(configuration, httpClientFactory)` через existing core options binding читает optional `AgentBridge:Tokenization:ModelEncodings`. Например, ниже явно задано уже встроенное совпадающее соответствие; для нового ID оператор добавляет аналогичную запись только после подтверждения его кодировки:
+
+```json
+{
+  "AgentBridge": {
+    "Tokenization": {
+      "ModelEncodings": {
+        "gpt-5.6-sol": "o200k_base"
+      }
+    }
+  }
+}
+```
+
+Без фасада после `AddAgentBridgeConfiguration(agentBridgeSection)` вызывается `AddAgentBridgeTokenization()`. Программный overload `AddAgentBridgeTokenization(Action<TokenizationOptions>)` настраивает тот же словарь; compile-only пример — `Consumer/StrictConfigurationRegistration.AddConfirmedModelEncoding`. Parameterless `ContextTokenCounter()` по-прежнему использует только builtin IDs; constructor `ContextTokenCounter(IOptions<TokenizationOptions>)` принимает дополнения и выполняет ту же проверку.
+
+Допустимы только `o200k_base`/`cl100k_base`, уже поставляемые embedded пакетами. Отсутствующий/пустой раздел сохраняет прежнее поведение. Mapping exact/ordinal, без prefix/case/suffix fallback. Совпадающая запись builtin допустима, другая кодировка builtin запрещена. Пустой/обрамлённый пробелами ID, unknown encoding, scalar/nested вместо string→string mapping отклоняются safe options/startup validation с path/code без исходных значений. Наличие карты не разрешает модель, effort или бюджет: live каталог проверяет их отдельно. Правильность кодировки дополнительной модели подтверждает приложение; библиотека не получает её из каталога и не угадывает.
+
+Singleton counter копирует валидную карту при создании с ordinal comparer. Config reload и дальнейшая мутация options не меняют уже работающий counter; оператор перезапускает приложение после изменения. При новой модели с имеющейся кодировкой DLL пересобирать не нужно; новый tokenizer или другой протокол требуют отдельного развития библиотеки. Custom IContextTokenCounter сохраняется через TryAdd.
+
+Проверка 2026-10-09: 518 isolated core tests, включая 16 новых TokenizationConfigurationTests, и 128 isolated Telegram consumer tests пройдены, 0 failed/skipped. Core/bot compile-check, locked restore бота и штатная Release-подготовка пяти SDK variants успешны без предупреждений/ошибок. Actual binary facade/Runner/offline BPE проходит model ID вне builtin карты с обеими кодировками. Пять внешних DLL/NuGet consumers (SQL Server win-x64/linux-x64/linux-arm64, SQLite/PostgreSQL win-x64) с новым программным примером собраны вне repo, locked restore успешен; методы не исполнялись. HTTP/БД/host/Docker/deployment не запускались, Linux native runtime не проверен.
 
 [OpenAI openai_public.py0.12.0](https://github.com/openai/tiktoken/blob/0.12.0/tiktoken_ext/openai_public.py), SHA256 source `954392738e60d0fb6dca1dad80872efc47c8e2733babecbbf0a23970ed66c2cb`, фиксирует canonical словари:
 
@@ -56,6 +85,18 @@ Encrypted reasoning/compaction, multimodal/file parts, unknown item/field/contro
 `ModelContinuation` — metadata, а не input item: например bound previous_response_id может дополнить новый input скрытой server history. Даже если local request уже содержит историю, counter не доказывает отсутствие дополнительного upstream state; поэтому continuation ID не прибавляется к KnownTokens, estimate=null. Пустой/неподдержанный metadata object также не является доказательством известного полного бюджета. Без continuation полностью текстовый request допускает framing estimate.
 
 Caller cancellation проверяется до работы, между items/parts/controls, до/после каждого библиотечного BPE и перед возвратом. Синхронный BPE/JSON serialization одного большого payload нельзя прервать посередине; отмена наблюдается после него. Известные vectors regression: `Привет` =3 cl100k/2 o200k, `я` =1, `2 + 2 = 4` =7, `{"a":1}` =5; tokenizer не заменён character heuristic.
+
+### Модели без подтверждённой кодировки
+
+`AgentBridge:Tokenization:UnknownModelEstimateEncoding` — optional строка `o200k_base`/`cl100k_base`, default null. Она выбирает BPE словарь для приблизительной оценки моделей без builtin/configured exact mapping. Это не утверждение, что выбранная модель использует этот словарь. Подтверждённые соответствия имеют приоритет; `ContextTokenCount.IsApproximateEncoding=true` отличает приблизительные KnownTokens/EstimatedInputTokens от confirmed encoding. Opaque, мультимодальные данные и continuation сохраняют null full estimate.
+
+Для бота настройка `UnknownModelEstimateEncoding="o200k_base"` используется вместе с existing `Compaction.BudgetPolicy="ServerValidation"`. Catalog model/effort/input window и local reserve/budget guards продолжают работать. Отсутствующий catalog ID не становится доступным. Приблизительная оценка управляет автоматическим порогом compact; кандидаты проверяются и сохраняются прежним save-before-activation путём, исходная история не удаляется. Окончательный приём бюджета решает upstream; возможны отклонения оценки от фактического подсчёта. Это не точный серверный preflight и не retry при переполнении.
+
+Strict RequireLocalEstimate отклоняет approximate encoding до внешнего compact/generation и до candidate save, включая force. Public ContextBudgetAssessment не разрешает скрывать приблизительность без RequiresServerValidation. Status сохраняет IsApproximateEncoding и strict ContextError. AgentRunResult.LastBudgetAssessment содержит только последнюю успешную проверку generation input; перед новым шагом сбрасывается, поэтому после отказа нового guard прежняя оценка не выдаётся за текущую. Наличие assessment не доказывает dispatch или серверный приём.
+
+Scalar shape/encoding проверяются options/startup/direct constructor без исходных значений. Настройка копируется при создании singleton и меняется через перезапуск. Новые ID, подтверждённые динамическим каталогом, не требуют обновления DLL из-за отсутствия exact tokenizer mapping при включённом оценочном режиме. Новые протоколы/типы содержимого и реальная доступность аккаунта остаются самостоятельными ограничениями.
+
+Проверка оценочного режима 2026-10-09: core compile-check и 542 isolated tests успешны, 0 warnings/errors/failed/skipped. Штатный Prepare-DeliveryTests.ps1 пересобрал пять Release SDK variants и DLL/NuGet bundles; 23 файла SQL Server bundle скопированы в Telegram libs с совпадающим SHA256. Bot locked restore, compile-check и 140 isolated tests успешны, включая actual binary dispatch всех семи sol/astra/luna/terra ID и future-test-model из fake catalog, safe approximate flags, catalog/effort/strict отказы, auto compact без удаления истории и следующий opaque ход. Приложение/БД/реальные API/Docker/deployment и Linux native runtime не запускались; кодировки GPT-6 и account entitlement не подтверждаются этими тестами.
 
 ### Public guard и подключение
 

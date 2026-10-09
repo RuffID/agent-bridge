@@ -38,6 +38,9 @@ public class AgentRunnerTests
         await using ServiceProvider root = services.BuildServiceProvider();
         AgentRunResult result = await RunAsync(root, new(probe.Call, [Message("input")], [TOOL.Name], new(8, 8, 2, TimeSpan.FromMinutes(1)), instructions: "request instructions"), ct: TestContext.Current.CancellationToken);
         Assert.Equal(AgentRunStatus.Completed, result.Status); Assert.Equal("request instructions", Assert.Single(probe.Requests).Instructions);
+        Assert.NotNull(result.LastBudgetAssessment);
+        Assert.False(result.LastBudgetAssessment.TokenCount.IsApproximateEncoding);
+        Assert.False(result.LastBudgetAssessment.RequiresServerValidation);
     }
 
     /// <summary>Per-request effort перекрывает per-dialog выбор; смена выбора после Begin не меняет already pinned request.</summary>
@@ -435,6 +438,7 @@ public class AgentRunnerTests
         Assert.Equal(AgentRunStatus.Failed, result.Status);
         Assert.Equal(1, probe.Generations);
         Assert.Single(result.Turn!.Items, item => Type(item) == "function_call_output");
+        Assert.Null(result.LastBudgetAssessment);
         Assert.Equal(1, probe.ProviderCalls);
     }
 

@@ -677,6 +677,58 @@ public class ContextCompactorTests
             turns ?? [Turn(1, DialogTurnStatus.Completed, [Text(new string('h', 200))])], active);
     /// <summary>Создаёт сохранённый turn без дублированных model steps.</summary>
     private static StoredDialogTurn Turn(long sequence, DialogTurnStatus status, IEnumerable<CanonicalModelItem> items) => new(Guid.NewGuid(), sequence, status, items, []);
+    /// <summary>Оценочный словарь управляет автоматическим порогом и сохраняет происхождение принятого окна.</summary>
+    [Fact]
+    public async Task ApproximateEncodingCompactsHistoryUnderServerPolicy()
+    {
+        using Fixture fixture = new(policy: ContextBudgetPolicy.ServerValidation);
+        fixture.FakeCounter.Evaluate = request => new("o200k_base", 0,
+            request.Input.Sum(item => Content(item).Length), false, isApproximateEncoding: true);
+
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
+
+        Assert.Equal(ContextCompactionStatus.TargetReached, result.Status);
+        Assert.True(result.Count!.IsApproximateEncoding);
+        Assert.Single(fixture.Gateway.Requests);
+        Assert.Single(fixture.Writer.Tokens);
+        Assert.True((await new ContextBudgetGuard(fixture.Counter, ContextBudgetPolicy.ServerValidation)
+            .CheckAsync(result.PreparedRequest, Settings(), TestContext.Current.CancellationToken)).Data!.RequiresServerValidation);
+    }
+
+    /// <summary>Строгая политика запрещает оценочную кодировку до внешнего compact даже ниже порога и с force.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StrictPolicyRejectsApproximateEncodingBeforeCompact(bool force)
+    {
+        using Fixture fixture = new();
+        fixture.FakeCounter.Evaluate = _ => new("o200k_base", 1, 5, false, isApproximateEncoding: true);
+
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken, force: force)).Data!;
+
+        Assert.Equal(ContextCompactionStatus.Failed, result.Status);
+        Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
+        Assert.Empty(fixture.Gateway.Requests);
+        Assert.Empty(fixture.Writer.Tokens);
+    }
+
+    /// <summary>Смена происхождения count кандидата не обходит строгую политику и не разрешает сохранение.</summary>
+    [Fact]
+    public async Task StrictPolicyRejectsApproximateCandidateBeforeSave()
+    {
+        using Fixture fixture = new();
+        fixture.FakeCounter.Evaluate = request => new("custom", 0, request.Input.Sum(item => Content(item).Length),
+            false, isApproximateEncoding: request.Input.Any(item => Content(item) == "small"));
+
+        ContextCompactionResult result = (await fixture.Run(ct: TestContext.Current.CancellationToken)).Data!;
+
+        Assert.Equal(ContextCompactionStatus.Failed, result.Status);
+        Assert.Equal(ServiceErrorType.Unsupported, result.Error!.Type);
+        Assert.Single(fixture.Gateway.Requests);
+        Assert.Empty(fixture.Writer.Tokens);
+        Assert.False(result.Count!.IsApproximateEncoding);
+    }
+
     /// <summary>Создаёт новый вход, отдельно от истории.</summary>
     private static ModelRequest Request(IEnumerable<CanonicalModelItem>? input = null) => new("gpt-5", "medium", "", input ?? [], []);
     /// <summary>Создаёт проверяемые модельные лимиты.</summary>

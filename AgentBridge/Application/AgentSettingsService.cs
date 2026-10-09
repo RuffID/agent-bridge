@@ -73,7 +73,9 @@ public class AgentSettingsService(IDialogReader dialogs, IDialogSettingsWriter w
                 else
                 {
                     size = counted.Data!;
-                    if (size.EstimatedInputTokens is null) error ??= new(ServiceErrorType.Unsupported, "Полный бюджет сохранённого контекста неизвестен.");
+                    if (size.IsApproximateEncoding && compaction.Value.BudgetPolicy != ContextBudgetPolicy.ServerValidation)
+                        error ??= new(ServiceErrorType.Unsupported, "Оценочная кодировка модели требует явной серверной проверки бюджета.");
+                    else if (size.EstimatedInputTokens is null) error ??= new(ServiceErrorType.Unsupported, "Полный бюджет сохранённого контекста неизвестен.");
                     else if (size.EstimatedInputTokens > (long)selected.Data.Model.InputContextWindow! - selected.Data.InputTokenReserve)
                         error ??= new(ServiceErrorType.Rejected, "Сохранённый контекст превышает входной бюджет.");
                 }

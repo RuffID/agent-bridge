@@ -7,7 +7,7 @@ public class AgentRunResult
 {
     internal AgentRunResult(AgentRunStatus status, bool terminalSaved, DialogWriteToken? token,
         ModelSettingsSnapshot? settings, StoredDialogTurn? turn, ModelResponse? lastResponse,
-        ServiceError? error, ToolExecutionBatch? lastTools = null)
+        ServiceError? error, ToolExecutionBatch? lastTools = null, ContextBudgetAssessment? lastBudgetAssessment = null)
     {
         Status = status;
         TerminalSaved = terminalSaved;
@@ -17,6 +17,7 @@ public class AgentRunResult
         LastResponse = lastResponse;
         Error = error;
         LastTools = lastTools;
+        LastBudgetAssessment = lastBudgetAssessment;
     }
 
     /// <summary>Авторитетный итог run; Completed требует terminal save.</summary>
@@ -35,4 +36,8 @@ public class AgentRunResult
     public ServiceError? Error { get; }
     /// <summary>Последний полный tool report, включая подтверждённые outputs при отказе их сохранения.</summary>
     public ToolExecutionBatch? LastTools { get; }
+
+    /// <summary>Последняя успешная проверка полного generation input; null, если текущая проверка не завершилась.</summary>
+    /// <remarks>Не доказывает отправку или серверный приём. Содержит только размеры и происхождение оценки, без payload.</remarks>
+    public ContextBudgetAssessment? LastBudgetAssessment { get; }
 }

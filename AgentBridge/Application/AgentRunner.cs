@@ -27,6 +27,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
         AgentRunSession? session = null;
         ModelResponse? lastResponse = null;
         ToolExecutionBatch? lastTools = null;
+        ContextBudgetAssessment? lastBudgetAssessment = null;
         Exception? scopeCleanupFailure = null;
         try
         {
@@ -89,6 +90,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             ModelRequest next = new(settings.Model.Id, settings.ReasoningEffort, instructions, [], tools, parameters: request.Parameters);
             while (true)
             {
+                lastBudgetAssessment = null;
                 cancellationToken.ThrowIfCancellationRequested();
                 ServiceResult<ContextCompactionResult> compacted = await compactor.CompactAsync(request.Call, session.Snapshot,
                     next, settings, access.Data!, cancellationToken);
@@ -98,6 +100,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                 ServiceResult<ContextBudgetAssessment> budget = await new ContextBudgetGuard(counter, budgetPolicy).CheckAsync(
                     compact.PreparedRequest, settings, cancellationToken);
                 if (!budget.Success) return await FinishAsync(AgentRunStatus.Failed, budget.Error!);
+                lastBudgetAssessment = budget.Data!;
                 if (session.Blocked) return Report(AgentRunStatus.Failed, session.Error);
                 if (compact.Error is not null) return await FinishAsync(AgentRunStatus.Failed, compact.Error);
                 if (session.Snapshot.IsExpired(time.GetUtcNow()))
@@ -178,7 +181,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
         finally { session?.Dispose(); }
 
         AgentRunResult Report(AgentRunStatus status, ServiceError? error = null, bool saved = false) =>
-            new(status, saved, session?.Snapshot.Token, settings, session?.Turn, lastResponse, error, lastTools);
+            new(status, saved, session?.Snapshot.Token, settings, session?.Turn, lastResponse, error, lastTools, lastBudgetAssessment);
 
         async Task<AgentRunResult> FinishAsync(AgentRunStatus status, ServiceError? error = null)
         {

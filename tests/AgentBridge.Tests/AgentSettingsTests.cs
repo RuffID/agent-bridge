@@ -305,6 +305,32 @@ public class AgentSettingsTests
         Assert.Equal("gpt-5", probe.Dialog.Selection!.Model);
     }
 
+    /// <summary>Read-only status сохраняет происхождение приблизительного размера и учитывает строгую политику.</summary>
+    [Theory]
+    [InlineData(ContextBudgetPolicy.RequireLocalEstimate, false)]
+    [InlineData(ContextBudgetPolicy.ServerValidation, true)]
+    public async Task ApproximateStatusHonorsBudgetPolicy(ContextBudgetPolicy policy, bool canContinue)
+    {
+        Probe probe = new();
+        probe.Dialog = Copy(probe.Dialog, selection: new(1, "gpt-6", "high"));
+        ServiceCollection services = Services(probe);
+        services.AddAgentBridgeTokenization(options => options.UnknownModelEstimateEncoding = "o200k_base");
+        services.Configure<ContextCompactionOptions>(options => options.BudgetPolicy = policy);
+        await using ServiceProvider root = services.BuildServiceProvider();
+        using IServiceScope scope = root.CreateScope();
+
+        DialogStatus status = Success(await scope.ServiceProvider.GetRequiredService<AgentSettingsService>()
+            .GetStatusAsync(probe.Call, TestContext.Current.CancellationToken));
+
+        Assert.True(status.ContextSize!.IsApproximateEncoding);
+        Assert.NotNull(status.ContextSize.EstimatedInputTokens);
+        Assert.Equal(canContinue, status.CanContinue);
+        if (canContinue)
+            Assert.Null(status.ContextError);
+        else
+            Assert.Equal(ServiceErrorType.Unsupported, status.ContextError!.Type);
+    }
+
     private static ServiceCollection Services(Probe probe)
     {
         ServiceCollection services = new();

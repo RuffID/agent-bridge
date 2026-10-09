@@ -5,6 +5,6 @@ public enum ContextBudgetPolicy
 {
     /// <summary>Строгий режим: неизвестная локальная оценка отклоняет отправку.</summary>
     RequireLocalEstimate,
-    /// <summary>Известная часть проверяется локально; полный бюджет фото, файлов и opaque-состояния проверяет сервер.</summary>
+    /// <summary>Локальный подсчёт/оценка управляет порогом; полный бюджет opaque и оценочной кодировки проверяет сервер.</summary>
     ServerValidation
 }

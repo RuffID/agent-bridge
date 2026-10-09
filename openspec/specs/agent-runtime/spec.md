@@ -374,7 +374,7 @@ Compact payload MUST проходить отдельную проверку inpu
 
 ### Requirement: Полноценная токенизация подготовленного запроса
 
-IContextTokenCounter MUST применять полноценный .NET BPE tokenizer с проверенным exact model→encoding mapping. Неизвестный ID, другой регистр или непроверенный suffix MUST возвращать безопасный Unsupported без произвольного fallback. Runtime tokenization MUST NOT требовать сети.
+IContextTokenCounter MUST применять полноценный .NET BPE tokenizer с проверенным exact model→encoding mapping. Без явного оценочного режима ID, отсутствующий во встроенной карте и явных настройках приложения, MUST возвращать безопасный Unsupported; другой регистр/suffix MUST NOT автоматически наследовать подтверждённую кодировку без собственного exact соответствия. Runtime tokenization MUST NOT требовать сети.
 
 #### Scenario: Весь подготовленный запрос
 
@@ -388,8 +388,45 @@ IContextTokenCounter MUST применять полноценный .NET BPE tok
 
 #### Scenario: Проверка правила — Полноценная токенизация подготовленного запроса
 
-- **WHEN** передан неизвестный ID или другой регистр модели
+- **WHEN** передан неизвестный ID или другой регистр модели без собственного exact соответствия и без явного оценочного словаря
 - **THEN** counter возвращает Unsupported без fallback и сетевого поиска.
+
+### Requirement: Явная оценка моделей без подтверждённой кодировки
+
+Optional `TokenizationOptions.UnknownModelEstimateEncoding` MAY явно задавать `o200k_base`/`cl100k_base` для приблизительного BPE подсчёта ID без подтверждённого mapping; default null MUST сохранять Unsupported. Подтверждённый mapping MUST иметь приоритет. Результат MUST содержать IsApproximateEncoding=true и MUST NOT объявлять кодировку модели подтверждённой. KnownTokens в таком результате является приблизительным, opaque/continuation MUST сохранять null full estimate. Настройка MUST валидироваться безопасно и фиксироваться при создании singleton.
+
+Guard/compactor MUST допускать такую оценку только с explicit ServerValidation после catalog validation модели/effort/input budget. Строгий режим MUST запрещать approximation до generation/compact dispatch и до candidate save, включая force. Порог автоматического сжатия MAY использовать приблизительный текстовый count; это MUST NOT объявляться серверным подсчётом. Runner MUST сохранять происхождение последнего успешного generation assessment и сбрасывать его перед следующим шагом; status MUST различать approximate count и strict refusal.
+
+#### Scenario: Новая catalog модель с неподтверждённой кодировкой
+
+- **WHEN** модель/effort/input budget подтверждены каталогом, включены UnknownModelEstimateEncoding и ServerValidation
+- **THEN** отправка и автоматическое сжатие используют явную приблизительную оценку без новой exact записи; окончательный приём бюджета решает сервер.
+
+#### Scenario: Приблизительность не разрешает недоступную модель
+
+- **WHEN** модель отсутствует в каталоге либо effort не поддерживается
+- **THEN** отказ сохраняется до dispatch независимо от включённого оценочного словаря.
+
+### Requirement: Дополнительные кодировки моделей приложения
+
+AgentBridge MUST принимать optional `AgentBridge:Tokenization:ModelEncodings` как словарь exact ID модели → `o200k_base` либо `cl100k_base`, а также программную настройку через `AddAgentBridgeTokenization(Action<TokenizationOptions>)`. Отсутствующий/пустой словарь MUST сохранять builtin mapping. Явные дополнения MUST NOT включать prefix/case/suffix fallback или подменять проверку доступности/effort/input window каталога. Приложение MUST подтверждать кодировку дополнительной модели; библиотека MUST NOT считать наличие записи доказательством её live доступности.
+
+Недопустимая форма, неизвестная кодировка, пустой/обрамлённый пробелами ID и противоречие builtin encoding MUST отклоняться при public options/startup validation без исходных keys/values. Counter MUST копировать валидный словарь с ordinal сравнением при создании; изменение options/configuration MUST NOT менять карту работающего singleton. Прямой constructor с IOptions MUST выполнять те же проверки. Custom IContextTokenCounter MUST сохраняться при DI registration.
+
+#### Scenario: Новая модель с существующим tokenizer
+
+- **WHEN** приложение задаёт дополнительный exact ID с подтверждённым o200k_base и каталог допускает выбранную модель/effort/budget
+- **THEN** offline counter и AgentRunner работают с этим ID без пересборки библиотечной DLL.
+
+#### Scenario: Ошибка кодировки в конфигурации
+
+- **WHEN** задана неизвестная кодировка либо nested значение вместо string→string записи
+- **THEN** startup validation отклоняет конфигурацию безопасной ошибкой до HTTP/БД.
+
+#### Scenario: Изменение конфигурации работающего counter
+
+- **WHEN** источник options/configuration изменён после создания singleton
+- **THEN** этот counter сохраняет исходную карту; пересозданный контейнер принимает новые валидные настройки.
 
 ### Requirement: Состав токенизируемого input
 

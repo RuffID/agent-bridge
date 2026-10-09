@@ -3,6 +3,8 @@ using System.Text.Json;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
+using AgentBridge.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 
 namespace AgentBridge.Tokenization;
@@ -12,6 +14,26 @@ namespace AgentBridge.Tokenization;
 public class ContextTokenCounter : IContextTokenCounter, IContextContentInspector
 {
     private static readonly JsonSerializerOptions jsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    private readonly Dictionary<string, string> modelEncodings;
+    private readonly string? unknownModelEstimateEncoding;
+
+    /// <summary>Создаёт offline counter только со встроенными подтверждёнными соответствиями.</summary>
+    public ContextTokenCounter() : this(Options.Create(new TokenizationOptions())) { }
+
+    /// <summary>Фиксирует проверенные дополнительные соответствия приложения без сети и изменения словарей.</summary>
+    /// <param name="options">Настройки exact ID → encoding; кодировку дополнительных моделей подтверждает приложение.</param>
+    /// <exception cref="OptionsValidationException">Указаны недопустимая кодировка, форма или конфликт со встроенным соответствием.</exception>
+    public ContextTokenCounter(IOptions<TokenizationOptions> options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        TokenizationOptions configured = options.Value;
+        ValidateOptionsResult validation = new TokenizationOptionsValidator().Validate(Options.DefaultName, configured);
+        if (validation.Failed)
+            throw new OptionsValidationException(Options.DefaultName, typeof(TokenizationOptions), validation.Failures);
+
+        modelEncodings = new(configured.ModelEncodings, StringComparer.Ordinal);
+        unknownModelEstimateEncoding = configured.UnknownModelEstimateEncoding;
+    }
 
     /// <inheritdoc cref="IContextContentInspector.HasOpaqueContent"/>
     public bool HasOpaqueContent(IEnumerable<CanonicalModelItem> items, CancellationToken cancellationToken = default)
@@ -28,7 +50,12 @@ public class ContextTokenCounter : IContextTokenCounter, IContextContentInspecto
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
-        string? encoding = ModelEncodingMap.Find(request.Model);
+        string? encoding = modelEncodings.TryGetValue(request.Model, out string? configuredEncoding)
+            ? configuredEncoding : ModelEncodingMap.Find(request.Model);
+        bool approximateEncoding = encoding is null && unknownModelEstimateEncoding is not null;
+        if (approximateEncoding)
+            encoding = unknownModelEstimateEncoding;
+
         if (encoding is null)
         {
             return Task.FromResult(ServiceResult<ContextTokenCount>.Fail(
@@ -64,7 +91,8 @@ public class ContextTokenCounter : IContextTokenCounter, IContextContentInspecto
             estimate = Math.Max(payload.KnownTokens, payload.CountText(framing));
         }
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(ServiceResult<ContextTokenCount>.Ok(new(encoding, payload.KnownTokens, estimate, opaque)));
+        return Task.FromResult(ServiceResult<ContextTokenCount>.Ok(new(encoding, payload.KnownTokens, estimate, opaque,
+            isApproximateEncoding: approximateEncoding)));
     }
 
     /// <summary>Локальное состояние одного подсчёта, без содержимого в ошибках или логах.</summary>

@@ -52,6 +52,9 @@ public class ContextBudgetGuard
         }
         cancellationToken.ThrowIfCancellationRequested();
         ContextTokenCount count = counted.Data ?? throw new InvalidOperationException("Подсчёт должен содержать данные.");
+        if (count.IsApproximateEncoding && policy != ContextBudgetPolicy.ServerValidation)
+            return Fail(ServiceErrorType.Unsupported, "Оценочная кодировка модели требует явной серверной проверки бюджета.");
+
         if (count.EstimatedInputTokens is not long estimate)
         {
             if (policy == ContextBudgetPolicy.ServerValidation && count.HasOpaqueContent)
@@ -72,7 +75,7 @@ public class ContextBudgetGuard
             return Fail(ServiceErrorType.Rejected, "Оценка входа с резервом превышает входной бюджет модели.");
         }
         return ServiceResult<ContextBudgetAssessment>.Ok(new(count, inputWindow,
-            settings.InputTokenReserve, estimate >= settings.TokenThreshold));
+            settings.InputTokenReserve, estimate >= settings.TokenThreshold, requiresServerValidation: count.IsApproximateEncoding));
     }
 
     /// <summary>Создаёт безопасный отказ без исходного содержимого.</summary>

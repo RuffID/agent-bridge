@@ -8,7 +8,7 @@ namespace AgentBridge.Configuration;
 /// <summary>Групповая регистрация настроек ядра в composition root приложения.</summary>
 public static class AgentBridgeConfigurationExtensions
 {
-    /// <summary>Привязывает группы Agent, Retention и Compaction из переданного раздела.</summary>
+    /// <summary>Привязывает группы Agent, Retention, Compaction и необязательную Tokenization из переданного раздела.</summary>
     /// <remarks>Валидация выполняется при получении options и при проверке старта приложением; IConfiguration не регистрируется.</remarks>
     public static IServiceCollection AddAgentBridgeConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
@@ -26,6 +26,10 @@ public static class AgentBridgeConfigurationExtensions
             nameof(DialogRetentionOptions.SoftContentLimitBytes)));
         ValidateCompaction(services.AddOptions<ContextCompactionOptions>().BindSafely(configuration.GetSection("Compaction"), "Compaction",
             nameof(ContextCompactionOptions.TokenThreshold), nameof(ContextCompactionOptions.InputTokenReserve), nameof(ContextCompactionOptions.MaxPasses)));
+        IConfigurationSection tokenization = configuration.GetSection("Tokenization");
+        AgentBridgeTokenizationExtensions.AddValidatedOptions(services)
+            .Configure(_ => ValidateTokenizationShape(tokenization))
+            .BindSafely(tokenization, "Tokenization");
         return services;
     }
 
@@ -83,4 +87,20 @@ public static class AgentBridgeConfigurationExtensions
             "Сумма Compaction.TokenThreshold и InputTokenReserve выходит за локальный диапазон числа токенов; overflow.")
         .Validate(options => options.MaxPasses > 0, "Compaction.MaxPasses должен быть положительным; required_or_range.")
         .ValidateOnStart();
+
+    /// <summary>Не позволяет Binder молча пропустить scalar/nested значения вместо string→string словаря.</summary>
+    private static void ValidateTokenizationShape(IConfigurationSection configuration)
+    {
+        if (configuration.GetSection(nameof(TokenizationOptions.UnknownModelEstimateEncoding)).GetChildren().Any())
+            throw new OptionsValidationException(Options.DefaultName, typeof(TokenizationOptions),
+                ["Tokenization.UnknownModelEstimateEncoding: invalid_type — ожидается строка кодировки или null."]);
+
+        IConfigurationSection mappings = configuration.GetSection(nameof(TokenizationOptions.ModelEncodings));
+        if (configuration.Value is not null || mappings.Value is not null
+            || mappings.GetChildren().Any(entry => entry.Value is null || entry.GetChildren().Any()))
+        {
+            throw new OptionsValidationException(Options.DefaultName, typeof(TokenizationOptions),
+                ["Tokenization.ModelEncodings: invalid_type — ожидается словарь строковых exact ID и кодировок."]);
+        }
+    }
 }

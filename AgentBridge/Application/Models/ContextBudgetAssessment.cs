@@ -7,7 +7,7 @@ public class ContextBudgetAssessment
     public ContextBudgetAssessment(ContextTokenCount tokenCount, int inputContextWindow, int inputTokenReserve,
         bool thresholdReached) : this(tokenCount, inputContextWindow, inputTokenReserve, thresholdReached, false) { }
 
-    /// <summary>Явно отличает неизвестный opaque бюджет от проверенной локальной оценки.</summary>
+    /// <summary>Явно отличает оценочную кодировку и неизвестный opaque бюджет от подтверждённого локального подсчёта.</summary>
     public ContextBudgetAssessment(ContextTokenCount tokenCount, int inputContextWindow, int inputTokenReserve,
         bool thresholdReached, bool requiresServerValidation)
     {
@@ -16,8 +16,10 @@ public class ContextBudgetAssessment
         {
             throw new ArgumentOutOfRangeException(nameof(inputContextWindow), "Некорректный входной лимит или резерв.");
         }
-        if ((!requiresServerValidation && tokenCount.EstimatedInputTokens is null)
-            || requiresServerValidation && (!tokenCount.HasOpaqueContent || tokenCount.EstimatedInputTokens is not null)
+        if ((!requiresServerValidation && (tokenCount.EstimatedInputTokens is null || tokenCount.IsApproximateEncoding))
+            || requiresServerValidation && !tokenCount.IsApproximateEncoding
+                && (!tokenCount.HasOpaqueContent || tokenCount.EstimatedInputTokens is not null)
+            || tokenCount.EstimatedInputTokens is null && !tokenCount.HasOpaqueContent
             || tokenCount.KnownTokens > (long)inputContextWindow - inputTokenReserve
             || tokenCount.EstimatedInputTokens is long estimate && estimate > (long)inputContextWindow - inputTokenReserve)
         {
@@ -39,6 +41,6 @@ public class ContextBudgetAssessment
     /// <summary>Оценка достигла настроенного порога; compact автоматически не запускается.</summary>
     public bool ThresholdReached { get; }
 
-    /// <summary>Полная оценка неизвестна: локальный успех означает только явное делегирование серверу, не приём запроса.</summary>
+    /// <summary>Есть оценочная кодировка или неизвестная opaque часть; приём полного бюджета делегирован серверу.</summary>
     public bool RequiresServerValidation { get; }
 }

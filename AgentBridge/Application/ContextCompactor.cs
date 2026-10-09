@@ -78,6 +78,10 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
         if (!counted.Success) { return Report(ContextCompactionStatus.Failed, counted.Error!); }
         cancellationToken.ThrowIfCancellationRequested();
         count = counted.Data!;
+        if (count.IsApproximateEncoding && budgetPolicy != ContextBudgetPolicy.ServerValidation)
+            return Report(ContextCompactionStatus.Failed, new(ServiceErrorType.Unsupported,
+                "Оценочная кодировка модели требует явной серверной проверки бюджета."));
+
         long? estimate = count.EstimatedInputTokens;
         if (estimate is null && (budgetPolicy != ContextBudgetPolicy.ServerValidation || !count.HasOpaqueContent))
             return Report(ContextCompactionStatus.UnknownBudget);
@@ -129,6 +133,10 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
             if (!counted.Success) { return Report(ContextCompactionStatus.Failed, counted.Error!); }
             cancellationToken.ThrowIfCancellationRequested();
             ContextTokenCount candidateCount = counted.Data!;
+            if (candidateCount.IsApproximateEncoding && budgetPolicy != ContextBudgetPolicy.ServerValidation)
+                return Report(ContextCompactionStatus.Failed, new(ServiceErrorType.Unsupported,
+                    "Оценочная кодировка модели требует явной серверной проверки бюджета."));
+
             if (estimate is long previousEstimate && candidateCount.EstimatedInputTokens is long candidateEstimate
                 && candidateEstimate >= previousEstimate)
             {

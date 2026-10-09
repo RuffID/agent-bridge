@@ -5,11 +5,12 @@ using Microsoft.Extensions.Options;
 
 namespace AgentBridge.Configuration;
 
-/// <summary>Безопасная граница стандартного binding скалярных options без вывода исходных значений.</summary>
+/// <summary>Безопасная граница стандартного binding options без вывода исходных значений.</summary>
 public static class SafeOptionsBindingExtensions
 {
     /// <summary>Ограждает стандартный ConfigurationBinder, сохраняя Configure/PostConfigure и reload options.</summary>
-    /// <remarks>Тип должен содержать только скалярные публичные настройки. IConfiguration остаётся у стандартной options registration, а не runtime-сервисов.</remarks>
+    /// <remarks>Тип содержит скаляры либо string→string словари с предварительной проверкой формы группой регистрации.
+    /// IConfiguration остаётся у стандартной options registration, а не runtime-сервисов.</remarks>
     public static OptionsBuilder<TOptions> BindSafely<TOptions>(this OptionsBuilder<TOptions> builder,
         IConfiguration configuration, string group, params string[] requiredFields) where TOptions : class
     {
