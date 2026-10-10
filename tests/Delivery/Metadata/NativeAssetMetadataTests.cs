@@ -5,13 +5,13 @@ namespace AgentBridge.Delivery.Metadata.Tests;
 /// <summary>Различающие контроли native classifier; синтетические заголовки не являются runtime evidence.</summary>
 public class NativeAssetMetadataTests
 {
-    /// <summary>Настоящий ELF asset принимается только для своей архитектуры; повреждённый class/endian/magic отклоняется.</summary>
+    /// <summary>Синтетический ELF header принимается только для своей архитектуры; повреждённый class/endian/magic отклоняется.</summary>
     [Theory]
     [InlineData("linux-x64", "linux-arm64")]
+    [InlineData("linux-arm64", "linux-x64")]
     public void ElfRejectsWrongArchitectureAndMalformedHeaders(string rid, string otherRid)
     {
-        string root = DeliveryTestPaths.SdkRoot;
-        byte[] bytes = File.ReadAllBytes(Path.Combine(root, "SqlServer", rid, "native", rid, "libmsalruntime.so"));
+        byte[] bytes = ElfHeader(rid);
         NativeAssetMetadata.Validate(bytes, rid);
         Assert.Throws<InvalidDataException>(() => NativeAssetMetadata.Validate(bytes, otherRid));
         Assert.Throws<InvalidDataException>(() => NativeAssetMetadata.Validate(bytes[..20], rid));
@@ -30,7 +30,7 @@ public class NativeAssetMetadataTests
         string root = DeliveryTestPaths.SdkRoot;
         byte[] managed = File.ReadAllBytes(Path.Combine(root, "SqlServer", "win-x64", "lib", "AgentBridge.dll"));
         byte[] windows = File.ReadAllBytes(Path.Combine(root, "SqlServer", "win-x64", "native", "win-x64", "Microsoft.Data.SqlClient.SNI.dll"));
-        byte[] linux = File.ReadAllBytes(Path.Combine(root, "SqlServer", "linux-x64", "native", "linux-x64", "libmsalruntime.so"));
+        byte[] linux = ElfHeader("linux-x64");
         NativeAssetMetadata.Validate(windows, "win-x64");
         byte[] wrongMachine = (byte[])windows.Clone();
         int coffOffset = BitConverter.ToInt32(wrongMachine, 0x3c);
@@ -40,5 +40,15 @@ public class NativeAssetMetadataTests
         Assert.Throws<InvalidDataException>(() => NativeAssetMetadata.Validate(windows, "linux-x64"));
         Assert.Throws<BadImageFormatException>(() => NativeAssetMetadata.Validate(linux, "win-x64"));
         Assert.Throws<ArgumentException>(() => NativeAssetMetadata.Validate(linux, "unknown"));
+    }
+
+    /// <summary>Создаёт header для negative controls; SqlClient 7 не поставляет прежний libmsalruntime.so.</summary>
+    private static byte[] ElfHeader(string rid)
+    {
+        byte[] bytes = new byte[64];
+        new byte[] { 0x7f, 0x45, 0x4c, 0x46, 2, 1, 1 }.CopyTo(bytes, 0);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(18, 2), rid == "linux-arm64" ? (ushort)183 : (ushort)62);
+
+        return bytes;
     }
 }

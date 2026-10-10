@@ -7,6 +7,8 @@
 
 - Consumer/SimpleRegistration.cs и UsageRegistration.cs используют actual AddAgentBridge facade14. App ILoggerFactory и owned HttpClient обязательны; individual source регистрируется до facade, business callbacks scoped. Source linked compile в isolated persistence tests не является external binary kits15/16; old kits24 не содержат Integration DLL. Delivery graph/матрица обновляются в15/16.
 
+- `Compatibility/` — внешний binary test consumer для SQL Server net10.0/EF 10.0.12/SqlClient 7.0.2. Копировать исходники вне всех repo и импортировать новый dll-nuget kit после прямых PackageReference. Граф включает EF Design/Tools/InMemory и Serilog из P00; InMemory не используется как БД. Строгий DI, закрытый SQL connection, tracker и HTTP stub проверяют фактические DLL без SQL/сети/host. Linux варианты только compile/metadata; тестовое исполнение разрешено только на текущем Windows RID.
+
 - Consumer/StrictConfigurationRegistration.cs — compile-only пример explicit limits/source modes Audit Remediation13, linked isolated persistence tests. Методы не исполняются; source compilation не доказывает external binary kits15/16 или runtime18.
 
 - Consumer/SqlServerRegistration.cs — текущий compile-only пример persistence/maintenance API SQL Server: source компилируется как linked item isolated persistence tests, методы не исполняются. Это не новый DLL kit и не бинарная проверка MSSQL; комплекты трёх RID и внешний consumer относятся к Audit Remediation15/16.

@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Text.Json;
 using System.Xml.Linq;
 using Xunit;
@@ -8,6 +10,56 @@ namespace AgentBridge.Delivery.Metadata.Tests;
 /// <summary>Проверяет поставку собственных DLL и обязательных NuGet-зависимостей без загрузки сборок.</summary>
 public class NuGetDeliveryTests
 {
+    /// <summary>SQL Server комплект связывает exact требования и реальные assembly references нового драйвера для каждого RID.</summary>
+    [Theory]
+    [InlineData("win-x64")]
+    [InlineData("linux-x64")]
+    [InlineData("linux-arm64")]
+    public void SqlServerDeliveryUsesLedgerTargetGraph(string rid)
+    {
+        string root = Path.Combine(Root(), "SqlServer");
+        using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "delivery.manifest.json")));
+        Dictionary<string, string> required = manifest.RootElement.GetProperty("requiredPackages").EnumerateArray()
+            .ToDictionary(item => item.GetProperty("id").GetString()!, item => item.GetProperty("version").GetString()!, StringComparer.Ordinal);
+
+        Assert.Equal("7.0.2", required["Microsoft.Data.SqlClient"]);
+        foreach (string name in new[] { "Microsoft.EntityFrameworkCore", "Microsoft.EntityFrameworkCore.Relational", "Microsoft.EntityFrameworkCore.SqlServer",
+            "Microsoft.Extensions.DependencyInjection.Abstractions", "Microsoft.Extensions.Logging", "Microsoft.Extensions.Logging.Abstractions",
+            "Microsoft.Extensions.Options.ConfigurationExtensions", "Microsoft.Bcl.Memory" })
+        {
+            Assert.Equal("10.0.12", required[name]);
+        }
+
+        JsonElement kit = Assert.Single(manifest.RootElement.GetProperty("sourceKits").EnumerateArray(), item => item.GetProperty("rid").GetString() == rid);
+        Dictionary<string, string> packages = kit.GetProperty("packages").EnumerateArray()
+            .ToDictionary(item => item.GetProperty("id").GetString()!, item => item.GetProperty("version").GetString()!, StringComparer.Ordinal);
+        foreach (string name in packages.Keys.Where(name => name.StartsWith("Microsoft.IdentityModel.", StringComparison.Ordinal) || name == "System.IdentityModel.Tokens.Jwt"))
+        {
+            Assert.Equal("8.16.0", packages[name]);
+        }
+
+        Assert.Equal("7.0.2", packages["Microsoft.Data.SqlClient.Extensions.Abstractions"]);
+        Assert.Equal("7.0.2", packages["Microsoft.Data.SqlClient.Internal.Logging"]);
+        if (rid == "win-x64")
+        {
+            Assert.Equal("6.0.2", packages["Microsoft.Data.SqlClient.SNI.runtime"]);
+        }
+        else
+        {
+            Assert.DoesNotContain("Microsoft.Data.SqlClient.SNI.runtime", packages.Keys);
+            string nativeDirectory = Path.Combine(DeliveryTestPaths.SdkRoot, "SqlServer", rid, "native", rid);
+            Assert.Empty(Directory.GetFiles(nativeDirectory));
+        }
+
+        Assert.DoesNotContain("Microsoft.Identity.Client.NativeInterop", packages.Keys);
+        using FileStream stream = File.OpenRead(Path.Combine(root, "lib", "EFCoreLibrary.Maintenance.SqlServer.dll"));
+        using PEReader pe = new(stream);
+        MetadataReader metadata = pe.GetMetadataReader();
+        AssemblyReference reference = Assert.Single(metadata.AssemblyReferences.Select(metadata.GetAssemblyReference), item => metadata.GetString(item.Name) == "Microsoft.Data.SqlClient");
+
+        Assert.Equal(new Version(7, 0, 0, 0), reference.Version);
+    }
+
     /// <summary>Каждая платформа сохраняет все собственные DLL/XML и прямые пакетные зависимости SDK-графа.</summary>
     [Theory]
     [InlineData("SqlServer", "win-x64")]

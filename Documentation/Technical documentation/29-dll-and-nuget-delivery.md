@@ -62,3 +62,15 @@ dotnet restore .\Application.csproj --locked-mode
 В пяти consumer outputs все managed/native/resources исходной SDK closure совпали по SHA256: SQL Server 70/68/67 файлов, SQLite39, PostgreSQL34. В bot outputs совпали 55/54/53 файла; остальные базовые сборки предоставляет shared framework и они отсутствуют в runtime graph приложения. Проверка MSBuild допускает одинаковую app version и отклоняет другую version, удалённый/дублированный пакет и неподдержанный RID.
 
 Это compile/metadata и изолированная проверка. Бот, Docker, БД, SQL, реальные Telegram/codex-lb и Linux runtime не запускались; native loading и реальные provider операции этими проверками не подтверждены.
+
+## Комплект для AquaByte Ledger, 2026-10-10
+
+Отдельная новая поставка: `artifacts/ledger-delivery-20261010-ef10.0.12-sql7.0.2/SqlServer`. Старая `artifacts/nuget-delivery/SqlServer` не заменялась. Рядом находятся `sdk/SqlServer/<RID>` с полной runtime closure и `evidence` с consumer assets/deps/locks. Подробный отчёт и hashes — `README.md` и `SHA256SUMS.txt` в корне новой поставки.
+
+Целевой комплект: net10.0, EF Core/Relational/SqlServer 10.0.12, Microsoft.Data.SqlClient 7.0.2, обязательные Microsoft.Extensions и Bcl.Memory 10.0.12, Tokenizers/data 2.0.0. Все 12 direct roots сформированы упаковщиком из нового SDK graph и сохранены как exact constraints. IdentityModel/Jwt разрешены в 8.16.0. SQL Server maintenance пересобран с assembly reference SqlClient 7.0.0.0; base repository/UoW API 0.0.5 и HTTP API/FileVersion 0.0.0.5 сохранены. HTTP net8.0 сохраняет Logging.Abstractions 10.0.2 и проходит собственные проверки.
+
+SqlClient 7 не включает прежний NativeInterop/libmsalruntime.so в эту closure. Windows получает SNI.runtime 6.0.2 и один native SNI asset; оба Linux RID не имеют native assets в SDK-selected SQL Server graph. Metadata checks проверяют полный фактический manifest/deps, а ELF negative controls используют явно синтетические headers обеих архитектур.
+
+Проверены 166 EF maintenance, 58 HTTP на каждом TFM, 359 isolated persistence, 414 CodexLb и 42 delivery metadata теста; внешний binary consumer прошёл ещё 3 Windows-теста strict DI/закрытого SQL provider/repository/UoW и HTTP stub. Consumer копируется из `tests/Delivery/Compatibility` вне всех repo, без ProjectReference. Его combined graph включает EF Design/Tools/InMemory 10.0.12 и неизменные Serilog-пакеты P00; все три RID проходят build и locked restore. По собственному consumer deps проверены 268/267/267 runtime/native/resource assets и их SHA256 относительно package originals либо локальных DLL. Отдельный direct SqlClient 6.1.6 отклоняется exact validation до восстановления пакетов.
+
+Это подготовленная контрактная поставка для последующего принятия P00. AquaByte Ledger не изменялся; его combined restore/build и бизнес-регрессия не выполнялись. Native loading, настоящие SQL connection/transactions/backup/restore/migrations, Linux runtime и реальные интеграции остаются непроверенными. L1 в Ledger не отмечен закрытым.
