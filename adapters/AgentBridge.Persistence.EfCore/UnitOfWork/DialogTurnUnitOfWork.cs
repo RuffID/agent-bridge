@@ -11,8 +11,18 @@ namespace AgentBridge.Persistence.EfCore.UnitOfWork;
 /// <inheritdoc/>
 public class DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard, DialogStateLoader stateLoader,
     TurnContentStaging content, RecordStaging<DialogRecord> dialogs, RecordStaging<DialogTurnRecord> turns,
-    TurnRecordQueries turnQueries) : IDialogTurnWriter
+    TurnRecordQueries turnQueries, DialogCatalogStaging? catalog = null) : IDialogTurnWriter
 {
+    /// <summary>Сохраняет прежнюю бинарную сигнатуру legacy writer.</summary>
+    public DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard, DialogStateLoader stateLoader,
+        TurnContentStaging content, RecordStaging<DialogRecord> dialogs, RecordStaging<DialogTurnRecord> turns,
+        TurnRecordQueries turnQueries) : this(scope, guard, stateLoader, content, dialogs, turns, turnQueries, null) { }
+
+    /// <inheritdoc/>
+    public Task<ServiceResult<DialogWriteToken>> AppendAsync(DialogRunWriteAccess access, DialogWriteToken expected,
+        Guid turnId, IReadOnlyList<CanonicalModelItem> items, IReadOnlyList<StoredModelStep> modelSteps,
+        CancellationToken cancellationToken = default) =>
+        ChangeAsync(access.Access, expected, turnId, items, modelSteps, null, false, cancellationToken, lease: access.Lease);
     /// <inheritdoc/>
     public Task<ServiceResult<DialogWriteToken>> BeginWithSettingsAsync(DialogAccess access, DialogWriteToken expected,
         Guid turnId, IReadOnlyList<CanonicalModelItem> input, TurnModelSettings settings, CancellationToken cancellationToken = default)
@@ -46,7 +56,7 @@ public class DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard,
     /// <summary>Координирует внешние guards, локальные Domain-инварианты и согласованный пакет строк одной transaction.</summary>
     private Task<ServiceResult<DialogWriteToken>> ChangeAsync(DialogAccess access, DialogWriteToken expected, Guid turnId,
         IReadOnlyList<CanonicalModelItem> items, IReadOnlyList<StoredModelStep> modelSteps, DialogTurnStatus? terminal,
-        bool begin, CancellationToken cancellationToken, TurnModelSettings? settings = null)
+        bool begin, CancellationToken cancellationToken, TurnModelSettings? settings = null, DialogRunLease? lease = null)
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(modelSteps);
@@ -54,12 +64,15 @@ public class DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard,
         {
             return Task.FromResult(ServiceResult<DialogWriteToken>.Fail(new ServiceError(ServiceErrorType.Validation, "ID обращения обязателен.")));
         }
+        if (lease is not null && lease.TurnId != turnId)
+            return Task.FromResult(ServiceResult<DialogWriteToken>.Fail(new(ServiceErrorType.Conflict, "run_turn_mismatch")));
+
         // Копии списков фиксируются до первого await; их элементы уже являются независимыми immutable snapshots.
         CanonicalModelItem[] itemSnapshot = items.ToArray();
         StoredModelStep[] stepSnapshot = modelSteps.ToArray();
         return scope.ExecuteAsync<DialogWriteToken>(async ct =>
         {
-            ServiceResult<DialogRecord> loaded = await guard.LoadAsync(access, expected, ct);
+            ServiceResult<DialogRecord> loaded = await guard.LoadRunAsync(access, expected, ct, lease: lease);
             if (!loaded.Success)
             {
                 return ServiceResult<DialogWriteToken>.Fail(loaded.Error!);
@@ -89,6 +102,13 @@ public class DialogTurnUnitOfWork(UnitOfWorkScope scope, DialogWriteGuard guard,
                 (await turnQueries.FindAsync(root.Id, turnId, ct))?.SettingsJson;
             DialogWriteToken next = DialogWriteResults.Apply(root, dialog, prepared.Data!.AddedBytes);
             DialogTurn turn = dialog.Turns.Single(item => item.Id == turnId);
+            if (root.CatalogRegistered)
+            {
+                if (catalog is null) throw new InvalidOperationException("Catalog staging required.");
+                ServiceResult projected = await catalog.ApplyContentAsync(root, turnId, turn.Sequence, prepared.Data, access.NowUtc, ct);
+                if (!projected.Success) return ServiceResult<DialogWriteToken>.Fail(projected.Error!);
+            }
+
             DialogTurnRecord record = new()
             {
                 DialogId = root.Id, Id = turn.Id, Sequence = turn.Sequence, Status = turn.Status,

@@ -1,5 +1,7 @@
 # Собственные DLL и обязательные NuGet-зависимости
 
+Поставка catalog/lifecycle/recovery для 01A от 11.10.2026: `artifacts/assistant01a-delivery-20261011-coherent/SqlServer`, manifest SHA256 `5fd8ddabe234857a68a79d49a74079e384920e7a122af7536dc54b7b97d9206a`. Это отдельный целый schema3 комплект с exact EF 10.0.12 / SqlClient 7.0.2, прошедший external locked restore/compile для трёх SQL Server RID. [Фактический API](30-dialog-catalog-and-recovery.md), [полное evidence](<../Plans/Assistant Dialog Capabilities/Evidence.md>) и ограничения приёмки; в Ledger этот комплект не принят автоматически, его 01A остаётся In Progress. Следующие разделы описывают общий механизм поставки.
+
 ## Подключение
 
 AgentBridge, выбранный модуль БД и его migrations assembly, EFCoreLibrary с maintenance и HttpClientLibrary поставляются своими DLL. Сторонние Microsoft/System/Azure и другие зависимости подключаются через PackageReference импортируемого файла. Публикация наших библиотек в NuGet не требуется.

@@ -15,10 +15,10 @@ public class ContextModelGuard(IContextContentInspector inspector, IEnumerable<I
         ModelSettingsSnapshot target, CancellationToken cancellationToken = default)
     {
         List<ContextModelSource> sources = [];
-        if (dialog.ActiveContext is StoredDialogContext context)
+        if (dialog.EffectiveContext is StoredDialogContext context)
             sources.Add(new(context.SelectedModel, ServerModel(context.Compaction), context.Items));
-        long through = dialog.ActiveContext?.ThroughTurnSequence ?? 0;
-        foreach (StoredDialogTurn turn in dialog.Turns.Where(turn => turn.Sequence > through))
+        long through = dialog.EffectiveContext?.ThroughTurnSequence ?? 0;
+        foreach (StoredDialogTurn turn in dialog.EffectiveTurns.Where(turn => turn.Sequence > through))
         {
             // Удаляется ровно по одному последнему occurrence каждого сохранённого output, без дедупликации истории.
             List<CanonicalModelItem> remaining = [.. turn.Items];

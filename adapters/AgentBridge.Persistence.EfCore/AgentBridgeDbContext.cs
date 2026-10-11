@@ -24,6 +24,7 @@ public class AgentBridgeDbContext : DbContext
         ConfigureModelStep(modelBuilder, mapping);
         ConfigureContext(modelBuilder, mapping);
         ConfigureSettings(modelBuilder, mapping);
+        CatalogModelMapping.Configure(modelBuilder, mapping);
     }
 
     /// <summary>Фиксированные метаданные и optimistic token; guards existence/expiry/ownership здесь не исполняются.</summary>
@@ -44,6 +45,8 @@ public class AgentBridgeDbContext : DbContext
         builder.Property(record => record.IncarnationId).ValueGeneratedNever().IsConcurrencyToken()
             .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(record => record.Revision).IsConcurrencyToken();
+        builder.Property(record => record.CatalogRegistered).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
+        builder.Property(record => record.RuntimeJson).HasColumnType(mapping.TextType).IsConcurrencyToken();
         PropertyBuilder<string> owner = builder.Property(record => record.OwnerId).IsRequired().IsConcurrencyToken();
         if (mapping.IsSqlServer)
         {
@@ -91,6 +94,7 @@ public class AgentBridgeDbContext : DbContext
         builder.HasKey(record => new { record.DialogId, record.TurnId, record.Sequence });
         builder.Property(record => record.Sequence).ValueGeneratedNever();
         builder.Property(record => record.ContentJson).HasColumnType(mapping.TextType).IsRequired();
+        builder.Property(record => record.SavedAtUtc).HasConversion<UtcTicksConverter>();
         builder.HasOne<DialogTurnRecord>().WithMany().HasForeignKey(record => new { record.DialogId, record.TurnId })
             .OnDelete(DeleteBehavior.Cascade);
     }
@@ -127,6 +131,7 @@ public class AgentBridgeDbContext : DbContext
         builder.HasKey(record => new { record.DialogId, record.Version });
         builder.Property(record => record.Version).ValueGeneratedNever();
         builder.Property(record => record.CreatedAtUtc).HasConversion<UtcTicksConverter>();
+        builder.Property(record => record.RecoveryRevision);
         builder.HasOne<DialogRecord>().WithMany().HasForeignKey(record => record.DialogId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(record => record.SelectedModel).HasColumnType(mapping.TextType);
         ModelResponseMapping.Configure(builder.ComplexProperty(record => record.Compaction), mapping);

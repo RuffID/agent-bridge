@@ -32,7 +32,9 @@ public class SqlServerProviderTests
     {
         using AgentBridgeDbContext context = new SqlServerAgentBridgeDbContextFactory().CreateDbContext([]);
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
-        Migration migration = assembly.CreateMigration(Assert.Single(assembly.Migrations).Value, context.Database.ProviderName!);
+        Assert.Equal(2, assembly.Migrations.Count);
+        Migration migration = assembly.CreateMigration(Assert.Single(assembly.Migrations,
+            item => item.Key.EndsWith("_InitialAgentBridgeSchema", StringComparison.Ordinal)).Value, context.Database.ProviderName!);
         CreateTableOperation[] tables = migration.UpOperations.OfType<CreateTableOperation>().ToArray();
         Assert.Equal(6, tables.Length);
         Assert.Equal(23, tables.Sum(table => table.CheckConstraints.Count));
@@ -74,11 +76,15 @@ public class SqlServerProviderTests
         using AgentBridgeDbContext context = new SqlServerAgentBridgeDbContextFactory().CreateDbContext([]);
         IModel model = context.GetService<IDesignTimeModel>().Model;
         IRelationalModel relational = model.GetRelationalModel();
-        Assert.Equal(6, relational.Tables.Count());
+        Assert.Equal(10, relational.Tables.Count());
         Assert.All(relational.Tables.SelectMany(table => table.Columns), column =>
         {
-            if (column.Name == "OwnerId") Assert.Equal("varbinary(max)", column.StoreType);
-            else if (column.PropertyMappings.Any(mapping => mapping.Property.ClrType == typeof(string))) Assert.Equal("nvarchar(max)", column.StoreType);
+            if (column.Name == "OwnerId" && column.Table.Name == "Dialogs") Assert.Equal("varbinary(max)", column.StoreType);
+            else if (column.PropertyMappings.Any(mapping => mapping.Property.ClrType == typeof(string)))
+            {
+                int? length = column.PropertyMappings.First().Property.GetMaxLength();
+                Assert.Equal(length is null ? "nvarchar(max)" : $"nvarchar({length})", column.StoreType);
+            }
             if (column.Name.EndsWith("AtUtc", StringComparison.Ordinal)) Assert.Equal("bigint", column.StoreType);
         });
         Assert.All(model.GetEntityTypes().SelectMany(entity => entity.GetCheckConstraints()), constraint =>
@@ -96,7 +102,7 @@ public class SqlServerProviderTests
         Assert.Equal(new[] { "DialogId", "Id" }, model.FindEntityType(typeof(DialogTurnRecord))!.FindPrimaryKey()!.Properties.Select(property => property.Name));
         Assert.Equal(new[] { "DialogId", "TurnId", "Id" }, model.FindEntityType(typeof(ModelStepRecord))!.FindPrimaryKey()!.Properties.Select(property => property.Name));
         Assert.Equal(new[] { "DialogId", "TurnId" }, Assert.Single(model.FindEntityType(typeof(CanonicalItemRecord))!.GetForeignKeys()).Properties.Select(property => property.Name));
-        foreach (IEntityType entity in model.GetEntityTypes().Where(entity => entity != root))
+        foreach (IEntityType entity in model.GetEntityTypes().Where(entity => entity != root && entity.GetForeignKeys().Any()))
         {
             HashSet<IEntityType> visited = [];
             IEntityType current = entity;

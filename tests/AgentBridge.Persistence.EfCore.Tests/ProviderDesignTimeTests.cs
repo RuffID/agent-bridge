@@ -1,6 +1,7 @@
 using System.Reflection;
 using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.Models;
+using AgentBridge.Persistence.EfCore.Tests.Integration;
 using AgentBridge.Persistence.Migrations.PostgreSql;
 using AgentBridge.Persistence.Migrations.Sqlite;
 using AgentBridge.Persistence.Migrations.SqlServer;
@@ -55,7 +56,7 @@ public class ProviderDesignTimeTests
         IModel runtimeModel = runtime.GetService<IDesignTimeModel>().Model;
         Assert.Equal(runtimeModel.ToDebugString(MetadataDebugStringOptions.LongDefault),
             designModel.ToDebugString(MetadataDebugStringOptions.LongDefault));
-        Assert.Equal(new[] { "CanonicalItems", "DialogContexts", "DialogSettings", "DialogTurns", "Dialogs", "ModelSteps" },
+        Assert.Equal(IntegrationSchemaExpectations.Tables,
             designModel.GetEntityTypes().Select(entity => entity.GetTableName()).OrderBy(name => name, StringComparer.Ordinal));
         IEntityType root = designModel.FindEntityType(typeof(DialogRecord))!;
         Assert.Equal(collation, root.FindProperty(nameof(DialogRecord.OwnerId))!.GetCollation());
@@ -70,7 +71,7 @@ public class ProviderDesignTimeTests
         {
             Assert.True(root.FindProperty(name)!.IsConcurrencyToken);
         }
-        Assert.Equal(5, designModel.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()).Count());
+        Assert.Equal(6, designModel.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()).Count());
         Assert.All(designModel.GetEntityTypes().SelectMany(entity => entity.GetForeignKeys()),
             foreignKey => Assert.Equal(DeleteBehavior.Cascade, foreignKey.DeleteBehavior));
     }
@@ -99,9 +100,10 @@ public class ProviderDesignTimeTests
         using AgentBridgeDbContext context = CreateFactory(selected).CreateDbContext([]);
         IMigrationsAssembly assembly = context.GetService<IMigrationsAssembly>();
         Assert.NotNull(assembly.ModelSnapshot);
-        Assert.Equal(selected == DatabaseProvider.SqlServer ? 1 : 3, assembly.Migrations.Count);
+        Assert.Equal(IntegrationSchemaExpectations.Migrations(selected),
+            assembly.Migrations.Keys.Order(StringComparer.Ordinal));
         KeyValuePair<string, TypeInfo> registered = assembly.Migrations.OrderBy(pair => pair.Key).Last();
-        Assert.EndsWith(selected == DatabaseProvider.SqlServer ? "_InitialAgentBridgeSchema" : "_AddDialogSettings", registered.Key);
+        Assert.EndsWith("_AddCatalogAndDurableRecovery", registered.Key);
         Migration migration = assembly.CreateMigration(registered.Value, context.Database.ProviderName!);
         IModelRuntimeInitializer initializer = context.GetService<IModelRuntimeInitializer>();
         IModel snapshotModel = initializer.Initialize(assembly.ModelSnapshot.Model, designTime: true);

@@ -1,6 +1,8 @@
 # Схема PostgreSQL
 
-- AddDialogSettings21 добавляет отдельную optional DialogSettings с independent Version/CAS и cascade FK, nullable SettingsJson/SelectedModel. Historical rows сохраняются без invented choices/provenance. Down удаляет новые metadata, Up возвращает null; canonical payload сохраняется. Generated созданы двумя отдельно разрешёнными tooling командами, вручную не менялись. Текущая модель имеет шесть собственных таблиц.
+- Current schema содержит десять таблиц после AddCatalogAndDurableRecovery. Library-owned compact scope keyset/feed/recovery — собственные таблицы; legacy roots сохраняются unregistered, timestamps nullable, recovery revision 0. Catalog/clock/feed tombstones не каскадируют с root; только recovery operations имеет новый cascade FK. Исторические migrations не регенерировать.
+
+- AddDialogSettings21 добавляет отдельную optional DialogSettings с independent Version/CAS и cascade FK, nullable SettingsJson/SelectedModel. Historical rows сохраняются без invented choices/provenance. Down удаляет новые metadata, Up возвращает null; canonical payload сохраняется. Generated созданы двумя отдельно разрешёнными tooling командами, вручную не менялись. Историческая модель после этой migration имеет шесть собственных таблиц.
 
 - AddDurableToolAttempts20 добавляет nullable text ModelSteps.ToolAttemptsJson; исторический null не разрешает replay существующего turn. Up/Down/generated designer/snapshot созданы штатным tooling по отдельному разрешению пользователя; initial migration не регенерируется. Адресные real Down/Up tests20 разрешены только на собственных test DB. Пять mapped таблиц сохраняются.
 
@@ -9,5 +11,5 @@
 - Factory и runtime используют общую AgentBridgeMigrationsHistory.TABLE_NAME (__AgentBridgeMigrationsHistory); не возвращаться к ledger __EFMigrationsHistory приложения. История EF не входит в mapped entity model или generated initial migration.
 - Проект зависит от AgentBridge.Persistence.PostgreSql, который подключает общий EF-адаптер и PostgreSQL provider/maintenance; остальные провайдеры не подтягиваются.
 - Design/runtime EF 10.0.12 и Npgsql provider 10.0.3 согласованы. Tools/PMC не подключать для CLI. GenerateRuntimeConfigurationFiles позволяет штатному dotnet-ef использовать library startup без executable entry point.
-- Generated Migrations/designer/snapshot создавать только штатным tooling после согласования точной команды; вручную не редактировать. Только собственные таблицы AgentBridge, без owner-list index и чужих сущностей.
+- Generated Migrations/designer/snapshot создавать только штатным tooling после согласования точной команды; вручную не редактировать. Только собственные таблицы AgentBridge, включая library-owned scope catalogue, без чужих сущностей.
 - Restore/build/test требуют GeneratePackageOnBuild=false и outputs artifacts/compile-check. Изолированные factory/metadata проверки находятся в persistence-тестах. SQL, БД, Up/Down/apply, приложение и процессы не запускать.

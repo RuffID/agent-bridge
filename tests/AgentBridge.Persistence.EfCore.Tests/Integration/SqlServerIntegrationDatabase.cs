@@ -7,6 +7,7 @@ using EFCoreLibrary.Maintenance.Models;
 using EFCoreLibrary.Maintenance.SqlServer.Providers;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
@@ -51,8 +52,14 @@ public class SqlServerIntegrationDatabase : IAsyncDisposable
     public async Task<DatabaseMaintenanceResult> InitializeNewAsync(CancellationToken cancellationToken = default)
     {
         using IServiceScope scope = Root.CreateScope();
-        return await scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>()
+        DatabaseMaintenanceResult result = await scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>()
             .InitializeNewAsync(settings.OperationBudget, cancellationToken);
+
+        Assert.Equal(MaintenanceOutcome.Initialized, result.Outcome);
+        Assert.Null(result.Backup);
+        Assert.Equal(IntegrationSchemaExpectations.Migrations(DatabaseProvider.SqlServer), result.AppliedMigrations);
+
+        return result;
     }
 
     /// <summary>Создаёт собственную пустую БД через настоящий provider без применения migration.</summary>

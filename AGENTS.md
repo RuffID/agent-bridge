@@ -45,6 +45,8 @@ C#-библиотека AgentBridge для SDK-style приложений на .
 
 ## Архитектурные границы
 
+- Library-owned bounded dialog catalog, run fencing и append-only recovery описаны в `Documentation/Technical documentation/30-dialog-catalog-and-recovery.md`; локальные правила — Application и persistence/UoW AGENTS. Host авторизация/projector/evidence не добавляют dependencies ядра от Ledger/WebAssistant/claims. Их DLL-поставка и SQL/provider acceptance различаются.
+
 - Ядро независимо от ASP.NET Core, WPF, Telegram, codex-lb и конкретной БД.
 - Интеграция с codex-lb находится в отдельном адаптере.
 - Бизнес-данные, авторизация пользователя и обработчики инструментов принадлежат подключающему приложению.

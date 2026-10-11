@@ -16,10 +16,24 @@ namespace AgentBridge.Persistence.EfCore.Reading;
 /// Это не транзакционный снимок; token требует атомарной проверки сценарием записи этапа 10.</remarks>
 public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
     ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate, SettingsRecordQueries settings,
-    DialogRetentionPolicy retention) : IDialogReader
+    DialogRetentionPolicy retention, DialogCatalogQueries? catalogQueries = null) : IDialogReader
 {
+    /// <summary>Сохраняет прежнюю бинарную сигнатуру reader для legacy roots.</summary>
+    public DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
+        ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate,
+        SettingsRecordQueries settings, DialogRetentionPolicy retention)
+        : this(dialogs, turns, items, steps, contexts, gate, settings, retention, null) { }
+
     /// <inheritdoc/>
-    public async Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default)
+    public Task<ServiceResult<DialogSnapshot>> ReadCatalogAsync(DialogCatalogAccess access, CancellationToken cancellationToken = default) =>
+        ReadCoreAsync(access.Access, access, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default) =>
+        ReadCoreAsync(access, null, cancellationToken);
+
+    private async Task<ServiceResult<DialogSnapshot>> ReadCoreAsync(DialogAccess access, DialogCatalogAccess? catalogAccess,
+        CancellationToken cancellationToken)
     {
         using IDisposable lease = gate.Enter();
         ArgumentNullException.ThrowIfNull(access);
@@ -34,12 +48,33 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.Forbidden, "Диалог принадлежит другому владельцу."));
         }
+        DialogCatalogState? metadata = null;
+        DialogContinuationState? continuation = null;
+        List<DialogRecoveryOperationRecord> recovery = [];
+        if (dialog.CatalogRegistered)
+        {
+            if (catalogAccess is null)
+                return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Forbidden, "catalog_profile_required"));
+            if (DialogWriteGuard.IsExpired(dialog, access.NowUtc, retention))
+                return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Expired, "dialog_expired"));
+            if (catalogQueries is null) throw new InvalidOperationException("Catalog queries required.");
+            DialogCatalogRecord registered = await catalogQueries.FindAsync(dialog.Id, cancellationToken) ??
+                throw new InvalidOperationException("Registered catalog missing.");
+            if (!DialogCatalogStaging.Matches(registered, catalogAccess.Scope, catalogAccess.Profile))
+                return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Forbidden, "catalog_profile_or_scope_mismatch"));
+            if (registered.Deleted || registered.IncarnationId != dialog.IncarnationId || registered.RootRevision != dialog.Revision)
+                return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Conflict, "catalog_revision_divergence"));
+            metadata = DialogCatalogStaging.State(registered, access.NowUtc);
+            continuation = DialogRuntimeState.Read(dialog).ToState(dialog);
+            recovery = await catalogQueries.RecoveryHistoryAsync(dialog.Id, cancellationToken);
+        }
 
         Guid incarnationId = dialog.IncarnationId;
         long revision = dialog.Revision;
+        string? runtimeJson = dialog.RuntimeJson;
         string ownerId = dialog.OwnerId;
         DateTimeOffset createdAtUtc = dialog.CreatedAtUtc;
-        DateTimeOffset? expiresAtUtc = retention.CalculateExpiresAtUtc(dialog.CreatedAtUtc);
+        DateTimeOffset? expiresAtUtc = DialogWriteGuard.Expiry(dialog, retention);
         long contentBytes = dialog.ContentBytes;
 
         List<DialogTurnRecord> turnRecords = await turns.ReadAsync(dialogId, cancellationToken);
@@ -56,7 +91,7 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.Forbidden, "Владелец диалога изменился во время чтения."));
         }
-        if (current.IncarnationId != incarnationId || current.Revision != revision)
+        if (current.IncarnationId != incarnationId || current.Revision != revision || current.RuntimeJson != runtimeJson)
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.Conflict, "Диалог изменился во время чтения."));
         }
@@ -83,10 +118,11 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
                     ToolAttemptMapping.Read(step.ToolAttemptsJson))), TurnSettingsMapping.Read(turn.SettingsJson)));
         }
         StoredDialogContext? active = context is null ? null : new StoredDialogContext(context.Version,
-            context.ThroughTurnSequence, context.Compaction.ToModelResponse(), context.SelectedModel);
+            context.ThroughTurnSequence, context.Compaction.ToModelResponse(), context.SelectedModel, context.RecoveryRevision);
         DialogWriteToken token = new(access.DialogId, incarnationId, revision);
         return ServiceResult<DialogSnapshot>.Ok(new DialogSnapshot(token, DialogOwnerId.From(ownerId),
-            createdAtUtc, expiresAtUtc, contentBytes, history, active, selection));
+            createdAtUtc, expiresAtUtc, contentBytes, history, active, selection, metadata, continuation,
+            dialog.CatalogRegistered ? DialogRecoveryContextMapping.Apply(history, recovery) : null));
     }
 
     /// <summary>Копирует полный канонический item независимо от срока жизни документа.</summary>

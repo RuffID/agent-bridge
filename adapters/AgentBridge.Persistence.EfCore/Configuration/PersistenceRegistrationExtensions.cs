@@ -46,6 +46,17 @@ public static class PersistenceRegistrationExtensions
         services.AddScoped<DialogWriteGuard>();
         services.AddScoped<DialogStateLoader>();
         services.AddScoped<TurnContentStaging>();
+        services.AddScoped<DialogCatalogQueries>();
+        services.AddScoped<DialogCatalogStaging>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<IDialogCatalogCreator, DialogCatalogCreationUnitOfWork>();
+        services.AddScoped<DialogCatalogReader>();
+        services.AddScoped<IDialogCatalogReader>(provider => provider.GetRequiredService<DialogCatalogReader>());
+        services.AddScoped<IDialogCatalogChangeReader>(provider => provider.GetRequiredService<DialogCatalogReader>());
+        services.AddScoped<IDialogContinuationReader>(provider => provider.GetRequiredService<DialogCatalogReader>());
+        services.AddScoped<DialogLifecycleUnitOfWork>();
+        services.AddScoped<IDialogRunLifecycle>(provider => provider.GetRequiredService<DialogLifecycleUnitOfWork>());
+        services.AddScoped<IDialogRecovery>(provider => provider.GetRequiredService<DialogLifecycleUnitOfWork>());
         services.AddScoped<IDialogCreator, DialogCreationUnitOfWork>();
         services.AddScoped<IDialogTurnWriter, DialogTurnUnitOfWork>();
         services.AddScoped<IDialogToolAttemptWriter, DialogToolAttemptUnitOfWork>();

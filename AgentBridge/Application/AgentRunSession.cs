@@ -9,13 +9,15 @@ namespace AgentBridge.Application;
 /// <inheritdoc cref="IToolExecutionCheckpoint"/>
 /// <remarks>Владеет успешными tokens одного run; scopes короткие и serialized, неизвестная запись блокирует дальнейшие writes.</remarks>
 internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallContext call, DialogSnapshot original,
-    TimeProvider time, TurnModelSettings settings, Action<Exception> onCleanupFailure) : IToolExecutionCheckpoint, IDialogContextWriter, IDisposable
+    TimeProvider time, TurnModelSettings settings, Action<Exception> onCleanupFailure, DialogRunOptions? runOptions = null) : IToolExecutionCheckpoint, IDialogContextWriter, IDisposable
 {
     private readonly SemaphoreSlim _writes = new(1, 1);
     private readonly List<StoredDialogTurn> _turns = [.. original.Turns];
     private StoredDialogContext? _active = original.ActiveContext;
     private DialogWriteToken _token = original.Token;
     private bool _blocked;
+    private DialogRunLease? _lease;
+    private DialogContinuationState? _continuation = original.Continuation;
 
     /// <summary>Последняя безопасная storage ошибка либо отсутствие отказа.</summary>
     public ServiceError? Error { get; private set; }
@@ -23,34 +25,55 @@ internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallConte
     public bool Blocked => _blocked;
     /// <summary>Подтверждённый state для следующего context build; не перечитывает root ради retry.</summary>
     public DialogSnapshot Snapshot => new(_token, original.OwnerId, original.CreatedAtUtc, original.ExpiresAtUtc,
-        original.ContentBytes, _turns, _active, original.Selection);
+        original.ContentBytes, _turns, _active, original.Selection, original.Catalog, _continuation,
+        _turns.Select(turn => original.EffectiveTurns.SingleOrDefault(item => item.Id == turn.Id) ?? turn)) { OwnedRunLease = _lease };
     /// <summary>Сохранённый turn этого run либо отсутствие Begin.</summary>
     public StoredDialogTurn? Turn => _turns.SingleOrDefault(turn => turn.Id == call.TurnId);
 
     /// <summary>Начинает обращение отдельным scope.</summary>
-    public Task<ServiceResult<DialogWriteToken>> BeginAsync(IReadOnlyList<CanonicalModelItem> input, CancellationToken ct) =>
-        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.BeginWithSettingsAsync(access, token, call.TurnId, input, settings, ct),
-            () => _turns.Add(new(call.TurnId, _turns.Count + 1L, DialogTurnStatus.InProgress, input, [], settings)), ct);
+    public Task<ServiceResult<DialogWriteToken>> BeginAsync(IReadOnlyList<CanonicalModelItem> input, CancellationToken ct)
+    {
+        Action accepted = () => _turns.Add(new(call.TurnId, _turns.Count + 1L, DialogTurnStatus.InProgress, input, [], settings));
+        if (original.Catalog is null)
+            return WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.BeginWithSettingsAsync(access, token,
+                call.TurnId, input, settings, ct), accepted, ct);
+
+        DialogRunOptions configured = runOptions ?? throw new InvalidOperationException("Registered run options required.");
+        return WriteAsync<IDialogRunLifecycle>(async (writer, access, token) =>
+        {
+            ServiceResult<DialogRunState> begun = await writer.BeginAsync(new(access, token, call.TurnId, input, settings,
+                configured.LeasePeriod, configured.Scope, configured.Profile), ct);
+            if (!begun.Success) return ServiceResult<DialogWriteToken>.Fail(begun.Error!);
+            _lease = begun.Data!.Lease;
+            _continuation = new(begun.Data.Token, DialogReadiness.Active, call.TurnId, null, false,
+                _lease.Epoch, original.Continuation!.RecoveryRevision, _lease, []);
+            return ServiceResult<DialogWriteToken>.Ok(begun.Data.Token);
+        }, accepted, ct);
+    }
 
     /// <summary>Сохраняет весь model report/calls до начала handler.</summary>
     public Task<ServiceResult<DialogWriteToken>> AppendAsync(StoredModelStep step) =>
-        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.AppendAsync(access, token, call.TurnId,
-            step.Response.Output, [step], CancellationToken.None), () => ChangeTurn(step.Response.Output, [step]), CancellationToken.None);
+        WriteAsync<IDialogTurnWriter>((writer, access, token) => _lease is null
+            ? writer.AppendAsync(access, token, call.TurnId, step.Response.Output, [step], CancellationToken.None)
+            : writer.AppendAsync(new DialogRunWriteAccess(access, _lease), token, call.TurnId,
+                step.Response.Output, [step], CancellationToken.None), () => ChangeTurn(step.Response.Output, [step]), CancellationToken.None);
 
     /// <inheritdoc/>
     public async Task<ServiceResult> BeforeExecuteAsync(ToolExecutionIdentity identity, ToolInvocation invocation,
         CancellationToken cancellationToken = default)
     {
         ServiceResult<DialogWriteToken> saved = await WriteAsync<IDialogToolAttemptWriter>(
-            (writer, access, token) => writer.StartAsync(access, token, identity, cancellationToken),
+            (writer, access, token) => _lease is null ? writer.StartAsync(access, token, identity, cancellationToken) :
+                writer.StartAsync(new DialogRunWriteAccess(access, _lease), token, identity, cancellationToken),
             () => ChangeAttempt(identity.StepId, new(identity.OutputIndex, identity.Call.AgentId, ToolAttemptState.Started)), cancellationToken);
         return saved.Success ? ServiceResult.Ok() : ServiceResult.Fail(saved.Error!);
     }
 
     /// <summary>Принимает LastResult после всех awaited workers, включая путь exception/cancel.</summary>
     public Task<ServiceResult<DialogWriteToken>> SaveOutcomesAsync(Guid stepId, ToolExecutionBatch batch) =>
-        WriteAsync<IDialogToolAttemptWriter>((writer, access, token) => writer.SaveOutcomesAsync(access, token,
-            call.TurnId, stepId, batch, CancellationToken.None), () =>
+        WriteAsync<IDialogToolAttemptWriter>((writer, access, token) => _lease is null ?
+            writer.SaveOutcomesAsync(access, token, call.TurnId, stepId, batch, CancellationToken.None) :
+            writer.SaveOutcomesAsync(new DialogRunWriteAccess(access, _lease), token, call.TurnId, stepId, batch, CancellationToken.None), () =>
         {
             ChangeTurn(batch.Outputs, []);
             foreach (ToolExecutionResult result in batch.Results)
@@ -70,15 +93,30 @@ internal class AgentRunSession(IServiceScopeFactory scopes, ApplicationCallConte
     {
         if (expected.IncarnationId != _token.IncarnationId || expected.Revision != _token.Revision)
             throw new InvalidOperationException("Compact передал неподтверждённую версию.");
-        return WriteAsync<IDialogContextWriter>((writer, freshAccess, token) => writer.SaveWithModelAsync(freshAccess, token,
-            throughTurnSequence, compaction, settings.Model, cancellationToken),
-            () => _active = new((_active?.Version ?? 0) + 1, throughTurnSequence, compaction, settings.Model), cancellationToken);
+        return WriteAsync<IDialogContextWriter>((writer, freshAccess, token) => _lease is null ?
+            writer.SaveWithModelAsync(freshAccess, token, throughTurnSequence, compaction, settings.Model, cancellationToken) :
+            writer.SaveWithModelAsync(new DialogRunWriteAccess(freshAccess, _lease), token,
+                throughTurnSequence, compaction, settings.Model, cancellationToken),
+            () => _active = new((_active?.Version ?? 0) + 1, throughTurnSequence, compaction, settings.Model,
+                _continuation?.RecoveryRevision ?? 0), cancellationToken);
     }
 
     /// <summary>Finalization не использует отменённый caller token и не повторяет отказавшую запись.</summary>
-    public Task<ServiceResult<DialogWriteToken>> FinishAsync(DialogTurnStatus status) =>
-        WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.FinishAsync(access, token, call.TurnId,
-            status, [], [], CancellationToken.None), () => ChangeTurn([], [], status), CancellationToken.None);
+    public Task<ServiceResult<DialogWriteToken>> FinishAsync(DialogTurnStatus status)
+    {
+        if (_lease is null)
+            return WriteAsync<IDialogTurnWriter>((writer, access, token) => writer.FinishAsync(access, token, call.TurnId,
+                status, [], [], CancellationToken.None), () => ChangeTurn([], [], status), CancellationToken.None);
+
+        return WriteAsync<IDialogRunLifecycle>(async (writer, access, token) =>
+        {
+            ServiceResult<DialogContinuationState> finalized = await writer.FinalizeAsync(new(access, token, _lease, status), CancellationToken.None);
+            if (!finalized.Success) return ServiceResult<DialogWriteToken>.Fail(finalized.Error!);
+            _continuation = finalized.Data!;
+            _lease = null;
+            return ServiceResult<DialogWriteToken>.Ok(finalized.Data!.Token);
+        }, () => ChangeTurn([], [], status), CancellationToken.None);
+    }
 
     /// <summary>Сериализует scope, fresh UTC, save и local token update; не удерживает контекст между вызовами.</summary>
     private async Task<ServiceResult<DialogWriteToken>> WriteAsync<TPort>(

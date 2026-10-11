@@ -9,8 +9,12 @@ namespace AgentBridge.Persistence.EfCore.UnitOfWork;
 
 /// <inheritdoc/>
 public class DialogCreationUnitOfWork(UnitOfWorkScope scope, DialogRecordQueries dialogs,
-    RecordStaging<DialogRecord> staging) : IDialogCreator
+    RecordStaging<DialogRecord> staging, DialogCatalogQueries? catalogQueries = null) : IDialogCreator
 {
+    /// <summary>Сохраняет прежнюю бинарную сигнатуру legacy creator.</summary>
+    public DialogCreationUnitOfWork(UnitOfWorkScope scope, DialogRecordQueries dialogs, RecordStaging<DialogRecord> staging)
+        : this(scope, dialogs, staging, null) { }
+
     /// <inheritdoc/>
     public Task<ServiceResult<DialogWriteToken>> CreateAsync(DialogId dialogId, DialogOwnerId ownerId,
         DateTimeOffset createdAtUtc, DateTimeOffset? expiresAtUtc, CancellationToken cancellationToken = default)
@@ -18,7 +22,8 @@ public class DialogCreationUnitOfWork(UnitOfWorkScope scope, DialogRecordQueries
         Dialog dialog = Dialog.Create(dialogId, ownerId, createdAtUtc, expiresAtUtc);
         return scope.ExecuteAsync<DialogWriteToken>(async ct =>
         {
-            if (await dialogs.FindAsync(dialogId.Value, ct) is not null)
+            if (await dialogs.FindAsync(dialogId.Value, ct) is not null ||
+                catalogQueries is not null && await catalogQueries.FindAsync(dialogId.Value, ct) is not null)
             {
                 return ServiceResult<DialogWriteToken>.Fail(new ServiceError(ServiceErrorType.Conflict, "Диалог уже существует."));
             }

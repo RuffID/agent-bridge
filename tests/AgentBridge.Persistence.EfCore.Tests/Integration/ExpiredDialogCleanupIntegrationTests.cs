@@ -31,6 +31,7 @@ public class ExpiredDialogCleanupIntegrationTests
 
     private static readonly DateTimeOffset NOW = new(2026, 10, 4, 0, 0, 0, TimeSpan.Zero);
     private static readonly DialogOwnerId OWNER = DialogOwnerId.From(" User:Б ");
+    // Только legacy root cascade; scope clocks/feed/tombstones имеют другой контракт и не удаляются с root.
     private static readonly string[] TABLES = ["Dialogs", "DialogTurns", "ModelSteps", "CanonicalItems", "DialogContexts", "DialogSettings"];
 
     /// <summary>Равенство expiry включено; один пакет bounded, все шесть таблиц cascade, большой живой диалог сохраняется.</summary>

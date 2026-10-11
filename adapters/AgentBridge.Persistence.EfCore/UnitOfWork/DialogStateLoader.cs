@@ -19,7 +19,7 @@ public class DialogStateLoader(TurnRecordQueries turns, ContextRecordQueries con
             throw new InvalidOperationException("Повреждены метаданные сохранённого диалога.");
         }
         return Dialog.Restore(DialogId.From(root.Id), DialogOwnerId.From(root.OwnerId), root.CreatedAtUtc,
-            retention.CalculateExpiresAtUtc(root.CreatedAtUtc), root.Revision, root.LastChangedAtUtc,
+            DialogWriteGuard.Expiry(root, retention), root.Revision, root.LastChangedAtUtc,
             history.Select(turn => new DialogTurnSnapshot(turn.Id, turn.Sequence, turn.StartedAtUtc, turn.Status, turn.FinishedAtUtc)),
             versions.Select(context => new DialogContextSnapshot(context.Version, context.ThroughTurnSequence, context.CreatedAtUtc)));
     }

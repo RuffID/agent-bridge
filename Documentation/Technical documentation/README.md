@@ -4,6 +4,7 @@
 
 | Раздел | Содержание |
 | --- | --- |
+| [Каталог диалогов и durable recovery](30-dialog-catalog-and-recovery.md) | Actual bounded metadata/feed API, epoch-aware runner writes, append-only effective context, trusted evidence и отдельная приёмка Ledger |
 | [Архитектура](01-architecture.md) | Фактические проекты, направления ссылок, DLL и обязанности существующих типов и контрактов |
 | [EFCoreLibrary](02-efcorelibrary.md) | Актуальный API, persistence DTO, scoped DI, base read/staging adapters и границы непроверенной БД |
 | [HTTP и codex-lb](03-http-and-codex-lb.md) | HttpClientLibrary, Responses, compact, ошибки и сохранение протокольного состояния |

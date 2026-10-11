@@ -23,13 +23,11 @@ public class DialogRecordQueries(
             throw new ArgumentException("Время должно быть UTC.", nameof(nowUtc));
         }
         cancellationToken.ThrowIfCancellationRequested();
-        if (retention.RetentionPeriod is not { } period || period.Ticks > nowUtc.UtcTicks)
-        {
-            return Task.FromResult(new List<DialogRecord>());
-        }
-
-        DateTimeOffset createdBefore = nowUtc.Subtract(period);
-        return byPredicate.GetItemsByPredicateAsync(record => record.CreatedAtUtc <= createdBefore, take: limit,
+        DateTimeOffset? createdBefore = retention.RetentionPeriod is { } period && period.Ticks <= nowUtc.UtcTicks
+            ? nowUtc.Subtract(period) : null;
+        return byPredicate.GetItemsByPredicateAsync(record => record.CatalogRegistered
+                ? record.ExpiresAtUtc != DateTimeOffset.MaxValue && record.ExpiresAtUtc <= nowUtc
+                : createdBefore != null && record.CreatedAtUtc <= createdBefore, take: limit,
             asNoTracking: true, include: query => query.OrderBy(record => record.CreatedAtUtc).ThenBy(record => record.Id),
             ct: cancellationToken);
     }

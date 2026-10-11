@@ -5,6 +5,12 @@ public class StoredDialogContext
 {
     /// <summary>Копирует полное окно; допустимость покрытия проверяется сценарием изменения, а не DTO.</summary>
     public StoredDialogContext(long version, long throughTurnSequence, ModelResponse compaction, string? selectedModel = null)
+        : this(version, throughTurnSequence, compaction, selectedModel, 0)
+    {
+    }
+
+    /// <summary>Фиксирует recovery revision сохраняемого модельного контекста.</summary>
+    public StoredDialogContext(long version, long throughTurnSequence, ModelResponse compaction, string? selectedModel, long recoveryRevision)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(version);
         ArgumentOutOfRangeException.ThrowIfNegative(throughTurnSequence);
@@ -13,6 +19,8 @@ public class StoredDialogContext
         ThroughTurnSequence = throughTurnSequence;
         Compaction = compaction;
         SelectedModel = selectedModel;
+        ArgumentOutOfRangeException.ThrowIfNegative(recoveryRevision);
+        RecoveryRevision = recoveryRevision;
     }
 
     /// <summary>Версия принятого рабочего окна.</summary>
@@ -25,4 +33,6 @@ public class StoredDialogContext
     public ModelResponse Compaction { get; }
     /// <summary>Зафиксированный выбор compact; null когда provenance не сохранялся.</summary>
     public string? SelectedModel { get; }
+    /// <summary>Revision recovery, учтённая в этом окне.</summary>
+    public long RecoveryRevision { get; }
 }

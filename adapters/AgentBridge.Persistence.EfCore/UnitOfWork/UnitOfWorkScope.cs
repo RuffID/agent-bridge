@@ -46,7 +46,7 @@ public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGat
                 {
                     await session.SaveChangesAsync(cancellationToken);
                 }
-                catch (DbUpdateException error) when (IsRootConflict(error, creatingDialog) || writingSettings && IsSettingsConflict(error))
+                catch (DbUpdateException error) when (IsRootConflict(error, creatingDialog) || IsCatalogConflict(error) || writingSettings && IsSettingsConflict(error))
                 {
                     result = conflict(new ServiceError(ServiceErrorType.Conflict, "Диалог изменён конкурентной операцией."));
                 }
@@ -114,5 +114,22 @@ public class UnitOfWorkScope(IUnitOfWorkSession session, PersistenceOperationGat
         if (error.Entries.Count != 1 || error.Entries[0].Entity is not DialogSettingsRecord) return false;
         return error is DbUpdateConcurrencyException || databaseProviders.Any(provider =>
             provider.IsPrimaryKeyViolation(error, "DialogSettings", "PK_DialogSettings"));
+    }
+
+    /// <summary>Только exact catalog/clock CAS либо их PK race; чужие FK/driver/commit errors не превращаются в Conflict.</summary>
+    private bool IsCatalogConflict(DbUpdateException error)
+    {
+        if (error.Entries.Count != 1) return false;
+        string? table = error.Entries[0].Entity switch
+        {
+            DialogCatalogRecord => "DialogCatalog",
+            DialogCatalogClockRecord => "DialogCatalogClocks",
+            DialogCatalogChangeRecord => "DialogCatalogChanges",
+            DialogRecoveryOperationRecord => "DialogRecoveryOperations",
+            _ => null
+        };
+
+        return table is not null && (error is DbUpdateConcurrencyException ||
+            databaseProviders.Any(provider => provider.IsPrimaryKeyViolation(error, table, "PK_" + table)));
     }
 }

@@ -1,5 +1,14 @@
 # Application
 
+## Зарегистрированный каталог и durable recovery
+
+- Catalog-registered roots используют immutable owner/site/agent/profile/policy. Legacy Create не регистрирует каталог и не импортирует историю. Host выполняет актуальную авторизацию перед UI/history/model; scope/profile не задаются browser/model. Реализованные API и границы — Technical documentation/30-dialog-catalog-and-recovery.md.
+- AgentRunRequest с DialogRunOptions задаёт explicit scope/profile/LeasePeriod. Runner читает ReadCatalogAsync и проверяет Ready до providers/model; Begin/input/settings/lease принимаются атомарно. Session владеет accepted lease/epoch и использует epoch-aware write ports. Existing TurnId всегда no replay.
+- Recovery не меняет original Turns/items/reports/attempts/terminal. EffectiveTurns добавляет по original position truthful resolution либо trusted external output; confirmed ordinary outputs неизменны. Unknown закрывается только explicit acknowledgement или trusted evidence, не cancel/read-only/lease expiry. Продолжение — тот же DialogId, новый explicit TurnId и новый provider context.
+- IDialogCatalogProjector — app-owned pure synchronous bounded policy Key/Version, без I/O. Library не разбирает Ledger envelope. IDialogRecoveryEvidenceResolver/IDialogRunQuiescenceVerifier — trusted host ports, I/O только вне storage transaction и без повторного handler; итог записывается после нового CAS/epoch guard.
+- ContextBuilder/model guard требуют durable Ready либо library-owned active lease. Старый compact с меньшей RecoveryRevision не используется; unresolved pairs не скрываются. Fenced original InProgress остаётся original и сохраняется в несжимаемом suffix после terminal prefix.
+- Registered expiry фиксируется при Create; renew/compact/activity не продлевают retention. Legacy roots сохраняют прежнюю scoped retention policy.
+
 - Public ExpiresAtUtc и RetentionPeriod nullable: null означает бессрочный диалог. Reader вычисляет срок текущей политики для всех CreatedAtUtc; runner/tools фиксируют его на текущий snapshot/session. Monotonic execution deadline остаётся обязательным даже без срока хранения. Автоматическое расписание удаления принадлежит приложению.
 
 - ExpiredDialogCleanup22 обрабатывает один явный bounded пакет без scheduler/drain-loop/retry. Один read и каждый sequential delete имеют отдельный async scope/fresh UTC; existing ports и guards не подменяются. Expected refusals продолжают пакет и дают Partial; canceled/exception прекращают следующие операции. Immutable LastResult сохраняет Deleted/Failed/Unknown/NotAttempted; successful acknowledgement фиксируется до DisposeAsync. Неожиданные exceptions и primary+cleanup aggregate распространяются, OCE cleanup не маскируется caller cancellation. Limit/port contract fail-fast; один экземпляр не допускает concurrent вызовов. ContentBytes и settings selection не триггер очистки.

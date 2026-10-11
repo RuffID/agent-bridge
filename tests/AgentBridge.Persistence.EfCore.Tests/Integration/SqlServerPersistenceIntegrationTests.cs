@@ -3,6 +3,7 @@ using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.Domain.Dialogs;
+using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.UnitOfWork;
 using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Coordination;
@@ -22,7 +23,8 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
 {
     private static readonly DateTimeOffset NOW = new(2026, 10, 8, 0, 0, 0, TimeSpan.Zero);
     private static readonly DialogOwnerId OWNER = DialogOwnerId.From(" User:Б ");
-    private static readonly string[] TABLES = ["Dialogs", "DialogTurns", "ModelSteps", "CanonicalItems", "DialogContexts", "DialogSettings"];
+    // Legacy fixtures наполняют только эти таблицы; catalog/feed не входят в root cascade.
+    private static readonly string[] LEGACY_DIALOG_TABLES = ["Dialogs", "DialogTurns", "ModelSteps", "CanonicalItems", "DialogContexts", "DialogSettings"];
 
     /// <summary>Два настоящих Serializable writer одного root не фиксируются вместе; данные принадлежат победителю.</summary>
     [SqlServerIntegrationFact]
@@ -127,7 +129,7 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
         Assert.Empty(final.Turns[0].ModelSteps);
     }
 
-    /// <summary>Root delete каскадно удаляет данные всех шести таблиц и сохраняет соседний наполненный диалог.</summary>
+    /// <summary>Root delete каскадно удаляет данные шести legacy-таблиц и сохраняет соседний наполненный диалог.</summary>
     [SqlServerIntegrationFact]
     public async Task DeleteCascadesSixTablesAndPreservesNeighbor()
     {
@@ -137,7 +139,7 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
         DialogWriteToken token = await FillAsync(database, await CreateAsync(database, ct), "delete", ct);
         DialogWriteToken neighbor = await FillAsync(database, await CreateAsync(database, ct), "neighbor 😀", ct);
         Dictionary<string, string> before = [];
-        foreach (string table in TABLES)
+        foreach (string table in LEGACY_DIALOG_TABLES)
         {
             Assert.Single(await RowsAsync(database, table, token, ct));
             before.Add(table, JsonSerializer.Serialize(await RowsAsync(database, table, neighbor, ct)));
@@ -147,7 +149,7 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
             Assert.True((await scope.ServiceProvider.GetRequiredService<IDialogDeletion>().DeleteAsync(Access(token), token, ct)).Success);
         }
 
-        foreach (string table in TABLES)
+        foreach (string table in LEGACY_DIALOG_TABLES)
         {
             Assert.Empty(await RowsAsync(database, table, token, ct));
             Assert.Equal(before[table], JsonSerializer.Serialize(await RowsAsync(database, table, neighbor, ct)));
@@ -173,7 +175,7 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
             DatabaseMaintenanceResult result = await maintenance.UpdateExistingAsync(TimeSpan.FromMinutes(2), ct);
 
             Assert.Equal(MaintenanceOutcome.Migrated, result.Outcome);
-            Assert.Single(result.AppliedMigrations);
+            Assert.Equal(IntegrationSchemaExpectations.Migrations(DatabaseProvider.SqlServer), result.AppliedMigrations);
             Assert.NotNull(result.Backup);
             Assert.True(result.Backup.Confirms(result.Backup.OperationId, result.Backup.TargetIdentity, maintenance.Capabilities, result.Backup.StartedAtUtc));
             artifact = Assert.IsType<ServerBackupArtifact>(result.Backup.Artifact);
@@ -188,9 +190,9 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
         Assert.Empty(await restored.QueryAsync("SELECT name FROM sys.tables WHERE name='Dialogs'", ct));
     }
 
-    /// <summary>Настоящий native backup/restore сохраняет полную шеститабличную схему, constraints и canonical payload.</summary>
+    /// <summary>Настоящий native backup/restore сохраняет текущую схему всех таблиц и canonical payload legacy-диалога.</summary>
     [SqlServerIntegrationFact]
-    public async Task FullBackupRestoresSixTableSchemaAndData()
+    public async Task FullBackupRestoresCurrentSchemaAndLegacyData()
     {
         CancellationToken ct = TestContext.Current.CancellationToken;
         await using SqlServerIntegrationDatabase database = await environment.CreateSqlServerDatabaseAsync();
@@ -217,7 +219,11 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
 
         Assert.Equal(before, await restored.FingerprintAsync(ct));
         Assert.NotEqual(before, await database.FingerprintAsync(ct));
-        foreach (string table in TABLES) { Assert.Single(await RowsAsync(restored, table, token, ct)); }
+        string tableNames = string.Join(", ", IntegrationSchemaExpectations.Tables.Select(name => "'" + name + "'"));
+        Assert.Equal(IntegrationSchemaExpectations.Tables,
+            (await restored.QueryAsync("SELECT name FROM sys.tables WHERE name IN (" + tableNames + ")", ct))
+                .Select(row => (string)row["name"]!).Order(StringComparer.Ordinal));
+        foreach (string table in LEGACY_DIALOG_TABLES) { Assert.Single(await RowsAsync(restored, table, token, ct)); }
         DialogSnapshot snapshot = await ReadAsync(restored, token, ct);
         Assert.Equal(token.Revision, snapshot.Token.Revision);
         Assert.Equal("backup 😀", Assert.Single(snapshot.Turns).Items[0].Content.GetProperty("text").GetString());
@@ -272,7 +278,7 @@ public class SqlServerPersistenceIntegrationTests(DatabaseIntegrationFixture env
             .CreateAsync(DialogId.From(Guid.NewGuid()), OWNER, NOW, NOW.AddDays(1), ct));
     }
 
-    /// <summary>Наполняет все шесть таблиц настоящими короткими UoW.</summary>
+    /// <summary>Наполняет шесть legacy-таблиц настоящими короткими UoW без catalog registration.</summary>
     private static async Task<DialogWriteToken> FillAsync(SqlServerIntegrationDatabase database, DialogWriteToken token, string text, CancellationToken ct)
     {
         using IServiceScope scope = database.Root.CreateScope();

@@ -56,6 +56,8 @@ Actual короткое подключение — [Integration facade](<Technic
 
 [Plans](Plans/README.md) — планы реализации и проверок на русском языке с английскими именами файлов и папок.
 
+[Каталог диалогов и recovery для Ledger 01A](<Plans/Assistant Dialog Capabilities/README.md>) — библиотечная реализация возобновлена 11.10.2026; [actual API](<Technical documentation/30-dialog-catalog-and-recovery.md>) и отдельное [evidence](<Plans/Assistant Dialog Capabilities/Evidence.md>). Ledger 01A не закрывается этой поставкой.
+
 [Первоначальная реализация AgentBridge](<Plans/AgentBridge Initial Implementation/README.md>) — 26 небольших этапов от подготовки контрактов до DLL и руководства подключения.
 
 [Аудит качества AgentBridge](<Plans/AgentBridge Quality Audit/README.md>) — статический проход 00–15 завершён с ограничениями; общий аудит A/B/C/D частичный. [Реестр](<Plans/AgentBridge Quality Audit/Findings.md>) содержит находки и пределы их доказательств.

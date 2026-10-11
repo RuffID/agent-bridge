@@ -3,6 +3,8 @@ namespace AgentBridge.Persistence.EfCore.Models;
 /// <summary>Принятый compact; активным считается максимальная Version, прежние состояния не удаляются.</summary>
 public class DialogContextRecord
 {
+    /// <summary>Recovery revision модели, из которой принято окно.</summary>
+    public long RecoveryRevision { get; set; }
     /// <summary>Выбранная модель compact; null при неизвестном provenance.</summary>
     public string? SelectedModel { get; set; }
     /// <summary>Обязательный диалог.</summary>

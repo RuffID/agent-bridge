@@ -65,12 +65,12 @@ public class ContextBuilder
                 ?? throw new InvalidOperationException("Успех провайдера должен содержать вклад.")).Items);
         }
 
-        long through = dialog.ActiveContext?.ThroughTurnSequence ?? 0;
-        if (dialog.ActiveContext is not null)
+        long through = dialog.EffectiveContext?.ThroughTurnSequence ?? 0;
+        if (dialog.EffectiveContext is not null)
         {
-            input.AddRange(dialog.ActiveContext.Items);
+            input.AddRange(dialog.EffectiveContext.Items);
         }
-        foreach (StoredDialogTurn turn in dialog.Turns)
+        foreach (StoredDialogTurn turn in dialog.EffectiveTurns)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (turn.Sequence > through)
@@ -106,10 +106,18 @@ public class ContextBuilder
         {
             return new(ServiceErrorType.Expired, "Срок доступности диалога истёк.");
         }
+        if (dialog.Continuation is { } continuation &&
+            (continuation.Readiness == DialogReadiness.RecoveryRequired ||
+             continuation.Readiness == DialogReadiness.Active && (continuation.TurnId != call.TurnId ||
+                dialog.OwnedRunLease is not { } lease || lease.LeaseId != continuation.Lease?.LeaseId ||
+                lease.Epoch != continuation.FencingEpoch)))
+        {
+            return new(ServiceErrorType.Conflict, "dialog_not_ready");
+        }
 
-        long through = dialog.ActiveContext?.ThroughTurnSequence ?? 0;
+        long through = dialog.EffectiveContext?.ThroughTurnSequence ?? 0;
         if (dialog.ExpiresAtUtc <= dialog.CreatedAtUtc || through > dialog.Turns.Count ||
-            dialog.ActiveContext is not null && dialog.ActiveContext.Compaction.Status != ModelResponseStatus.Completed)
+            dialog.EffectiveContext is not null && dialog.EffectiveContext.Compaction.Status != ModelResponseStatus.Completed)
         {
             return new(ServiceErrorType.Conflict, "Состояние контекста диалога некорректно.");
         }

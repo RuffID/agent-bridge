@@ -1,5 +1,7 @@
 # AgentBridge
 
+Bounded каталог диалогов, durable lifecycle/fencing и append-only recovery: [публичный API](<Documentation/Technical documentation/30-dialog-catalog-and-recovery.md>), [новая DLL-поставка и evidence](<Documentation/Plans/Assistant Dialog Capabilities/Evidence.md>). Библиотечные проверки отделены от SQL/runtime и принятия в Ledger 01A.
+
 AgentBridge — C#-библиотека для приложений на **.NET 10**. Она ведёт диалог с моделью через **codex-lb**, сохраняет историю в БД, собирает и сжимает рабочий контекст, а при необходимости вызывает инструменты вашего приложения.
 
 Библиотека подключается обычными DLL. Основной провайдер хранения — **SQL Server**; также доступны **SQLite** и **PostgreSQL**. Её можно использовать в ASP.NET Core, настольном приложении или другом SDK-style проекте: интерфейс пользователя и запуск приложения остаются у вас.

@@ -9,6 +9,15 @@ public class DialogSnapshot
     public DialogSnapshot(DialogWriteToken token, DialogOwnerId ownerId, DateTimeOffset createdAtUtc,
         DateTimeOffset? expiresAtUtc, long contentBytes, IEnumerable<StoredDialogTurn> turns, StoredDialogContext? activeContext,
         DialogModelSelection? selection = null)
+        : this(token, ownerId, createdAtUtc, expiresAtUtc, contentBytes, turns, activeContext, selection, null, null, null)
+    {
+    }
+
+    /// <summary>Сохраняет originals отдельно от recovery-aware effective history и durable gate.</summary>
+    public DialogSnapshot(DialogWriteToken token, DialogOwnerId ownerId, DateTimeOffset createdAtUtc,
+        DateTimeOffset? expiresAtUtc, long contentBytes, IEnumerable<StoredDialogTurn> turns, StoredDialogContext? activeContext,
+        DialogModelSelection? selection, DialogCatalogState? catalog, DialogContinuationState? continuation,
+        IEnumerable<StoredDialogTurn>? effectiveTurns)
     {
         ArgumentNullException.ThrowIfNull(token);
         ArgumentNullException.ThrowIfNull(ownerId);
@@ -26,6 +35,9 @@ public class DialogSnapshot
         Turns = ContractSnapshot.Copy(turns);
         ActiveContext = activeContext;
         Selection = selection;
+        Catalog = catalog;
+        Continuation = continuation;
+        EffectiveTurns = effectiveTurns is null ? Turns : ContractSnapshot.Copy(effectiveTurns);
     }
 
     /// <summary>Сохраняемое условие актуальности прочитанных данных.</summary>
@@ -44,6 +56,17 @@ public class DialogSnapshot
     public StoredDialogContext? ActiveContext { get; }
     /// <summary>Сохранённый выбор с независимой версией; null использует defaults приложения.</summary>
     public DialogModelSelection? Selection { get; }
+    /// <summary>Полный immutable profile/scope; legacy root имеет null.</summary>
+    public DialogCatalogState? Catalog { get; }
+    /// <summary>Durable readiness/fencing, legacy root имеет null.</summary>
+    public DialogContinuationState? Continuation { get; }
+    /// <summary>Lease захватывает только библиотечная сессия после accepted Begin; reader её не выдаёт как разрешение model step.</summary>
+    internal DialogRunLease? OwnedRunLease { get; init; }
+    /// <summary>Library-owned context projection, не изменяющая исходные Turns.</summary>
+    public IReadOnlyList<StoredDialogTurn> EffectiveTurns { get; }
+    /// <summary>Старое окно не применяется поверх более новой recovery revision.</summary>
+    public StoredDialogContext? EffectiveContext => ActiveContext is null ||
+        ActiveContext.RecoveryRevision < (Continuation?.RecoveryRevision ?? 0) ? null : ActiveContext;
     /// <summary>Проверяет истечение для интерфейса на явном UTC; равенство сроку означает истечение.</summary>
     public bool IsExpired(DateTimeOffset nowUtc)
     {

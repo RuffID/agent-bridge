@@ -3,6 +3,8 @@ namespace AgentBridge.Persistence.EfCore.Models;
 /// <summary>Полный канонический item истории, включая сообщения, reasoning, вызовы и результаты инструментов.</summary>
 public class CanonicalItemRecord
 {
+    /// <summary>Server UTC принимаемого user/assistant сообщения; null для legacy/tools/reasoning.</summary>
+    public DateTimeOffset? SavedAtUtc { get; set; }
     /// <summary>Диалог родительского обращения.</summary>
     public Guid DialogId { get; set; }
     /// <summary>Обращение; составной FK исключает связь с другим диалогом.</summary>

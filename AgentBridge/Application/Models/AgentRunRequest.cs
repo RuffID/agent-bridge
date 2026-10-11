@@ -3,6 +3,16 @@ namespace AgentBridge.Application.Models;
 /// <summary>Явный input одного нового turn; права на агента и provider selection принадлежат приложению.</summary>
 public class AgentRunRequest
 {
+    /// <summary>Registered run требует явный полный scope/profile/lease period; legacy сигнатура сохранена.</summary>
+    public AgentRunRequest(ApplicationCallContext call, IEnumerable<CanonicalModelItem> input,
+        IEnumerable<string> selectedToolNames, ToolExecutionLimits toolLimits, DialogRunOptions runOptions,
+        string? model = null, string? effort = null, string? instructions = null, ModelRequestParameters? parameters = null)
+        : this(call, input, selectedToolNames, toolLimits, model, effort, instructions, parameters)
+    {
+        ArgumentNullException.ThrowIfNull(runOptions);
+        RunOptions = runOptions;
+    }
+
     /// <summary>Копирует input/selection; model/effort null используют saved dialog selection, затем defaults reader приложения.</summary>
     public AgentRunRequest(ApplicationCallContext call, IEnumerable<CanonicalModelItem> input,
         IEnumerable<string> selectedToolNames, ToolExecutionLimits toolLimits, string? model = null,
@@ -36,4 +46,6 @@ public class AgentRunRequest
     public string? Instructions { get; }
     /// <summary>Canonical generation controls без server continuation.</summary>
     public ModelRequestParameters? Parameters { get; }
+    /// <summary>Trusted registered-run profile gate; null разрешён только для legacy root.</summary>
+    public DialogRunOptions? RunOptions { get; }
 }

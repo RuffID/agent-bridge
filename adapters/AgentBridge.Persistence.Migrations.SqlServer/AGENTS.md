@@ -1,6 +1,6 @@
 # Схема Microsoft SQL Server
 
-- Отдельный SDK library target/startup для общего AgentBridgeDbContext и текущей модели шести таблиц. Identity соответствует AgentBridgeMigrationsAssemblies.SQLSERVER; runtime использует __AgentBridgeMigrationsHistory. Обратной ссылки из общего адаптера нет.
+- Отдельный SDK library target/startup для общего AgentBridgeDbContext и текущей модели десяти таблиц. Initial schema остаётся исторической six-table; AddCatalogAndDurableRecovery добавляет четыре catalog/recovery tables и safe legacy metadata. Identity соответствует AgentBridgeMigrationsAssemblies.SQLSERVER; runtime использует __AgentBridgeMigrationsHistory. Обратной ссылки из общего адаптера нет.
 - Проект зависит от AgentBridge.Persistence.SqlServer, который подключает общий EF-адаптер и SQL Server provider/maintenance; остальные провайдеры не подтягиваются.
 - Factory принимает только пустые arguments, создаёт options/model с синтетическим подключением, не читает secrets и не открывает БД/host. Design/runtime EF 10.0.12; Design PrivateAssets=all, GenerateRuntimeConfigurationFiles=true. CLI tooling согласуется точной командой отдельно.
 - Generated migration/designer/snapshot создаются только tooling после разрешения; вручную не править. Existing SQLite/PostgreSQL history не регенерировать.

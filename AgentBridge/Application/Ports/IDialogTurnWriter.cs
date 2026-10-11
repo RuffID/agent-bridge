@@ -11,6 +11,11 @@ namespace AgentBridge.Application.Ports;
 /// EF-адаптер использует общий сценарный scope/UoW; EF-сессия не удерживается во время сети.</remarks>
 public interface IDialogTurnWriter
 {
+    /// <summary>Epoch-aware Append зарегистрированного run; legacy implementation явно отказывается.</summary>
+    Task<ServiceResult<DialogWriteToken>> AppendAsync(DialogRunWriteAccess access, DialogWriteToken expected,
+        Guid turnId, IReadOnlyList<CanonicalModelItem> items, IReadOnlyList<StoredModelStep> modelSteps,
+        CancellationToken cancellationToken = default) => Task.FromResult(ServiceResult<DialogWriteToken>.Fail(
+            new(ServiceErrorType.Unsupported, "run_fencing_unsupported")));
     /// <summary>Атомарно начинает обращение с фиксированными безопасными настройками; legacy writer явно отказывается.</summary>
     Task<ServiceResult<DialogWriteToken>> BeginWithSettingsAsync(DialogAccess access, DialogWriteToken expected,
         Guid turnId, IReadOnlyList<CanonicalModelItem> input, TurnModelSettings settings,

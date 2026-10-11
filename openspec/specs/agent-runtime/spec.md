@@ -1943,3 +1943,53 @@ AgentBridge MUST предоставлять AddAgentBridge(IServiceCollection, I
 - **WHEN** приложение повторяет фасад с теми же аргументами и задаёт ordered providers/custom contracts до либо после него
 - **THEN** modules/binding не дублируются, explicit single-service contract выбирается штатно
 - **AND** scoped business state не захватывается singleton, async scope освобождается после работы.
+
+### Requirement: Library-owned bounded каталог диалогов
+
+AgentBridge MUST предоставлять отдельный catalog Create с immutable owner/site/agent/profile/policy и fixed nullable expiry. Legacy roots MUST NOT импортироваться автоматически. Canonical saved user/assistant messages, root CAS, server timestamp, compact projection и scope change record MUST сохраняться одной transaction. Pure bounded app projector MUST быть зарегистрирован exact key/version; unknown/ambiguous schema MUST отменять write. Tool/reasoning/delta/compact/recovery MUST NOT становиться title/snippet/message date.
+
+#### Scenario: Первый сохранённый вопрос
+
+- **WHEN** новый catalog-registered чат получает первый saved user question
+- **THEN** «Новый чат» заменяется разрешённым bounded title и больше не переименовывается последующими сообщениями
+- **AND** namespace/profile/policy и message position/time сохраняются вместе с canonical input.
+
+### Requirement: Bounded keyset и reconciliation
+
+Catalogue MUST читать один compact slice с explicit limit 1..256, order SortTime DESC/RFC UUID bytes DESC, без full snapshots/count/refill. Host MUST переавторизовать immutable profile и защищать search/UI cursor. Durable scope feed MUST быть bounded ordered sequence с compact projection/tombstone; gaps/unknown checkpoints MUST возвращать ResetRequired/Unsupported. Reconciliation/rebuild MUST использовать compact states, не сканировать canonical snapshots. Tombstone MUST запрещать registered ID reuse и late upsert.
+
+#### Scenario: Feed после delete
+
+- **WHEN** quiescent dialog удаляется или очищается по expiry
+- **THEN** root/history removal и compact tombstone/feed принимаются атомарно
+- **AND** поздний writer не создаёт root заново; expired/deleted metadata не выдаёт title/snippet.
+
+### Requirement: Durable lifecycle и fencing
+
+Registered Begin/input/settings/lease/epoch MUST приниматься одной transaction до external I/O. Epoch-aware Append/Start/Outcomes/Compact/Finalize MUST повторно проверять persisted lease/epoch и root CAS. Expired lease MUST оставаться Active до explicit fence; ExpiredLease MUST проверить server persisted deadline, ConfirmedQuiescence MUST потребовать trusted host verifier вне transaction. Fence MUST блокировать late writes без установления внешнего outcome или переписывания original terminal.
+
+#### Scenario: Crash после Started
+
+- **WHEN** после durable Started outcome не сохранён, lease истёк и выполнен fence
+- **THEN** continuation требует recovery, pending outcome остаётся Unknown
+- **AND** ordinary next turn, caller cancellation или read-only tool не разрешают продолжение.
+
+### Requirement: Append-only recovery и effective context
+
+Recovery MUST проверять owner/incarnation/root/recovery revision/epoch и full bounded pending batch атомарно. NotStarted MUST подтверждаться журналом; KnownCanceled и ConfirmedExternalOutcome MUST иметь отдельный trusted evidence resolver вне transaction с последующим CAS recheck. AcknowledgedUnknown MUST требовать explicit owner acknowledgement без replay. Original items/reports/attempts/terminal и confirmed ordinary outputs MUST оставаться неизменными. Effective context MUST содержать original calls и ровно один truthful resolution для закрытой pending position, включая repeated call_id.
+
+#### Scenario: Evidence возвращён после concurrent recovery
+
+- **WHEN** другой instance принял recovery или delete во время awaited evidence
+- **THEN** поздняя команда получает Conflict/NotFound без второй mutation
+- **AND** same operation ID/payload читает durable result без повторного handler/verifier; altered payload отклоняется.
+
+### Requirement: Unknown storage outcome не разрешает continuation
+
+Unknown commit/finalize/read MUST NOT превращаться в успешный Ready или invented rollback. RecoveryId lookup/compact continuation read в новом scope MUST определять durable storage факт. ContextBuilder/compactor MUST учитывать readiness/recovery revision, не скрывать unresolved calls и не применять старое compact окно поверх новой recovery. После Ready новый вопрос MUST использовать тот же DialogId, новый explicit TurnId и новый provider context; existing TurnId MUST NOT replay.
+
+#### Scenario: Unknown commit после apply
+
+- **WHEN** recovery commit применён, но acknowledgement потерян
+- **THEN** authoritative lookup возвращает прежний принятый result без handler replay
+- **AND** failure этого read оставляет продолжение неподтверждённым.

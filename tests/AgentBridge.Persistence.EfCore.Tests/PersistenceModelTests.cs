@@ -32,7 +32,7 @@ public class PersistenceModelTests
         Assert.DoesNotContain(dialog.GetIndexes(), index => index.Properties.Any(property => property.Name == "OwnerId"));
         AssertIndex(dialog, false, "ExpiresAtUtc", "Id");
         Assert.Contains(dialog.GetCheckConstraints(), check => check.Sql == "\"ExpiresAtUtc\" > \"CreatedAtUtc\"");
-        Assert.Equal(6, model.GetEntityTypes().Count());
+        Assert.Equal(10, model.GetEntityTypes().Count());
         Assert.DoesNotContain(model.GetEntityTypes(), type => type.ClrType.Namespace?.StartsWith("AgentBridge.Domain", StringComparison.Ordinal) == true);
     }
 

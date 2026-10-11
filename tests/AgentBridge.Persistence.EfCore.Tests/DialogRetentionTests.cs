@@ -36,7 +36,7 @@ public class DialogRetentionTests
         Assert.Empty(fixture.Roots.Persisted);
     }
 
-    /// <summary>Бессрочная политика возвращает null в public snapshot и не читает кандидатов удаления.</summary>
+    /// <summary>Бессрочная legacy политика возвращает null; bounded cleanup query учитывает только registered expiry.</summary>
     [Fact]
     public async Task UnlimitedReaderHasNoExpiryOrCleanupCandidates()
     {
@@ -56,6 +56,7 @@ public class DialogRetentionTests
         Assert.False(snapshot.IsExpired(FakeWriteFixture.NOW.AddYears(100)));
         int reads = roots.ReadCalls;
         Assert.Empty(await query.ReadExpiredAsync(FakeWriteFixture.NOW.AddDays(2), 32, TestContext.Current.CancellationToken));
-        Assert.Equal(reads, roots.ReadCalls);
+        Assert.Equal(reads + 1, roots.ReadCalls);
+        Assert.Equal(32, roots.LastTake);
     }
 }

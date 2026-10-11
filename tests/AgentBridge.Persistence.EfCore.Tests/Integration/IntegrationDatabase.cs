@@ -127,7 +127,7 @@ public class IntegrationDatabase : IAsyncDisposable
             .InitializeNewAsync(TimeSpan.FromSeconds(45));
         Assert.Equal(MaintenanceOutcome.Initialized, result.Outcome);
         Assert.Null(result.Backup);
-        Assert.Equal(3, result.AppliedMigrations.Count);
+        Assert.Equal(IntegrationSchemaExpectations.Migrations(Provider), result.AppliedMigrations);
     }
 
     /// <summary>Создаёт пустую тестовую БД настоящим provider, не применяя migration.</summary>

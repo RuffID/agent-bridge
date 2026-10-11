@@ -18,7 +18,7 @@ namespace AgentBridge.Persistence.Migrations.SqlServer.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -38,12 +38,157 @@ namespace AgentBridge.Persistence.Migrations.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<long?>("SavedAtUtc")
+                        .HasColumnType("bigint");
+
                     b.HasKey("DialogId", "TurnId", "Sequence");
 
                     b.ToTable("CanonicalItems", null, t =>
                         {
                             t.HasCheckConstraint("CK_Item_Sequence", "[Sequence] > 0");
                         });
+                });
+
+            modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogCatalogChangeRecord", b =>
+                {
+                    b.Property<string>("ScopeKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StateJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ScopeKey", "Sequence");
+
+                    b.ToTable("DialogCatalogChanges", (string)null);
+                });
+
+            modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogCatalogClockRecord", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<long>("Sequence")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DialogCatalogClocks", (string)null);
+                });
+
+            modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogCatalogRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AgentId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("CreatedAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("Deleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("Epoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ExpiresAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FirstQuestionPosition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IdSortKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<Guid>("IncarnationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long?>("LastMessageAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("LastMessagePosition")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("LastTurnId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("LastTurnStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PolicyJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProfileJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Readiness")
+                        .HasColumnType("int");
+
+                    b.Property<long>("RecoveryRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("RootRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ScopeKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("SearchKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SiteId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Snippet")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("SortTimeUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScopeKey", "SortTimeUtc", "IdSortKey")
+                        .IsDescending(false, true, true);
+
+                    b.ToTable("DialogCatalog", (string)null);
                 });
 
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogContextRecord", b =>
@@ -55,6 +200,9 @@ namespace AgentBridge.Persistence.Migrations.SqlServer.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<long>("CreatedAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("RecoveryRevision")
                         .HasColumnType("bigint");
 
                     b.Property<string>("SelectedModel")
@@ -120,6 +268,9 @@ namespace AgentBridge.Persistence.Migrations.SqlServer.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("CatalogRegistered")
+                        .HasColumnType("bit");
+
                     b.Property<long>("ContentBytes")
                         .HasColumnType("bigint");
 
@@ -146,6 +297,10 @@ namespace AgentBridge.Persistence.Migrations.SqlServer.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
+                    b.Property<string>("RuntimeJson")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ExpiresAtUtc", "Id");
@@ -164,6 +319,45 @@ namespace AgentBridge.Persistence.Migrations.SqlServer.Migrations
 
                             t.HasCheckConstraint("CK_Dialog_Revision", "[Revision] >= 0");
                         });
+                });
+
+            modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogRecoveryOperationRecord", b =>
+                {
+                    b.Property<Guid>("DialogId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("IncarnationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PairsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("DialogId", "Id");
+
+                    b.HasIndex("DialogId", "Revision");
+
+                    b.ToTable("DialogRecoveryOperations", (string)null);
                 });
 
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogSettingsRecord", b =>
@@ -311,6 +505,15 @@ namespace AgentBridge.Persistence.Migrations.SqlServer.Migrations
                 });
 
             modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogContextRecord", b =>
+                {
+                    b.HasOne("AgentBridge.Persistence.EfCore.Models.DialogRecord", null)
+                        .WithMany()
+                        .HasForeignKey("DialogId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AgentBridge.Persistence.EfCore.Models.DialogRecoveryOperationRecord", b =>
                 {
                     b.HasOne("AgentBridge.Persistence.EfCore.Models.DialogRecord", null)
                         .WithMany()

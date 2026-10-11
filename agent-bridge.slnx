@@ -21,6 +21,15 @@
     <File Path="Documentation/Plans/AGENTS.md" />
     <File Path="Documentation/Plans/README.md" />
   </Folder>
+  <Folder Name="/Documentation/Plans/Assistant Dialog Capabilities/">
+    <File Path="Documentation/Plans/Assistant Dialog Capabilities/README.md" />
+    <File Path="Documentation/Plans/Assistant Dialog Capabilities/Checkpoint.md" />
+    <File Path="Documentation/Plans/Assistant Dialog Capabilities/Continue-prompt.md" />
+    <File Path="Documentation/Plans/Assistant Dialog Capabilities/Evidence.md" />
+    <File Path="Documentation/Plans/Assistant Dialog Capabilities/Tooling-commands.md" />
+    <File Path="Documentation/Plans/Assistant Dialog Capabilities/Packaging-commands.md" />
+    <File Path="Documentation/Plans/Assistant Dialog Capabilities/Packaging-coherent-commands.md" />
+  </Folder>
   <Folder Name="/Documentation/Plans/AgentBridge Audit Remediation/">
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/00-baseline-and-scope.md" />
     <File Path="Documentation/Plans/AgentBridge Audit Remediation/01-initialization-gate.md" />
@@ -130,6 +139,7 @@
     <File Path="Documentation/Technical documentation/27-auxiliary-model-operations.md" />
     <File Path="Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md" />
     <File Path="Documentation/Technical documentation/29-dll-and-nuget-delivery.md" />
+    <File Path="Documentation/Technical documentation/30-dialog-catalog-and-recovery.md" />
     <File Path="Documentation/Technical documentation/README.md" />
   </Folder>
   <Project Path="AgentBridge/agent-bridge.csproj" />
