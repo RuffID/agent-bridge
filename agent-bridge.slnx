@@ -21,6 +21,12 @@
     <File Path="Documentation/Plans/AGENTS.md" />
     <File Path="Documentation/Plans/README.md" />
   </Folder>
+  <Folder Name="/Documentation/Plans/B03 Bounded History/">
+    <File Path="Documentation/Plans/B03 Bounded History/README.md" />
+    <File Path="Documentation/Plans/B03 Bounded History/Evidence.md" />
+    <File Path="Documentation/Plans/B03 Bounded History/Continue-prompt.md" />
+    <File Path="Documentation/Plans/B03 Bounded History/Packaging-commands.md" />
+  </Folder>
   <Folder Name="/Documentation/Plans/Assistant Dialog Capabilities/">
     <File Path="Documentation/Plans/Assistant Dialog Capabilities/README.md" />
     <File Path="Documentation/Plans/Assistant Dialog Capabilities/Checkpoint.md" />
@@ -140,6 +146,7 @@
     <File Path="Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md" />
     <File Path="Documentation/Technical documentation/29-dll-and-nuget-delivery.md" />
     <File Path="Documentation/Technical documentation/30-dialog-catalog-and-recovery.md" />
+    <File Path="Documentation/Technical documentation/31-bounded-history.md" />
     <File Path="Documentation/Technical documentation/README.md" />
   </Folder>
   <Project Path="AgentBridge/agent-bridge.csproj" />

@@ -16,8 +16,22 @@ namespace AgentBridge.Persistence.EfCore.Reading;
 /// Это не транзакционный снимок; token требует атомарной проверки сценарием записи этапа 10.</remarks>
 public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
     ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate, SettingsRecordQueries settings,
-    DialogRetentionPolicy retention, DialogCatalogQueries? catalogQueries = null) : IDialogReader
+    DialogRetentionPolicy retention, DialogCatalogQueries? catalogQueries = null) : IBoundedDialogReader
 {
+    private readonly HistoryLoadBudget? _history;
+
+    /// <summary>Подключает frozen bounded policy ко всему persistence operation gate.</summary>
+    public DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
+        ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate,
+        SettingsRecordQueries settings, DialogRetentionPolicy retention, DialogCatalogQueries catalogQueries,
+        HistoryLoadBudget history) : this(dialogs, turns, items, steps, contexts, gate, settings, retention, catalogQueries)
+    {
+        _history = history;
+    }
+
+    /// <inheritdoc/>
+    public DialogHistoryLoadLimits LoadLimits => _history?.Limits ?? throw new InvalidOperationException("bounded_history_policy_required");
+
     /// <summary>Сохраняет прежнюю бинарную сигнатуру reader для legacy roots.</summary>
     public DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, ItemRecordQueries items,
         ModelStepRecordQueries steps, ContextRecordQueries contexts, PersistenceOperationGate gate,
@@ -26,11 +40,29 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
 
     /// <inheritdoc/>
     public Task<ServiceResult<DialogSnapshot>> ReadCatalogAsync(DialogCatalogAccess access, CancellationToken cancellationToken = default) =>
-        ReadCoreAsync(access.Access, access, cancellationToken);
+        ReadSafeAsync(access.Access, access, cancellationToken);
 
     /// <inheritdoc/>
     public Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default) =>
-        ReadCoreAsync(access, null, cancellationToken);
+        ReadSafeAsync(access, null, cancellationToken);
+
+    /// <summary>Превращает только library overflow в безопасный semantic outcome; cancellation/ошибки распространяются.</summary>
+    private async Task<ServiceResult<DialogSnapshot>> ReadSafeAsync(DialogAccess access, DialogCatalogAccess? catalogAccess,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await ReadCoreAsync(access, catalogAccess, cancellationToken);
+        }
+        catch (DialogHistoryLoadLimitException error)
+        {
+            return ServiceResult<DialogSnapshot>.Fail(error.Error);
+        }
+        catch (DialogHistoryLoadConflictException)
+        {
+            return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Conflict, "history_load_changed_during_query"));
+        }
+    }
 
     private async Task<ServiceResult<DialogSnapshot>> ReadCoreAsync(DialogAccess access, DialogCatalogAccess? catalogAccess,
         CancellationToken cancellationToken)
@@ -44,26 +76,49 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.NotFound, "Диалог не найден."));
         }
+
         if (!string.Equals(dialog.OwnerId, access.OwnerId.Value, StringComparison.Ordinal))
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.Forbidden, "Диалог принадлежит другому владельцу."));
         }
+
+        if (_history is not null && DialogWriteGuard.IsExpired(dialog, access.NowUtc, retention))
+        {
+            return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Expired, "dialog_expired"));
+        }
+
         DialogCatalogState? metadata = null;
         DialogContinuationState? continuation = null;
         List<DialogRecoveryOperationRecord> recovery = [];
         if (dialog.CatalogRegistered)
         {
             if (catalogAccess is null)
+            {
                 return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Forbidden, "catalog_profile_required"));
+            }
+
             if (DialogWriteGuard.IsExpired(dialog, access.NowUtc, retention))
+            {
                 return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Expired, "dialog_expired"));
-            if (catalogQueries is null) throw new InvalidOperationException("Catalog queries required.");
+            }
+
+            if (catalogQueries is null)
+            {
+                throw new InvalidOperationException("Catalog queries required.");
+            }
+
             DialogCatalogRecord registered = await catalogQueries.FindAsync(dialog.Id, cancellationToken) ??
                 throw new InvalidOperationException("Registered catalog missing.");
             if (!DialogCatalogStaging.Matches(registered, catalogAccess.Scope, catalogAccess.Profile))
+            {
                 return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Forbidden, "catalog_profile_or_scope_mismatch"));
+            }
+
             if (registered.Deleted || registered.IncarnationId != dialog.IncarnationId || registered.RootRevision != dialog.Revision)
+            {
                 return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Conflict, "catalog_revision_divergence"));
+            }
+
             metadata = DialogCatalogStaging.State(registered, access.NowUtc);
             continuation = DialogRuntimeState.Read(dialog).ToState(dialog);
             recovery = await catalogQueries.RecoveryHistoryAsync(dialog.Id, cancellationToken);
@@ -71,6 +126,8 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
 
         Guid incarnationId = dialog.IncarnationId;
         long revision = dialog.Revision;
+        bool catalogRegistered = dialog.CatalogRegistered;
+        DateTimeOffset storedExpiry = dialog.ExpiresAtUtc;
         string? runtimeJson = dialog.RuntimeJson;
         string ownerId = dialog.OwnerId;
         DateTimeOffset createdAtUtc = dialog.CreatedAtUtc;
@@ -87,26 +144,56 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.NotFound, "Диалог удалён во время чтения."));
         }
+
         if (!string.Equals(current.OwnerId, ownerId, StringComparison.Ordinal))
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.Forbidden, "Владелец диалога изменился во время чтения."));
         }
-        if (current.IncarnationId != incarnationId || current.Revision != revision || current.RuntimeJson != runtimeJson)
+
+        if (current.IncarnationId != incarnationId || current.Revision != revision || current.RuntimeJson != runtimeJson ||
+            current.CreatedAtUtc != createdAtUtc || current.CatalogRegistered != catalogRegistered ||
+            current.ExpiresAtUtc != storedExpiry || current.ContentBytes != contentBytes)
         {
             return ServiceResult<DialogSnapshot>.Fail(new ServiceError(ServiceErrorType.Conflict, "Диалог изменился во время чтения."));
         }
+
         DialogModelSelection? currentSelection = (await settings.FindAsync(dialogId, cancellationToken))?.ToSelection();
         if ((currentSelection?.Version ?? 0) != (selection?.Version ?? 0))
+        {
             return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Conflict, "Настройки изменились во время чтения."));
+        }
+
+        if (catalogAccess is not null && catalogRegistered)
+        {
+            DialogCatalogRecord? currentCatalog = await catalogQueries!.FindAsync(dialogId, cancellationToken);
+            if (currentCatalog is null || currentCatalog.Deleted || currentCatalog.IncarnationId != incarnationId ||
+                currentCatalog.RootRevision != revision || metadata!.ProjectionRevision != currentCatalog.Revision)
+            {
+                return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Conflict, "catalog_changed_during_read"));
+            }
+
+            if (!DialogCatalogStaging.Matches(currentCatalog, catalogAccess.Scope, catalogAccess.Profile))
+            {
+                return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Forbidden, "catalog_profile_or_scope_mismatch"));
+            }
+
+            if (currentCatalog.ExpiresAtUtc <= access.NowUtc || DialogWriteGuard.IsExpired(current, access.NowUtc, retention))
+            {
+                return ServiceResult<DialogSnapshot>.Fail(new(ServiceErrorType.Expired, "dialog_expired"));
+            }
+        }
+
         HashSet<Guid> turnIds = turnRecords.Select(turn => turn.Id).ToHashSet();
         if (itemRecords.Any(item => !turnIds.Contains(item.TurnId)) || stepRecords.Any(step => !turnIds.Contains(step.TurnId)))
         {
             throw new InvalidOperationException("История содержит данные без родительского обращения.");
         }
+
         if (context is not null && context.Compaction.Status != ModelResponseStatus.Completed)
         {
             throw new InvalidOperationException("Принятый compact должен быть завершён.");
         }
+
         ILookup<Guid, CanonicalItemRecord> itemsByTurn = itemRecords.ToLookup(record => record.TurnId);
         ILookup<Guid, ModelStepRecord> stepsByTurn = stepRecords.ToLookup(record => record.TurnId);
         List<StoredDialogTurn> history = [];
@@ -117,12 +204,13 @@ public class DialogReader(DialogRecordQueries dialogs, TurnRecordQueries turns, 
                 stepsByTurn[turn.Id].Select(step => new StoredModelStep(step.Id, step.Response.ToModelResponse(),
                     ToolAttemptMapping.Read(step.ToolAttemptsJson))), TurnSettingsMapping.Read(turn.SettingsJson)));
         }
+
         StoredDialogContext? active = context is null ? null : new StoredDialogContext(context.Version,
             context.ThroughTurnSequence, context.Compaction.ToModelResponse(), context.SelectedModel, context.RecoveryRevision);
         DialogWriteToken token = new(access.DialogId, incarnationId, revision);
         return ServiceResult<DialogSnapshot>.Ok(new DialogSnapshot(token, DialogOwnerId.From(ownerId),
             createdAtUtc, expiresAtUtc, contentBytes, history, active, selection, metadata, continuation,
-            dialog.CatalogRegistered ? DialogRecoveryContextMapping.Apply(history, recovery) : null));
+            catalogRegistered ? DialogRecoveryContextMapping.Apply(history, recovery) : null));
     }
 
     /// <summary>Копирует полный канонический item независимо от срока жизни документа.</summary>

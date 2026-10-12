@@ -1,5 +1,7 @@
 # Проверка поставки DLL
 
+- BoundedHistoryRegistration.cs — SQL Server compile-only actual B03 sample: explicit policy/IBoundedDialogReader/RunBoundedAsync. Не исполнять методы и не объявлять source-linked compile доказательством полного kit. Новый kit проверять через external binary consumer без ProjectReference, exact/RID/lock guards и fresh hashes; scripts требуют отдельного разрешения пользователя текущей задачи.
+
 - Для одного multi-RID dll-nuget bundle собственные DLL/XML всех RID обязаны совпадать по SHA256. Fresh SDK Builds используют отдельный ArtifactsPath каждого variant, общий ArtifactsPivots=release и PathMap=<absolute variant build root>=/_/delivery-build как в Prepare-DeliveryTests.ps1. Иначе CodeView/generated source paths меняют hashes; исправлять build inputs, не копировать DLL между kits и не ослаблять mixed guard.
 
 - Assemble-NuGetDelivery.ps1 создаёт из проверенных стандартных SDK-комплектов одного провайдера schema3 dll-nuget: только 10 собственных DLL/XML, переносимые References и exact PackageReference для прямых зависимостей всех локальных библиотек. Остальные зависимости/native/resources разрешает NuGet приложения. Local DLL всех RID должны совпадать; mixed/hash/case/path failures отклоняются до создания destination. Скрипт запускается только после разрешения точной команды и не запускает DLL или restore.

@@ -1,5 +1,11 @@
 # Общее EF-хранилище
 
+## Bounded materialization
+
+- Opt-in HistoryLoadBudget/HistoryQueryGuard используют existing EFCoreLibrary base Query, scalar size preflight и server byte predicate/Take. Все семь query adapters используют общий gate budget, включая root/settings/catalog/recovery и internal state loaders. Не заменять supplied adapters custom SQL/DbContext или host projection после full load.
+- Limits считаются за gate operation, включая повторные metadata reads; payload bounds не являются DB scan/work, exact CLR heap или whole-run lifetime cap. Full snapshot либо safe overflow/conflict, без truncation/refill/retry. Новые mapped variable properties требуют SQL size expression; unsupported columns fail-fast.
+- B03 reader проверяет retention до children и повторяет root/settings/catalog/profile/tombstone/expiry checks перед disclosure. Legacy constructors/API сохраняют ABI, но сами не гарантируют bounded load. SQL registration/policy — provider module; actual limits/errors/границы — Technical documentation/31-bounded-history.md.
+
 - Configuration API требует explicit Provider/ConnectionString из выбранного root/section с обычным provider precedence; programmatic omission тоже отклоняется. Standard Binder ограждён SafeOptionsBindingExtensions ядра: malformed/overflow выдаёт только path/code, без исходного secret или Binder inner exception. Optional maintenance не регистрирует backup options до явного подключения; existing SQLite/PostgreSQL/SQL Server conditional backup12 сохраняется без I/O и собственного loader/options store.
 
 ## Settings этапа21
@@ -16,7 +22,7 @@
 
 ## Ответственность и границы
 
-- SQL Server использует EF provider10.0.12/SqlClient6.1.6 и existing EFCoreLibrary SqlServer maintenance module. Backup.SqlServerBackupDirectory — обязательный серверный absolute path независимо от ОС app host; локальный BackupDirectory его не заменяет. Retention обязателен/app-owned. EngineEdition2/3/4 и ConnectRetryCount=0/direct endpoint ограничения берутся из actual library; Azure SQL/MI/Synapse/EngineARM64 не обещать.
+- SQL Server использует EF provider10.0.12/SqlClient7.0.2 и existing EFCoreLibrary SqlServer maintenance module. Backup.SqlServerBackupDirectory — обязательный серверный absolute path независимо от ОС app host; локальный BackupDirectory его не заменяет. Retention обязателен/app-owned. EngineEdition2/3/4 и ConnectRetryCount=0/direct endpoint ограничения берутся из actual library; Azure SQL/MI/Synapse/EngineARM64 не обещать.
 - ProviderModelMapping изменяет только типы и trusted check expressions SQL Server: nvarchar(max), bracket identifiers, DATALENGTH nonempty. OrdinalOwnerConverter сохраняет varbinary(max) из точных UTF-16 code units, включая unpaired surrogates/trailing spaces, без нормализации/MaxLength. UTC bigint, six-table composite FK/cascade graph, root/settings CAS остаются общими. Metadata/parameter/query translation не доказывают SQL equality/constraints/atomicity; actual17 отдельно.
 
 - Проект `AgentBridge.Persistence.EfCore.csproj` зависит от `AgentBridge/agent-bridge.csproj` и реализует его узкие порты хранения. Ядро не ссылается на хранилище; зависимости от codex-lb здесь нет.
@@ -49,7 +55,7 @@
 
 ## Адаптеры этапа 09
 
-- `Repositories/*RecordQueries` используют base ById только для глобального dialog ID; turn/step predicates включают всех родителей. Сортировка Sequence/Version и expiry/ID задаётся через base include до take; custom query не нужен. Reads по умолчанию no-tracking, tracking для root/turn допускается только внутри короткого сценария записи.
+- `Repositories/*RecordQueries` legacy путь использует base ById только для глобального dialog ID; turn/step predicates включают всех родителей. B03 использует existing base Query для SQL size projection/predicate/Take; сортировка и parent predicates сохраняются до materialization. Reads по умолчанию no-tracking, tracking для root/turn допускается только внутри короткого сценария записи.
 - `RecordStaging<TEntity>` делегирует одиночные и пакетные create/update/delete базовым контрактам. Методы возвращают void и не вызывают SaveChanges/transactions. Это инфраструктурная адаптация DTO, не Application repository port или UoW. Не использовать её для будущих row mutations в обход Domain: этап 10 координирует проверки/доменные операции и общий scope.
 - `Reading/DialogReader` проверяет owner ordinal до детей, фиксирует primitive owner/incarnation/revision/metadata и повторно читает root после последовательных base reads. Изменение owner/жизни/версии или удаление возвращает отказ без snapshot и без retry. Orphan items/steps и незавершённый принятый compact отклоняются явно; история не отбрасывается по prefix. Это защита чтения, не транзакционный снимок или atomic write guard.
 - Текущая scoped DialogRetentionPolicy применяется в reader, write guard, Domain loader и атомарном удалении ко всем CreatedAtUtc. Null период отключает expiry/автоматическое удаление; кандидаты читаются через base predicate по CreatedAtUtc <= now-period, сортировка CreatedAtUtc/Id до take. Расписание принадлежит приложению; удаление каскадно охватывает все шесть таблиц.

@@ -154,6 +154,7 @@ internal class HostingFixture
     internal class RootRepository : IContextGetItemByIdRepository<DialogRecord, Guid, AgentBridgeContextKey>, IAsyncDisposable
     {
         private readonly HostingFixture fixture;
+        private readonly DateTimeOffset _nowUtc = DateTimeOffset.UtcNow;
         internal int Reads;
         internal bool Disposed;
 
@@ -166,8 +167,12 @@ internal class HostingFixture
         {
             Reads++;
             ct.ThrowIfCancellationRequested();
-            if (fixture.ReadFailure is { } error) throw error;
-            DateTimeOffset now = DateTimeOffset.UtcNow;
+            if (fixture.ReadFailure is { } error)
+            {
+                throw error;
+            }
+
+            DateTimeOffset now = _nowUtc;
             return Task.FromResult<DialogRecord?>(new()
             {
                 Id = id, OwnerId = fixture.Call.OwnerId.Value, IncarnationId = fixture.Call.DialogId.Value,

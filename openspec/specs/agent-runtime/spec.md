@@ -1984,6 +1984,22 @@ Recovery MUST проверять owner/incarnation/root/recovery revision/epoch 
 - **THEN** поздняя команда получает Conflict/NotFound без второй mutation
 - **AND** same operation ID/payload читает durable result без повторного handler/verifier; altered payload отклоняется.
 
+### Requirement: Явная bounded history materialization
+
+Opt-in SQL Server history policy MUST задавать явные record/record-byte/query limits без defaults. Supplied reader и внутренние runner/write/lifecycle/recovery/compact loaders MUST применять scalar preflight и server payload predicate/Take до full materialization всех необходимых canonical/provenance rows. Overflow MUST возвращать safe refusal без truncated model history, изменения read state, automatic retry/refill/replay или implicit нового диалога. Strict runner MUST требовать registered capability до history/providers/model и сохранять actual full payload budget guard, authorization/root/profile/retention/tombstone/CAS/incarnation/fencing и function-pair/recovery semantics. Policy MUST документировать per-operation payload bounds отдельно от CLR heap, server scan/work и SQL/provider acceptance.
+
+#### Scenario: Existing oversized history
+
+- **WHEN** размер строк либо их число превосходит явно заданную policy
+- **THEN** preflight ограничен scalar rows и payload этой query не загружается
+- **AND** reader не выдаёт partial snapshot, canonical state остаётся неизменным, runner не делает replay/new chat.
+
+#### Scenario: Payload изменился после preflight
+
+- **WHEN** записи выросли между scalar и payload queries
+- **THEN** payload сохраняет server byte/count bounds и mismatch возвращает conflict
+- **AND** final root/profile checks не раскрывают изменившуюся историю; retry/refill отсутствуют.
+
 ### Requirement: Unknown storage outcome не разрешает continuation
 
 Unknown commit/finalize/read MUST NOT превращаться в успешный Ready или invented rollback. RecoveryId lookup/compact continuation read в новом scope MUST определять durable storage факт. ContextBuilder/compactor MUST учитывать readiness/recovery revision, не скрывать unresolved calls и не применять старое compact окно поверх новой recovery. После Ready новый вопрос MUST использовать тот же DialogId, новый explicit TurnId и новый provider context; existing TurnId MUST NOT replay.

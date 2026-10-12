@@ -4,6 +4,7 @@
 
 | План | Статус | Содержание |
 | --- | --- | --- |
+| [B03 Bounded History](<B03 Bounded History/README.md>) | Completed в isolated library/DLL delivery границе; Ledger03/SQL/runtime/production отдельно | Actual SQL Server policy/reader/runner, полный новый kit, fresh binary evidence и передача Ledger03 |
 | [Каталог диалогов и recovery для Ledger 01A](<Assistant Dialog Capabilities/README.md>) | Возобновлено 11.10.2026; библиотечная source реализация проверяется отдельно от SQL/runtime и Ledger acceptance | [API](<../Technical documentation/30-dialog-catalog-and-recovery.md>) и [Evidence](<Assistant Dialog Capabilities/Evidence.md>); checkpoint паузы сохранён как историческое состояние |
 | [Первоначальная реализация AgentBridge](<AgentBridge Initial Implementation/README.md>) | Реализация 00–25 завершена в документированных границах; итоговый локальный commit c8da604. OpenSpec validation не выполнена, changes не архивированы | Исторические этапы и доказательства; отчёты не переписываются |
 | [Аудит качества AgentBridge](<AgentBridge Quality Audit/README.md>) | Статический проход 00–15 завершён с ограничениями; общий аудит A/B/C/D частичный | Результаты исследования без исправлений; [реестр ABQA-001–010](<AgentBridge Quality Audit/Findings.md>) |

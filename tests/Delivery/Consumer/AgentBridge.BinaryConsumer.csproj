@@ -12,5 +12,6 @@
   <Import Project="$(AgentBridgeDeliveryRoot)/AgentBridge.Delivery.props" />
   <ItemGroup Condition="'$(AgentBridgeDeliveryProvider)' != 'SqlServer'">
     <Compile Remove="SqlServerRegistration.cs" />
+    <Compile Remove="BoundedHistoryRegistration.cs" />
   </ItemGroup>
 </Project>

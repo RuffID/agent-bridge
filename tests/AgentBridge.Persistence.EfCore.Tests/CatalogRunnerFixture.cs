@@ -33,6 +33,7 @@ internal class CatalogRunnerFixture : IAsyncDisposable
         services.AddSingleton(this);
         services.AddSingleton<TimeProvider>(Storage.Time);
         services.AddSingleton<IDialogReader, Reader>();
+        services.AddSingleton<IBoundedDialogReader>(provider => (IBoundedDialogReader)provider.GetRequiredService<IDialogReader>());
         services.AddSingleton(Storage.Writer);
         services.AddSingleton(Storage.Attempts);
         services.AddSingleton(Storage.ContextWriter);
@@ -55,21 +56,23 @@ internal class CatalogRunnerFixture : IAsyncDisposable
         Services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }
 
-    public async Task<AgentRunResult> RunAsync(DialogWriteToken token, Guid turnId, CancellationToken ct)
+    public async Task<AgentRunResult> RunAsync(DialogWriteToken token, Guid turnId, CancellationToken ct, bool bounded = false)
     {
         await using AsyncServiceScope scope = Services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<AgentRunner>().RunAsync(new(
+        AgentRunRequest request = new(
             new(token.DialogId, CatalogWriteFixture.SCOPE.OwnerId, turnId, "agent"),
             [CatalogWriteFixture.Question("Новый вопрос")], [TOOL.Name], new(8, 8, 1, TimeSpan.FromSeconds(2)),
-            new DialogRunOptions(CatalogWriteFixture.SCOPE, CatalogWriteFixture.PROFILE, TimeSpan.FromMinutes(1))),
-            cancellationToken: ct);
+            new DialogRunOptions(CatalogWriteFixture.SCOPE, CatalogWriteFixture.PROFILE, TimeSpan.FromMinutes(1)));
+        AgentRunner runner = scope.ServiceProvider.GetRequiredService<AgentRunner>();
+        return bounded ? await runner.RunBoundedAsync(request, cancellationToken: ct) : await runner.RunAsync(request, cancellationToken: ct);
     }
 
     public ValueTask DisposeAsync() => Services.DisposeAsync();
 
     /// <inheritdoc/>
-    private class Reader(CatalogRunnerFixture fixture) : IDialogReader
+    private class Reader(CatalogRunnerFixture fixture) : IBoundedDialogReader
     {
+        public DialogHistoryLoadLimits LoadLimits => ((IBoundedDialogReader)fixture.Storage.Reader).LoadLimits;
         public Task<ServiceResult<DialogSnapshot>> ReadAsync(DialogAccess access, CancellationToken cancellationToken = default)
         {
             fixture.Storage.Reload();

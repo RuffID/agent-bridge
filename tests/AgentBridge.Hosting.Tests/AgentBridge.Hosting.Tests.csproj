@@ -17,6 +17,7 @@
     <ProjectReference Include="../../adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.SqlServer/AgentBridge.Persistence.SqlServer.csproj" />
     <Compile Include="../AgentBridge.Persistence.EfCore.Tests/FakeBaseRepository.cs" Link="Infrastructure/FakeBaseRepository.cs" />
+    <Compile Include="../AgentBridge.Persistence.EfCore.Tests/FakeHistoryQueryRepository.cs" Link="Infrastructure/FakeHistoryQueryRepository.cs" />
     <Compile Include="../AgentBridge.Persistence.EfCore.Tests/FakeSettingsByIdRepository.cs" Link="Infrastructure/FakeSettingsByIdRepository.cs" />
   </ItemGroup>
 </Project>

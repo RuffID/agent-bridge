@@ -1,5 +1,7 @@
 # Сценарные write UoW
 
+- B03 bounded query policy входит в PersistenceOperationGate и защищает internal state loaders lifecycle/turn/tool/context/recovery/metadata paths. Budget начинается один раз на operation и заканчивается с lease, не сбрасывается на query. Overflow before save проходит обычный rollback/cleanup; Unknown/cleanup poisoning сохраняется. Не увеличивать лимиты/не перечитывать state ради обхода отказа и не превращать read policy в неатомарный hard write cap.
+
 - DialogCatalogCreationUnitOfWork фиксирует root/immutable scope/profile/policy/empty index/feed одной transaction. DialogCatalogStaging вызывается внутри canonical writes до commit; ошибка projector отменяет весь write, не требует callback после runner. Все queries/staging идут через EFCoreLibrary base API.
 - DialogLifecycleUnitOfWork выполняет atomic Begin/input/settings/lease, renew, Finalize, fence и append-only recovery. Registered root legacy writes запрещены; LoadRunAsync требует exact live lease/epoch либо явную internal catalogControl границу. Старая LoadAsync/constructor ABI сохраняется только для legacy semantics.
 - Lease deadline выдаёт TimeProvider; expired lease остаётся Active до fence. ExpiredLease проверяет persisted deadline; ConfirmedQuiescence требует trusted host verifier. Fence повышает epoch, но не устанавливает исход handler и не переписывает original terminal. Поздний writer отклоняется даже с совпавшим root token.

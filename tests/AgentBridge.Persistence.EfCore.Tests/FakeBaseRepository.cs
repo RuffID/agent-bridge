@@ -5,11 +5,18 @@ namespace AgentBridge.Persistence.EfCore.Tests;
 
 /// <summary>Изолированная заглушка точных base API: чтение LINQ в памяти, staging отдельно от исходных строк.</summary>
 internal class FakeBaseRepository<TEntity> :
+    IContextQueryRepository<TEntity, AgentBridgeContextKey>,
     IContextGetItemByPredicateRepository<TEntity, AgentBridgeContextKey>,
     IContextCreateItemRepository<TEntity, AgentBridgeContextKey>,
     IContextUpdateItemRepository<TEntity, AgentBridgeContextKey>,
     IContextDeleteItemRepository<TEntity, AgentBridgeContextKey> where TEntity : class
 {
+    private FakeHistoryQueryRepository<TEntity>? _historyQuery;
+    public FakeHistoryQueryRepository<TEntity> HistoryQuery => _historyQuery ??= new(Records);
+
+    /// <inheritdoc/>
+    public IQueryable<TEntity> Query(bool asNoTracking = false) => HistoryQuery.Query(asNoTracking);
+
     public List<TEntity> Records { get; } = [];
     public List<TEntity> Created { get; } = [];
     public List<TEntity> Updated { get; } = [];

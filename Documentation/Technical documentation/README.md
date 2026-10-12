@@ -4,6 +4,7 @@
 
 | Раздел | Содержание |
 | --- | --- |
+| [Bounded history B03](31-bounded-history.md) | Явная SQL Server operation policy, scalar preflight/payload bounds, strict reader/runner, safe overflow и границы проверки |
 | [Каталог диалогов и durable recovery](30-dialog-catalog-and-recovery.md) | Actual bounded metadata/feed API, epoch-aware runner writes, append-only effective context, trusted evidence и отдельная приёмка Ledger |
 | [Архитектура](01-architecture.md) | Фактические проекты, направления ссылок, DLL и обязанности существующих типов и контрактов |
 | [EFCoreLibrary](02-efcorelibrary.md) | Актуальный API, persistence DTO, scoped DI, base read/staging adapters и границы непроверенной БД |

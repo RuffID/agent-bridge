@@ -38,6 +38,12 @@ internal class CatalogWriteFixture
     public IExpiredDialogDeletion ExpiryDeletion { get; }
     public IDialogReader Reader { get; }
     public FakeBaseRepository<DialogCatalogRecord> CatalogQueries => _catalog.Repository;
+    public FakeBaseRepository<DialogRecord> RootRows => _roots.Repository;
+    public FakeBaseRepository<DialogTurnRecord> TurnRows => _turns.Repository;
+    public FakeBaseRepository<CanonicalItemRecord> ItemRows => _items.Repository;
+    public FakeBaseRepository<ModelStepRecord> StepRows => _steps.Repository;
+    public FakeBaseRepository<DialogContextRecord> ContextRows => _contexts.Repository;
+    public FakeBaseRepository<DialogRecoveryOperationRecord> OperationRows => _operations.Repository;
     public FakeBaseRepository<DialogCatalogChangeRecord> FeedQueries => _changes.Repository;
     public int CanonicalReads => _items.Repository.ReadCalls;
     public Action? BeforeSave { get; set; }
@@ -56,7 +62,7 @@ internal class CatalogWriteFixture
     private readonly Store<DialogRecoveryOperationRecord> _operations;
 
     public CatalogWriteFixture(Database? committed = null, IDialogRecoveryEvidenceResolver? evidenceResolver = null,
-        IDialogRunQuiescenceVerifier? quiescenceVerifier = null)
+        IDialogRunQuiescenceVerifier? quiescenceVerifier = null, DialogHistoryLoadLimits? loadLimits = null)
     {
         Committed = committed ?? new();
         _roots = new(Committed.Roots, row => row.Id.ToString());
@@ -69,14 +75,25 @@ internal class CatalogWriteFixture
         _clock = new(Committed.Clocks, row => row.Id);
         _changes = new(Committed.Changes, row => $"{row.ScopeKey}/{row.Sequence}");
         _operations = new(Committed.Operations, row => $"{row.DialogId}/{row.Id}");
+        HistoryLoadBudget? budget = loadLimits is null ? null : new(loadLimits);
+        HistoryQueryGuard? history = budget is null ? null : new(budget, new Persistence.SqlServer.SqlServerHistoryRecordSizeProvider());
+        Gate = budget is null ? new() : new(budget);
         DialogRetentionPolicy retention = new(new() { RetentionPeriod = TimeSpan.FromDays(1) });
         UnitOfWorkScope scope = new(Session, Gate);
-        DialogRecordQueries roots = new(new FakeDialogByIdRepository(_roots.Repository), _roots.Repository, retention);
-        TurnRecordQueries turnQueries = new(_turns.Repository);
+        DialogRecordQueries roots = history is null ? new(new FakeDialogByIdRepository(_roots.Repository), _roots.Repository, retention) :
+            new(new FakeDialogByIdRepository(_roots.Repository), _roots.Repository, retention, history, _roots.Repository);
+        TurnRecordQueries turnQueries = history is null ? new(_turns.Repository) : new(_turns.Repository, history, _turns.Repository);
+        ItemRecordQueries itemQueries = history is null ? new(_items.Repository) : new(_items.Repository, history, _items.Repository);
+        ModelStepRecordQueries stepQueries = history is null ? new(_steps.Repository) : new(_steps.Repository, history, _steps.Repository);
+        ContextRecordQueries contextQueries = history is null ? new(_contexts.Repository) : new(_contexts.Repository, history, _contexts.Repository);
+        SettingsRecordQueries settingsQueries = history is null ? new(new FakeSettingsByIdRepository(_settings.Repository)) :
+            new(new FakeSettingsByIdRepository(_settings.Repository), history, _settings.Repository);
         DialogWriteGuard guard = new(roots, retention);
-        DialogStateLoader loader = new(turnQueries, new(_contexts.Repository), retention);
-        TurnContentStaging content = new(new(_items.Repository), new(_steps.Repository), _items.Staging(), _steps.Staging());
-        DialogCatalogQueries queries = new(_catalog.Repository, _clock.Repository, _changes.Repository, _operations.Repository);
+        DialogStateLoader loader = new(turnQueries, contextQueries, retention);
+        TurnContentStaging content = new(itemQueries, stepQueries, _items.Staging(), _steps.Staging());
+        DialogCatalogQueries queries = history is null ? new(_catalog.Repository, _clock.Repository, _changes.Repository, _operations.Repository) :
+            new(_catalog.Repository, _clock.Repository, _changes.Repository, _operations.Repository, history,
+                _catalog.Repository, _clock.Repository, _changes.Repository, _operations.Repository);
         DialogCatalogStaging staging = new(queries, _catalog.Staging(), _clock.Staging(), _changes.Staging(), [Projection]);
         Creator = new DialogCatalogCreationUnitOfWork(scope, roots, queries, _roots.Staging(), staging);
         DialogCatalogReader reader = new(queries, roots, Gate);
@@ -88,14 +105,15 @@ internal class CatalogWriteFixture
         Lifecycle = lifecycle;
         Recovery = lifecycle;
         Writer = new DialogTurnUnitOfWork(scope, guard, loader, content, _roots.Staging(), _turns.Staging(), turnQueries, staging);
-        Attempts = new DialogToolAttemptUnitOfWork(scope, guard, loader, new(_steps.Repository), content,
+        Attempts = new DialogToolAttemptUnitOfWork(scope, guard, loader, stepQueries, content,
             _steps.Staging(), _roots.Staging(), staging);
         ContextWriter = new DialogContextUnitOfWork(scope, guard, loader, _roots.Staging(), _contexts.Staging(), staging);
         DialogDeletionUnitOfWork deletion = new(scope, guard, roots, _roots.Staging(), retention, staging);
         Deletion = deletion;
         ExpiryDeletion = deletion;
-        Reader = new DialogReader(roots, turnQueries, new(_items.Repository), new(_steps.Repository), new(_contexts.Repository),
-            Gate, new(new FakeSettingsByIdRepository(_settings.Repository)), retention, queries);
+        Reader = budget is null ? new DialogReader(roots, turnQueries, itemQueries, stepQueries, contextQueries,
+            Gate, settingsQueries, retention, queries) : new DialogReader(roots, turnQueries, itemQueries, stepQueries, contextQueries,
+                Gate, settingsQueries, retention, queries, budget);
         Dictionary<Guid, DialogRecord> initial = [];
         Dictionary<string, long> clocks = [];
         Session.OnBegin = () =>

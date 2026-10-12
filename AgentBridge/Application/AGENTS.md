@@ -1,5 +1,10 @@
 # Application
 
+## Bounded history
+
+- DialogHistoryLoadLimits задаёт явные immutable operation limits без defaults; IBoundedDialogReader сохраняет full snapshot semantics и LoadLimits. RunBoundedAsync требует capability до reader/providers/model и использует actual runner/context/executor/full budget guard. Legacy entry point не объявлять bounded без supplied persistence policy.
+- Overflow = existing Rejected/history_load_limit_exceeded; typed internal overflow допускает честную finalization, но не invented TerminalSaved/Ready при её отказе. Cancellation/Unknown/cleanup и no-replay/recovery/fencing не обходить. Public schema/error enum не расширять ради этого outcome. Actual API/границы — Technical documentation/31-bounded-history.md.
+
 ## Зарегистрированный каталог и durable recovery
 
 - Catalog-registered roots используют immutable owner/site/agent/profile/policy. Legacy Create не регистрирует каталог и не импортирует историю. Host выполняет актуальную авторизацию перед UI/history/model; scope/profile не задаются browser/model. Реализованные API и границы — Technical documentation/30-dialog-catalog-and-recovery.md.

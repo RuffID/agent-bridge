@@ -1,10 +1,21 @@
+using AgentBridge.Persistence.EfCore.Reading;
+
 namespace AgentBridge.Persistence.EfCore.UnitOfWork;
 
 /// <summary>Общий scoped gate для read/write ports; отклоняет параллельное использование и неизвестный исход cleanup.</summary>
 public class PersistenceOperationGate
 {
+    private readonly HistoryLoadBudget? _history;
     private int _active;
     private bool _poisoned;
+
+    /// <summary>Сохраняет legacy gate без политики bounded materialization.</summary>
+    public PersistenceOperationGate()
+    {
+    }
+
+    /// <summary>Связывает явную scoped политику со всеми read/write операциями этого контекста.</summary>
+    public PersistenceOperationGate(HistoryLoadBudget history) => _history = history;
 
     /// <summary>Занимает контекст без очереди и повторов; вызывающий обязан освободить lease.</summary>
     public IDisposable Enter()
@@ -13,11 +24,14 @@ public class PersistenceOperationGate
         {
             throw new InvalidOperationException("Один persistence scope нельзя использовать параллельно или вложенно.");
         }
+
         if (_poisoned)
         {
             Volatile.Write(ref _active, 0);
             throw new InvalidOperationException("Исход предыдущей операции неизвестен; необходим новый persistence scope.");
         }
+
+        _history?.Begin();
         return new Lease(this);
     }
 
@@ -34,6 +48,7 @@ public class PersistenceOperationGate
             PersistenceOperationGate? current = Interlocked.Exchange(ref _owner, null);
             if (current is not null)
             {
+                current._history?.End();
                 Volatile.Write(ref current._active, 0);
             }
         }

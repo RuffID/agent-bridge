@@ -19,7 +19,18 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
     IOptionsSnapshot<ContextCompactionOptions> compactionOptions, ContextModelGuard compatibility)
 {
     /// <summary>Передаёт предварительные updates и возвращает явный итог, без автоматического восстановления действий.</summary>
-    public async Task<AgentRunResult> RunAsync(AgentRunRequest request,
+    public Task<AgentRunResult> RunAsync(AgentRunRequest request,
+        Func<ModelStreamUpdate, CancellationToken, ValueTask>? onUpdate = null, CancellationToken cancellationToken = default) =>
+        RunCoreAsync(request, false, onUpdate, cancellationToken);
+
+    /// <summary>Требует registered bounded reader до истории/providers/model; полный budget guard и lifecycle сохранены.</summary>
+    /// <remarks>Политика задаётся явно при регистрации persistence generation. Overflow не запускает replay или новый чат.</remarks>
+    public Task<AgentRunResult> RunBoundedAsync(AgentRunRequest request,
+        Func<ModelStreamUpdate, CancellationToken, ValueTask>? onUpdate = null, CancellationToken cancellationToken = default) =>
+        RunCoreAsync(request, true, onUpdate, cancellationToken);
+
+    /// <summary>Общая actual оркестрация; bounded entry point не копирует runner или executor.</summary>
+    private async Task<AgentRunResult> RunCoreAsync(AgentRunRequest request, bool requireBoundedHistory,
         Func<ModelStreamUpdate, CancellationToken, ValueTask>? onUpdate = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -68,9 +79,9 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
 
             ServiceResult<DialogSnapshot> read = await AgentRunScope.ExecuteAsync(scopes,
                 provider => request.RunOptions is { } run ?
-                    provider.GetRequiredService<IDialogReader>().ReadCatalogAsync(new DialogCatalogAccess(
+                    Reader(provider).ReadCatalogAsync(new DialogCatalogAccess(
                         new(request.Call.DialogId, request.Call.OwnerId, time.GetUtcNow()), run.Scope, run.Profile), cancellationToken) :
-                    provider.GetRequiredService<IDialogReader>().ReadAsync(
+                    Reader(provider).ReadAsync(
                         new DialogAccess(request.Call.DialogId, request.Call.OwnerId, time.GetUtcNow()), cancellationToken),
                 cleanup => scopeCleanupFailure = cleanup);
             if (!read.Success)
@@ -324,6 +335,18 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                 }
             }
         }
+        catch (DialogHistoryLoadLimitException overflow) when (scopeCleanupFailure is null)
+        {
+            try
+            {
+                return await FinishAsync(AgentRunStatus.Failed, overflow.Error);
+            }
+            catch (DialogHistoryLoadLimitException)
+            {
+                // Finalization тоже ограничена; отсутствие terminal save не выдаётся за Ready.
+                return Report(AgentRunStatus.Failed, overflow.Error);
+            }
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && scopeCleanupFailure is null)
         {
             return await FinishAsync(AgentRunStatus.Canceled);
@@ -351,6 +374,18 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
         finally
         {
             session?.Dispose();
+        }
+
+        IDialogReader Reader(IServiceProvider provider)
+        {
+            if (!requireBoundedHistory)
+            {
+                return provider.GetRequiredService<IDialogReader>();
+            }
+
+            IBoundedDialogReader bounded = provider.GetRequiredService<IBoundedDialogReader>();
+            _ = bounded.LoadLimits;
+            return bounded;
         }
 
         AgentRunResult Report(AgentRunStatus status, ServiceError? error = null, bool saved = false) =>
