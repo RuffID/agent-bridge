@@ -17,32 +17,36 @@ public class NuGetDeliveryTests
     [InlineData("linux-arm64")]
     public void SqlServerDeliveryUsesLedgerTargetGraph(string rid)
     {
+        // Arrange
         string root = Path.Combine(Root(), "SqlServer");
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "delivery.manifest.json")));
         Dictionary<string, string> required = manifest.RootElement.GetProperty("requiredPackages").EnumerateArray()
             .ToDictionary(item => item.GetProperty("id").GetString()!, item => item.GetProperty("version").GetString()!, StringComparer.Ordinal);
 
-        Assert.Equal("7.0.2", required["Microsoft.Data.SqlClient"]);
+        // Act
+        JsonElement kit = Assert.Single(manifest.RootElement.GetProperty("sourceKits").EnumerateArray(), item => item.GetProperty("rid").GetString() == rid);
+        Dictionary<string, string> packages = kit.GetProperty("packages").EnumerateArray()
+            .ToDictionary(item => item.GetProperty("id").GetString()!, item => item.GetProperty("version").GetString()!, StringComparer.Ordinal);
+
+        // Assert
+        Assert.Equal("7.1.1", required["Microsoft.Data.SqlClient"]);
         foreach (string name in new[] { "Microsoft.EntityFrameworkCore", "Microsoft.EntityFrameworkCore.Relational", "Microsoft.EntityFrameworkCore.SqlServer",
             "Microsoft.Extensions.DependencyInjection.Abstractions", "Microsoft.Extensions.Logging", "Microsoft.Extensions.Logging.Abstractions",
             "Microsoft.Extensions.Options.ConfigurationExtensions", "Microsoft.Bcl.Memory" })
         {
-            Assert.Equal("10.0.12", required[name]);
+            Assert.Equal("10.0.14", required[name]);
         }
 
-        JsonElement kit = Assert.Single(manifest.RootElement.GetProperty("sourceKits").EnumerateArray(), item => item.GetProperty("rid").GetString() == rid);
-        Dictionary<string, string> packages = kit.GetProperty("packages").EnumerateArray()
-            .ToDictionary(item => item.GetProperty("id").GetString()!, item => item.GetProperty("version").GetString()!, StringComparer.Ordinal);
         foreach (string name in packages.Keys.Where(name => name.StartsWith("Microsoft.IdentityModel.", StringComparison.Ordinal) || name == "System.IdentityModel.Tokens.Jwt"))
         {
             Assert.Equal("8.16.0", packages[name]);
         }
 
-        Assert.Equal("7.0.2", packages["Microsoft.Data.SqlClient.Extensions.Abstractions"]);
-        Assert.Equal("7.0.2", packages["Microsoft.Data.SqlClient.Internal.Logging"]);
+        Assert.Equal("7.1.1", packages["Microsoft.Data.SqlClient.Extensions.Abstractions"]);
+        Assert.Equal("7.1.1", packages["Microsoft.Data.SqlClient.Internal.Logging"]);
         if (rid == "win-x64")
         {
-            Assert.Equal("6.0.2", packages["Microsoft.Data.SqlClient.SNI.runtime"]);
+            Assert.Equal("7.1.0", packages["Microsoft.Data.SqlClient.SNI.runtime"]);
         }
         else
         {

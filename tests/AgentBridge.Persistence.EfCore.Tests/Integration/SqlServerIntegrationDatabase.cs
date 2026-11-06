@@ -43,7 +43,7 @@ public class SqlServerIntegrationDatabase : IAsyncDisposable
         {
             options.SqlServerBackupDirectory = settings.ServerBackupDirectory;
             options.BackupRetentionPeriod = TimeSpan.FromDays(1);
-        }, MaintenanceExecutionMode.SingleInitializer);
+        });
         customize?.Invoke(services);
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }

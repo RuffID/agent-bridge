@@ -12,17 +12,16 @@
     <AgentBridgeDeliveryTestsRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../../artifacts/delivery-tests'))</AgentBridgeDeliveryTestsRoot>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
-    <PackageReference Include="xunit.v3" Version="4.0.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.9.0" />
   </ItemGroup>
   <ItemGroup>
     <AssemblyMetadata Include="AgentBridgeDeliveryTestsRoot" Value="$(AgentBridgeDeliveryTestsRoot)" />
   </ItemGroup>
-  <Target Name="PrepareAgentBridgeDeliveryTests" BeforeTargets="BeforeCompile"
-          Condition="'$(DesignTimeBuild)' != 'true' and '$(AgentBridgeSkipDeliveryPreparation)' != 'true'">
+  <Target Name="PrepareAgentBridgeDeliveryTests" BeforeTargets="BeforeCompile" Condition="'$(DesignTimeBuild)' != 'true' and '$(AgentBridgeSkipDeliveryPreparation)' != 'true'">
     <Exec Command="pwsh -NoLogo -NoProfile -File &quot;$(MSBuildProjectDirectory)/../Build/Prepare-DeliveryTests.ps1&quot;" />
   </Target>
 </Project>

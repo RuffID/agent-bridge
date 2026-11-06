@@ -30,6 +30,6 @@ internal class SqlServerDatabaseProvider : IAgentBridgeDatabaseProvider
         IDatabaseCommands commands = services.GetRequiredService<IDatabaseCommands>();
 
         return new SqlServerMaintenanceProvider<AgentBridgeContextKey>(migrations, commands,
-            new SqlServerMaintenanceOptions(backup.SqlServerBackupDirectory!));
+            new SqlServerMaintenanceOptions(backup.SqlServerBackupDirectory!, "AgentBridge"));
     }
 }

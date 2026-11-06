@@ -1,5 +1,9 @@
 # Контекст проекта AgentBridge
 
+## Обновление EFCoreLibrary 0.0.9
+
+Регистрация обслуживания теперь вызывается без аргумента режима: `services.AddAgentBridgeDatabaseMaintenance(backup);`. Прежний enum удалён из зависимости; приложения удаляют его аргумент и пересобираются. Единственного исполнителя, остановку writes/DDL/других экземпляров по-прежнему обеспечивает приложение. SQL Server использует имя проекта `AgentBridge` для имени резервной копии; каталог и retention задаёт приложение. [Требования](spec.md), [текущий API](../../../Documentation/Technical%20documentation/06-database-maintenance.md).
+
 ## Руководство потребителя и завершение00–25
 
 Вход для внедрения — [руководство25](../../../Documentation/Technical%20documentation/25-usage-guide.md), проверяемые исходники — tests/Delivery/Consumer. Примеры DI/options, keys, tools, создания/run, model selection, status и bounded cleanup скомпилированы вне репозиториев с обоими DLL-комплектами24, без project/package references; методы не исполнялись. Приложение предоставляет авторизацию owner/agent, secret store, ordered providers, scoped бизнес-данные, logging и управляемый HttpClient без retry/смены ключа.

@@ -206,7 +206,7 @@ public class SqlServerProviderTests
         {
             options.SqlServerBackupDirectory = destination;
             options.BackupRetentionPeriod = TimeSpan.FromDays(7);
-        }, MaintenanceExecutionMode.SingleInitializer);
+        });
         return services;
     }
 }

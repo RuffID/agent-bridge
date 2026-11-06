@@ -36,7 +36,7 @@ public static class BinaryContractProbe
         services.AddAgentBridgeRunner();
         services.AddAgentBridgeSettings();
         services.AddAgentBridgeDialogCleanup();
-        return services.AddAgentBridgeDatabaseMaintenance(backup, MaintenanceExecutionMode.SingleInitializer);
+        return services.AddAgentBridgeDatabaseMaintenance(backup);
     }
 
     /// <summary>Проверяет прямую доступность типов ядра, адаптера, EFCoreLibrary и HttpClientLibrary.</summary>

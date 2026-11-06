@@ -114,7 +114,7 @@ public class IntegrationDatabase : IAsyncDisposable
                 options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(10);
             }
             backup?.Invoke(options);
-        }, MaintenanceExecutionMode.SingleInitializer);
+        });
         customize?.Invoke(services);
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }

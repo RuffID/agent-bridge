@@ -28,6 +28,7 @@ public class BinaryCompatibilityTests
     [Fact]
     public void SqlServerMaintenanceAndRepositoriesShareClosedScopedContext()
     {
+        // Arrange
         ServiceCollection services = new();
         services.AddAgentBridgeSqlServer();
         services.AddDatabaseConfiguration(options =>
@@ -40,8 +41,9 @@ public class BinaryCompatibilityTests
         {
             options.SqlServerBackupDirectory = "/server/backups";
             options.BackupRetentionPeriod = TimeSpan.FromDays(30);
-        }, MaintenanceExecutionMode.SingleInitializer);
+        });
 
+        // Act
         using ServiceProvider root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         root.GetRequiredService<IStartupValidator>().Validate();
         using IServiceScope first = root.CreateScope();
@@ -51,10 +53,11 @@ public class BinaryCompatibilityTests
         IUnitOfWorkContext<AgentBridgeContextKey> uow = first.ServiceProvider.GetRequiredService<IUnitOfWorkContext<AgentBridgeContextKey>>();
         IDatabaseMaintenance<AgentBridgeContextKey> maintenance = first.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
 
+        // Assert
         Assert.Equal("Microsoft.EntityFrameworkCore.SqlServer", context.Database.ProviderName);
         Assert.IsType<SqlConnection>(context.Database.GetDbConnection());
         Assert.Equal(new Version(7, 0, 0, 0), typeof(SqlConnection).Assembly.GetName().Version);
-        Assert.Equal(new Version(10, 0, 12, 0), typeof(DbContext).Assembly.GetName().Version);
+        Assert.Equal(new Version(10, 0, 14, 0), typeof(DbContext).Assembly.GetName().Version);
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
         Assert.Same(context.Database, adapter.Database);
         Assert.Same(context.Database, uow.Database);
@@ -66,16 +69,26 @@ public class BinaryCompatibilityTests
         Assert.NotNull(first.ServiceProvider.GetRequiredService<IContextGetItemByPredicateRepository<DialogRecord, AgentBridgeContextKey>>());
         Assert.NotNull(first.ServiceProvider.GetRequiredService<IContextDeleteItemRepository<DialogRecord, AgentBridgeContextKey>>());
 
+        // Arrange
         DialogRecord record = new() { Id = Guid.NewGuid(), OwnerId = "owner", CreatedAtUtc = DateTimeOffset.UtcNow };
+
+        // Act
         first.ServiceProvider.GetRequiredService<IContextCreateItemRepository<DialogRecord, AgentBridgeContextKey>>().Create(record);
 
+        // Assert
         Assert.Equal(EntityState.Added, context.Entry(record).State);
         Assert.Same(context.Set<DialogRecord>().AsQueryable().Provider, first.ServiceProvider.GetRequiredService<IContextQueryRepository<DialogRecord, AgentBridgeContextKey>>().Query().Provider);
+
+        // Act
         uow.ClearChangeTracker();
 
+        // Assert
         Assert.Empty(context.ChangeTracker.Entries());
+
+        // Act
         first.ServiceProvider.GetRequiredService<IContextUpdateItemRepository<DialogRecord, AgentBridgeContextKey>>().Update(record);
 
+        // Assert
         Assert.Equal(EntityState.Modified, context.Entry(record).State);
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
     }

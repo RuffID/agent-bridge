@@ -19,7 +19,7 @@ public static class SqlServerRegistration
         services.AddDatabaseConfiguration(configuration.GetSection("Database"));
         services.AddAgentBridgeSqlServer();
         services.AddAgentBridgePersistence();
-        services.AddAgentBridgeDatabaseMaintenance(configuration.GetSection("Backup"), MaintenanceExecutionMode.SingleInitializer);
+        services.AddAgentBridgeDatabaseMaintenance(configuration.GetSection("Backup"));
         return services;
     }
 }

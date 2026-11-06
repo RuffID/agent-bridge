@@ -36,14 +36,14 @@ AgentBridge использует тот же функциональный пор
 
 Исторически на этапе 00 в Abstractions/EfCore/Extensions отсутствовал check/backup/migrate-сервис. Теперь он находится отдельно в `maintenance/`; `DatabaseFacade` используется общим EF adapter для migrations зарегистрированного контекста. [Проект AquaByte-Ledger Infrastructure](../../../work/AquaByte-Ledger/AquaByteLedger.Infrastructure/AquaByteLedger.Infrastructure.csproj) использует `net10.0`, EF Core/Relational/SqlServer `10.0.11`, SqlClient `7.0.2` и EFCoreLibrary DLL из libs; это не подтверждает бинарную совместимость ранее собранных DLL. Их замена и проверка поставки остаётся последующим этапам.
 
-Регистрация выбранного модуля: `AddEfCoreSqliteMaintenance<TKey>(SqliteMaintenanceOptions, SingleInitializer)`, `AddEfCorePostgreSqlMaintenance<TKey>(DumpOptions, SingleInitializer)`, аналогично `.SqlServer`/`.MySql`. Namespace enum — `EFCoreLibrary.Maintenance.Models.MaintenanceExecutionMode`. Options неизменяемые; provider и coordinator scoped, gate/process recovery singleton, без захвата scoped EF context. DI ничего не запускает. Реальные примеры и зависимости: [README EFCoreLibrary](../../../work/EFCoreLibrary/README.md#опциональное-обслуживание-реляционных-бд).
+Регистрация выбранного модуля в EFCoreLibrary 0.0.9: `AddEfCoreSqliteMaintenance<TKey>(SqliteMaintenanceOptions)`, `AddEfCorePostgreSqlMaintenance<TKey>(DumpOptions)`, аналогично `.SqlServer`/`.MySql`. Enum режима удалён; единственного исполнителя обеспечивает приложение. Options неизменяемые; provider и coordinator scoped, gate/process recovery singleton, без захвата scoped EF context. DI ничего не запускает. Реальные примеры и зависимости: [README EFCoreLibrary](../../../work/EFCoreLibrary/README.md#опциональное-обслуживание-реляционных-бд).
 
 В версии `0.0.5` namespace соответствуют папкам исходников:
 
 | Типы и операции | Namespace | Актуальные исходники |
 | --- | --- | --- |
 | Maintenance/provider/migration/command/process/recovery интерфейсы | `EFCoreLibrary.Maintenance.Abstractions` | [IDatabaseMaintenance.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Abstractions/IDatabaseMaintenance.cs) |
-| Результаты, capabilities, receipts, artifacts, process-модели и enum | `EFCoreLibrary.Maintenance.Models` | [MaintenanceExecutionMode.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Models/MaintenanceExecutionMode.cs) |
+| Результаты, capabilities, receipts, artifacts и process-модели | `EFCoreLibrary.Maintenance.Models` | [DatabaseBackupReceipt.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Models/DatabaseBackupReceipt.cs) |
 | Безопасные ошибки | `EFCoreLibrary.Maintenance.Errors` | [MaintenanceException.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Errors/MaintenanceException.cs) |
 | DumpOptions | `EFCoreLibrary.Maintenance.Options` | [DumpOptions.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Options/DumpOptions.cs) |
 | Coordinator, budget и gate | `EFCoreLibrary.Maintenance.Coordination` | [DatabaseMaintenance.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Coordination/DatabaseMaintenance.cs) |
@@ -104,7 +104,7 @@ Backup является отдельной копией данных. Удале
 
 ## Подключение AgentBridge этапа 12
 
-`DatabaseMaintenanceRegistrationExtensions.AddAgentBridgeDatabaseMaintenance` находится в `AgentBridge.Persistence.EfCore.Configuration`. Две перегрузки принимают непосредственно раздел `IConfiguration` либо `Action<DatabaseBackupOptions>` и обязательный `MaintenanceExecutionMode`. Метод вызывается после `AddDatabaseConfiguration` и `AddAgentBridgePersistence`. Он не вызывает обслуживание и не меняет прежнюю persistence-регистрацию.
+`DatabaseMaintenanceRegistrationExtensions.AddAgentBridgeDatabaseMaintenance` находится в `AgentBridge.Persistence.EfCore.Configuration`. Две перегрузки принимают непосредственно раздел `IConfiguration` либо `Action<DatabaseBackupOptions>` без аргумента режима. При переходе на EFCoreLibrary 0.0.9 потребитель удаляет старый аргумент режима и пересобирается. Единственного исполнителя обеспечивает приложение; singleton gate внутри процесса сохраняется. SQL Server получает имя проекта `AgentBridge` для формирования имени backup-файла. Метод вызывается после `AddDatabaseConfiguration` и `AddAgentBridgePersistence`. Он не вызывает обслуживание и не меняет прежнюю persistence-регистрацию.
 
 Внутри регистрируется `AddRelationalMaintenance<AgentBridgeContextKey>` EFCoreLibrary. Scoped factory выбирает **библиотечный** SqliteMaintenanceProvider/PostgreSqlMaintenanceProvider по валидированному DatabaseOptions и переводит backup options в неизменяемые SqliteMaintenanceOptions/DumpOptions. Общий singleton SingleInitializerGate не захватывает контекст; provider, coordinator и EfMigrationOperations scoped, используют тот же `IAppDbContext<AgentBridgeContextKey>`. Второй coordinator, собственный SQL/backup/native/process wrapper не добавлены. Модули SQL Server/MySQL не входят в graph AgentBridge.
 
@@ -135,7 +135,7 @@ services.AddDatabaseConfiguration(configuration.GetSection("AgentBridge:Database
 services.AddAgentBridgeSqlServer(); // для выбранного Database.Provider=SqlServer
 services.AddAgentBridgePersistence();
 services.AddAgentBridgeDatabaseMaintenance(
-    configuration.GetSection("AgentBridge:Backup"), MaintenanceExecutionMode.SingleInitializer);
+    configuration.GetSection("AgentBridge:Backup"));
 
 // После остановки других экземпляров, writes и DDL приложение выделяет scope.
 // provider — уже построенный контейнер приложения, без автоматического host.

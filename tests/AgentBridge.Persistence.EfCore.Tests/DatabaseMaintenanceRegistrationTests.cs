@@ -59,14 +59,19 @@ public class DatabaseMaintenanceRegistrationTests
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(SingleInitializerGate));
     }
 
-    /// <summary>Неподдержанный режим отклоняется до изменения DI.</summary>
+    /// <summary>Отсутствующая настройка backup отклоняется до изменения DI.</summary>
     [Fact]
-    public void ExecutionModeMustBeExplicit()
+    public void BackupConfigurationMustBeProvided()
     {
+        // Arrange
         ServiceCollection services = new();
-        MaintenanceException error = Assert.Throws<MaintenanceException>(() => services.AddAgentBridgeDatabaseMaintenance(Configure,
-            (MaintenanceExecutionMode)123));
-        Assert.Equal(MaintenanceError.Configuration, error.Code);
+
+        // Act
+        ArgumentNullException error = Assert.Throws<ArgumentNullException>(() =>
+            services.AddAgentBridgeDatabaseMaintenance((Action<DatabaseBackupOptions>)null!));
+
+        // Assert
+        Assert.Equal("configure", error.ParamName);
         Assert.Empty(services);
     }
 
@@ -136,6 +141,7 @@ public class DatabaseMaintenanceRegistrationTests
     [Fact]
     public void ConfigurationBindingUsesExplicitSection()
     {
+        // Arrange
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Backup:BackupDirectory"] = Path.GetFullPath("never-created-backups"),
@@ -143,11 +149,19 @@ public class DatabaseMaintenanceRegistrationTests
         }).Build();
         ServiceCollection services = new();
         services.AddTestDatabaseProviders();
-        services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.SQLite; options.ConnectionString = "Data Source=never-open.db"; });
+        services.AddDatabaseConfiguration(options =>
+        {
+            options.Provider = DatabaseProvider.SQLite;
+            options.ConnectionString = "Data Source=never-open.db";
+        });
         services.AddAgentBridgePersistence();
-        services.AddAgentBridgeDatabaseMaintenance(configuration.GetSection("Backup"), MaintenanceExecutionMode.SingleInitializer);
+
+        // Act
+        services.AddAgentBridgeDatabaseMaintenance(configuration.GetSection("Backup"));
         using ServiceProvider root = services.BuildServiceProvider();
         root.GetRequiredService<IStartupValidator>().Validate();
+
+        // Assert
         Assert.Equal(TimeSpan.FromDays(30), root.GetRequiredService<IOptions<DatabaseBackupOptions>>().Value.BackupRetentionPeriod);
     }
 
@@ -166,20 +180,35 @@ public class DatabaseMaintenanceRegistrationTests
     {
         foreach (string? value in new string?[] { null, "", " " })
         {
-            IConfigurationRoot config = BackupConfiguration(); config[field] = value;
+            // Arrange
+            IConfigurationRoot config = BackupConfiguration();
+            config[field] = value;
             ServiceCollection services = new();
             services.AddTestDatabaseProviders();
             services.Configure<DatabaseBackupOptions>(options =>
             {
-                options.BackupDirectory = Path.GetFullPath("prior-backups"); options.SqlServerBackupDirectory = "/prior-backups";
-                options.BackupRetentionPeriod = TimeSpan.FromDays(30); options.PostgreSqlDumpExecutablePath = Path.GetFullPath("prior-pg-dump");
-                options.PostgreSqlServerMajorVersion = 17; options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(5);
+                options.BackupDirectory = Path.GetFullPath("prior-backups");
+                options.SqlServerBackupDirectory = "/prior-backups";
+                options.BackupRetentionPeriod = TimeSpan.FromDays(30);
+                options.PostgreSqlDumpExecutablePath = Path.GetFullPath("prior-pg-dump");
+                options.PostgreSqlServerMajorVersion = 17;
+                options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(5);
             });
-            services.AddDatabaseConfiguration(options => { options.Provider = selected; options.ConnectionString = "Password=synthetic-secret"; });
-            services.AddAgentBridgeDatabaseMaintenance(config, MaintenanceExecutionMode.SingleInitializer);
+            services.AddDatabaseConfiguration(options =>
+            {
+                options.Provider = selected;
+                options.ConnectionString = "Password=synthetic-secret";
+            });
+
+            // Act
+            services.AddAgentBridgeDatabaseMaintenance(config);
             using ServiceProvider provider = services.BuildServiceProvider();
             OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
-            Assert.Contains("Backup." + field, error.ToString()); Assert.DoesNotContain("synthetic-secret", error.ToString()); Assert.Null(error.InnerException);
+
+            // Assert
+            Assert.Contains("Backup." + field, error.ToString());
+            Assert.DoesNotContain("synthetic-secret", error.ToString());
+            Assert.Null(error.InnerException);
         }
     }
 
@@ -191,13 +220,26 @@ public class DatabaseMaintenanceRegistrationTests
     [InlineData("PostgreSqlCleanupTimeout", "synthetic-secret")]
     public void MaintenanceBindingErrorsAreSafe(string field, string value)
     {
-        IConfigurationRoot config = BackupConfiguration(); config[field] = value;
-        ServiceCollection services = new(); services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = "Password=synthetic-secret"; });
+        // Arrange
+        IConfigurationRoot config = BackupConfiguration();
+        config[field] = value;
+        ServiceCollection services = new();
+        services.AddDatabaseConfiguration(options =>
+        {
+            options.Provider = DatabaseProvider.PostgreSql;
+            options.ConnectionString = "Password=synthetic-secret";
+        });
         services.AddTestDatabaseProviders();
-        services.AddAgentBridgeDatabaseMaintenance(config, MaintenanceExecutionMode.SingleInitializer);
+
+        // Act
+        services.AddAgentBridgeDatabaseMaintenance(config);
         using ServiceProvider provider = services.BuildServiceProvider();
         OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
-        Assert.Contains("Backup." + field, error.ToString()); Assert.DoesNotContain(value, error.ToString()); Assert.Null(error.InnerException);
+
+        // Assert
+        Assert.Contains("Backup." + field, error.ToString());
+        Assert.DoesNotContain(value, error.ToString());
+        Assert.Null(error.InnerException);
     }
 
     /// <summary>Значения принадлежат тесту; пути никогда не открываются и процессы не запускаются.</summary>
@@ -216,11 +258,22 @@ public class DatabaseMaintenanceRegistrationTests
         services.AddDatabaseConfiguration(options =>
         {
             options.Provider = provider;
-            options.ConnectionString = provider == DatabaseProvider.SQLite ? "Data Source=never-open.db"
-                : "Host=127.0.0.1;Port=5432;Database=synthetic;Username=synthetic;Password=synthetic;SSL Mode=Disable";
+            if (provider == DatabaseProvider.SQLite)
+            {
+                options.ConnectionString = "Data Source=never-open.db";
+            }
+            else
+            {
+                options.ConnectionString = "Host=127.0.0.1;Port=5432;Database=synthetic;Username=synthetic;Password=synthetic;SSL Mode=Disable";
+            }
         });
         services.AddAgentBridgePersistence();
-        services.AddAgentBridgeDatabaseMaintenance(options => { Configure(options); change?.Invoke(options); }, MaintenanceExecutionMode.SingleInitializer);
+        services.AddAgentBridgeDatabaseMaintenance(options =>
+        {
+            Configure(options);
+            change?.Invoke(options);
+        });
+
         return services;
     }
 

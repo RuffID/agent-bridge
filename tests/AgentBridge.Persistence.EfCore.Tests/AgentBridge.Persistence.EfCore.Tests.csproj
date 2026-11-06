@@ -17,13 +17,14 @@
     <Compile Include="../Delivery/Consumer/AccountSummaryTool.cs" Link="Consumer/AccountSummaryTool.cs" />
     <Compile Include="../Delivery/Consumer/AccountSummaryValidator.cs" Link="Consumer/AccountSummaryValidator.cs" />
     <Compile Include="../Delivery/Consumer/IAccountSummarySource.cs" Link="Consumer/IAccountSummarySource.cs" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
-    <PackageReference Include="xunit.v3" Version="4.0.1" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" PrivateAssets="all" />
-    <PackageReference Include="Testcontainers.PostgreSql" Version="4.14.0" />
-    <PackageReference Include="Testcontainers.MsSql" Version="4.14.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" PrivateAssets="all" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageReference Include="Testcontainers.MsSql" Version="4.16.0" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Sqlite/AgentBridge.Persistence.Sqlite.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.PostgreSql/AgentBridge.Persistence.PostgreSql.csproj" />

@@ -12,6 +12,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../AgentBridge.Persistence.Sqlite/AgentBridge.Persistence.Sqlite.csproj" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" PrivateAssets="all" />
   </ItemGroup>
 </Project>
