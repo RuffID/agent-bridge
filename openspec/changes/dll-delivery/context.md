@@ -16,6 +16,6 @@ XML копируется без ручного изменения. Metadata/XML-
 
 ## Передача
 
-Точные команды, manifest и фактические результаты фиксируются в [плане24](<../../../Documentation/Plans/AgentBridge Initial Implementation/24-dll-delivery.md>). Руководство полного сценария использования и закрытие плана относятся к25.
+Точные команды, manifest и фактические результаты фиксируются в плане24 (история Git). Руководство полного сценария использования и закрытие плана относятся к25.
 
 Подготовлены два комплекта по39 managed DLL/35 XML/1 native asset; оба внешних compile-only потребителя собраны без warnings/errors.8 metadata/XML tests passed,0 failed/skipped. EFCoreLibrary CRUD XML исходный проект не генерирует; SQLitePCLRaw также не предоставляет XML. Изменять read-only библиотеки для выдуманного заполнения описаний не потребовалось. OpenSpec CLI отсутствует; change не архивирован. Этап24 принят координатором после независимой проверки code/docs, manifest24, обоих payload manifests, TRX8/0/0 и receipts206=39kit+167framework. Разрешён локальный English Conventional Commit ровно24 файлов manifest с parent7e9d533d80393bd85b08e1b17567038e12ec8a16. Full hash — в git log и итоговом ответе;25 продолжит отдельный исполнитель координатора.

@@ -4,7 +4,7 @@
 
 Tokenizer разбивает текст на элементы словаря модели — токены — и позволяет посчитать их число. Токен может быть словом, частью слова, знаком пунктуации или частью числа. Количество символов и слов не определяет точное количество токенов.
 
-Этап17 реализует `AgentBridge.Tokenization.ContextTokenCounter : IContextTokenCounter` через стабильную `Microsoft.ML.Tokenizers 2.0.0` с embedded `Microsoft.ML.Tokenizers.Data.O200kBase/Cl100kBase 2.0.0`. Native .NET BPE работает без сети. Прямой `Microsoft.Bcl.Memory 10.0.4` исправляет уязвимую транзитивную9.0.4 data packages ([advisory](https://github.com/advisories/GHSA-73j8-2gch-69rq)); первоначальный restore warning и результаты записаны в [этапе17](<../Plans/AgentBridge Initial Implementation/17-model-tokenizer.md>).
+Этап17 реализует `AgentBridge.Tokenization.ContextTokenCounter : IContextTokenCounter` через стабильную `Microsoft.ML.Tokenizers 2.0.0` с embedded `Microsoft.ML.Tokenizers.Data.O200kBase/Cl100kBase 2.0.0`. Native .NET BPE работает без сети. Прямой `Microsoft.Bcl.Memory 10.0.4` исправляет уязвимую транзитивную9.0.4 data packages ([advisory](https://github.com/advisories/GHSA-73j8-2gch-69rq)); первоначальный restore warning и результаты записаны в этапе17 (история Git).
 
 AgentBridge использует tokenizer, соответствующий известной кодировке выбранной модели, через `IContextTokenCounter`. Подсчёт учитывает сериализуемые инструкции, сообщения, описания инструментов и текстовые результаты. Для модели без проверенного соответствия кодировки нельзя выдавать произвольный tokenizer за точный счётчик.
 
@@ -214,7 +214,7 @@ observation.Complete();
 
 ### Проверенная граница и ограничения
 
-18 новых изолированных проверок через DI/diagnostics проверяют структуру, длительность, корреляцию, отсутствие секретов в state/тексте/Exception, фильтры и фабрику приложения, раздельную отмену, повторное завершение и реальные события Serilog provider с sink в памяти. Вместе с прежними проверками настроек прошли 36 тестов ядра. Команды и результаты: [этап 03](<../Plans/AgentBridge Initial Implementation/03-serilog-integration.md>).
+18 новых изолированных проверок через DI/diagnostics проверяют структуру, длительность, корреляцию, отсутствие секретов в state/тексте/Exception, фильтры и фабрику приложения, раздельную отмену, повторное завершение и реальные события Serilog provider с sink в памяти. Вместе с прежними проверками настроек прошли 36 тестов ядра. Команды и результаты: этап 03 (история Git).
 
 За свои ambient scopes, enrichers и журналы других компонентов отвечает приложение: события AgentBridge не очищают сторонний pipeline. Здесь нет режима вывода содержимого и фиктивных интеграций агента. AgentRunner, HTTP, хранилище и тестирование их реальных операций не реализованы на этапе 03.
 

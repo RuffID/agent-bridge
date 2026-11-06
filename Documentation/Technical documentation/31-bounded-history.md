@@ -2,7 +2,7 @@
 
 ## Фактический public API
 
-Реализован opt-in SQL Server контракт и подготовлен/проверен в isolated binary/delivery границе [полный kit](<../Plans/B03 Bounded History/README.md>), manifest SHA-256 `fd66709eb625acc138b90ed5da1834bf0a988bb10258630ef43ecb4a84dac633`. Это отдельная capability поверх существующего compact catalogue/recovery01A; Ledger03/SQL/runtime/production acceptance остаются отдельными.
+Реализован opt-in SQL Server контракт и подготовлен/проверен в isolated binary/delivery границе полный kit (история Git), manifest SHA-256 `fd66709eb625acc138b90ed5da1834bf0a988bb10258630ef43ecb4a84dac633`. Это отдельная capability поверх существующего compact catalogue/recovery01A; Ledger03/SQL/runtime/production acceptance остаются отдельными.
 
 - `DialogHistoryLoadLimits(int maxRecords, long maxRecordBytes, int maxQueries)` в `AgentBridge.Application.Models`: положительные явные значения, immutable properties, проверка переполнения произведения. Рабочих defaults нет.
 - `IBoundedDialogReader : IDialogReader` в `AgentBridge.Application.Ports`: `LoadLimits`; actual inherited `ReadAsync(DialogAccess, CancellationToken)` и `ReadCatalogAsync(DialogCatalogAccess, CancellationToken)` возвращают полный `ServiceResult<DialogSnapshot>` либо безопасный отказ.
@@ -52,4 +52,4 @@ Host выбирает фиксированный safe HTTP/stream outcome: raw l
 
 ## Совместимость и поставка
 
-Schema/migrations/package roots/locks не изменены. ServiceErrorType enum не расширен: stored response constraint0–8 сохраняется. EF Core10.0.12, SqlClient7.0.2 и required roots остаются exact; RID/lock validation штатных props сохраняется. Новые DLL/XML не подменяют Ledger kit до отдельной приёмки. SQL/provider/restart/native/live/production acceptance не выводится из isolated tests. Fresh статус/evidence и следующий остаток — [B03](<../Plans/B03 Bounded History/README.md>).
+Schema/migrations/package roots/locks не изменены. ServiceErrorType enum не расширен: stored response constraint0–8 сохраняется. EF Core10.0.12, SqlClient7.0.2 и required roots остаются exact; RID/lock validation штатных props сохраняется. Новые DLL/XML не подменяют Ledger kit до отдельной приёмки. SQL/provider/restart/native/live/production acceptance не выводится из isolated tests. Fresh статус/evidence и следующий остаток — B03 (история Git).

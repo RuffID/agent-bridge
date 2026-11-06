@@ -32,4 +32,4 @@
 
 Исторические примеры проверены компиляцией, а отдельные сценарии — на SQLite/PostgreSQL. Это не подтверждает runtime/native загрузку комплекта в любом приложении, SQL Server/MySQL или живой codex-lb. Подставные HTTP-ответы подтверждают обработку заданного протокола, а не поведение реального сервера.
 
-[Навигация](README.md) · [Ограничения проверки](<../Plans/AgentBridge Quality Audit/Baseline.md>) · [Техническое подключение](<../Technical documentation/25-usage-guide.md>) · [Требования](../../openspec/specs/agent-runtime/spec.md)
+[Навигация](README.md) · Ограничения проверки (история Git) · [Техническое подключение](<../Technical documentation/25-usage-guide.md>) · [Требования](../../openspec/specs/agent-runtime/spec.md)

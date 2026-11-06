@@ -96,7 +96,7 @@ services.AddAgentBridgePersistence();
 
 `AddAgentBridgePersistence` регистрирует scoped `AgentBridgeDbContext`, точный `AddEfCoreContext<AgentBridgeDbContext, AgentBridgeContextKey>` и `AddEfCoreBaseRepositories<AgentBridgeContextKey>`. Ошибки обязательных options проверяются до выбора provider; fallback в SQLite отсутствует. SensitiveDataLogging выключен. Контекст не открывает БД при регистрации/разрешении metadata. На этапе 08 Application ports/UoW/migrations/startup не регистрировались; этап 09 добавляет только read ports и adapters, описанные ниже.
 
-Проверены metadata обоих providers, составные ключи/FK/каскады/checks, UTC converter, сериализация полного payload и scoped DI: **34 passed / 0 failed / 0 skipped**, 25 новых тестов; production и test builds — 0 warnings/errors. Это не проверка relational enforcement, restart на БД или атомарности. БД, SQL, migrations, backup/restore, hosting и внешние процессы — **«Пропущено по указанию пользователя»**. OpenSpec CLI отсутствует в PATH, CLI validation не выполнялась. [Точные команды и файлы](<../Plans/AgentBridge Initial Implementation/08-persistence-models.md>).
+Проверены metadata обоих providers, составные ключи/FK/каскады/checks, UTC converter, сериализация полного payload и scoped DI: **34 passed / 0 failed / 0 skipped**, 25 новых тестов; production и test builds — 0 warnings/errors. Это не проверка relational enforcement, restart на БД или атомарности. БД, SQL, migrations, backup/restore, hosting и внешние процессы — **«Пропущено по указанию пользователя»**. OpenSpec CLI отсутствует в PATH, CLI validation не выполнялась. Точные команды и файлы (история Git).
 
 ## Адаптеры этапа 09
 
@@ -127,7 +127,7 @@ ServiceResult<DialogSnapshot> result = await reader.ReadAsync(
 
 Истёкший диалог до physical delete читается владельцем; это не разрешение продолжения. Повторная root-проверка не является транзакционным snapshot. `RecordStaging<TEntity>` предназначен только инфраструктуре сценария после Domain/guards, не возвращает готовый успех write port. Saving/transactions/atomic guards/Domain rehydration и реализации `IDialogCreator`/writers/deletions остаются этапу 10, не зарегистрированы. Cleanup orchestration остаётся этапу 22.
 
-Проверки: **71 passed / 0 failed / 0 skipped**, 37 новых; production/test builds **0 warnings/errors**. Base fakes доказывают делегирование, фильтры/порядок, full snapshot mapping и управляемые delete/recreate/revision interleavings, но не provider translation, relational enforcement, atomicity или restart. **Пропущено по указанию пользователя:** все БД/SQL/реальные интеграции/hosting/migrations/backup/процессы. CLI validation не выполнена: OpenSpec отсутствует в PATH; change не архивирован. [Точные команды, изменённые файлы и ограничения](<../Plans/AgentBridge Initial Implementation/09-base-repository-adapters.md>).
+Проверки: **71 passed / 0 failed / 0 skipped**, 37 новых; production/test builds **0 warnings/errors**. Base fakes доказывают делегирование, фильтры/порядок, full snapshot mapping и управляемые delete/recreate/revision interleavings, но не provider translation, relational enforcement, atomicity или restart. **Пропущено по указанию пользователя:** все БД/SQL/реальные интеграции/hosting/migrations/backup/процессы. CLI validation не выполнена: OpenSpec отсутствует в PATH; change не архивирован. Точные команды, изменённые файлы и ограничения (история Git).
 
 ## Источники
 

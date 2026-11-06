@@ -1,6 +1,6 @@
 # Сценарные Unit of Work
 
-Статус: **Реализован и принят; запрещённые проверки пропущены**. Требования: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). [Результаты и точные команды этапа 10](<../Plans/AgentBridge Initial Implementation/10-scenario-unit-of-work.md>).
+Статус: **Реализован и принят; запрещённые проверки пропущены**. Требования: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Результаты и точные команды этапа 10 (история Git).
 
 ## Фактические границы
 
@@ -52,4 +52,4 @@ Expiry возвращает существующий `ServiceErrorType.Expired` 
 
 Прошли 107 тестов ядра (14 новых) и 108 persistence-тестов (37 новых); runner: 0 failed / 0 skipped. Fake committed/staged copies проверяют последовательности и partial failures, stale/concurrent root changes, reincarnation, payload и prefix. Actual `UpdateItemRepository` и настоящий EF tracker проверены без connection/SaveChanges: original guard values сохранены, новая revision current, immutable properties не modified.
 
-Evidence10 выше не доказывает actual relational atomicity, locking, SQL translation, FK-каскады или restart. Последующие actual SQLite/PostgreSQL проверки отдельно перечислены в [карте00–25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>); они не расширяют старый isolated набор. На этапе10 реальные БД, SQL, integrations, hosting и процессы **пропущены по указанию пользователя**. Migrations/startup и batch cleanup не реализованы этим этапом. OpenSpec CLI validation не выполнена; change не архивирован.
+Evidence10 выше не доказывает actual relational atomicity, locking, SQL translation, FK-каскады или restart. Последующие actual SQLite/PostgreSQL проверки отдельно перечислены в карте00–25 (история Git); они не расширяют старый isolated набор. На этапе10 реальные БД, SQL, integrations, hosting и процессы **пропущены по указанию пользователя**. Migrations/startup и batch cleanup не реализованы этим этапом. OpenSpec CLI validation не выполнена; change не архивирован.

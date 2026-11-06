@@ -1,6 +1,6 @@
 # JSON Responses, этап 14
 
-Статус: **Реализован, адресно проверен и принят координатором; локальный коммит разрешён**. OpenSpec CLI limitation принята как невыполненная проверка; change не архивирован. Нормы: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [change](../../openspec/changes/responses-json-adapter/proposal.md). [Команды, результаты и ограничения](<../Plans/AgentBridge Initial Implementation/14-responses-json-adapter.md>).
+Статус: **Реализован, адресно проверен и принят координатором; локальный коммит разрешён**. OpenSpec CLI limitation принята как невыполненная проверка; change не архивирован. Нормы: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [change](../../openspec/changes/responses-json-adapter/proposal.md). Команды, результаты и ограничения (история Git).
 
 ## Подключение и вызов
 
@@ -37,7 +37,7 @@ ModelRequest теперь принимает optional `ModelRequestParameters` �
 
 Неизвестный top-level параметр/override model/input/instructions/tools/stream/store/previous_response_id — Unsupported до HTTP; дубликат контроля, override reasoning.effort или неверная форма — Validation. Поддержка конкретных значений/вложенных контролей upstream не обещается по allowlist top-level; explicit серверный отказ возвращается без fallback. Envelope/continuation не входят в input. Будущий tokenizer должен учитывать весь prepared request, включая Parameters.
 
-Принятый Q-004 реализован общей проверкой NestedControlsValidator до HTTP: неверные типы и повторы summary, verbosity, format, format.type/name/strict/schema дают безопасный Validation. JSON и SSE используют один writer; compact использует ту же проверку reasoning и сохраняет отдельный allowlist без text. Nullable known поля допустимы, внешний reasoning/text по-прежнему требует object. Schema не ограничена object; её содержимое, неизвестные поля и их повторы не обходятся рекурсивно и сохраняются полностью, включая порядок. Tool_choice object не получает придуманную вложенную схему. Нормализация строк/enum не вводится. [Различающие проверки и ограничения этапа10](<../Plans/AgentBridge Audit Remediation/10-nested-controls-contract.md#результаты>) относятся к actual gateway/HttpClientLibrary с fake handler, не к deployed серверу и не повышают достоверность прежнего аудита.
+Принятый Q-004 реализован общей проверкой NestedControlsValidator до HTTP: неверные типы и повторы summary, verbosity, format, format.type/name/strict/schema дают безопасный Validation. JSON и SSE используют один writer; compact использует ту же проверку reasoning и сохраняет отдельный allowlist без text. Nullable known поля допустимы, внешний reasoning/text по-прежнему требует object. Schema не ограничена object; её содержимое, неизвестные поля и их повторы не обходятся рекурсивно и сохраняются полностью, включая порядок. Tool_choice object не получает придуманную вложенную схему. Нормализация строк/enum не вводится. Различающие проверки и ограничения этапа10 (история Git) относятся к actual gateway/HttpClientLibrary с fake handler, не к deployed серверу и не повышают достоверность прежнего аудита.
 
 ## Результат и отмена
 
@@ -45,7 +45,7 @@ Reader сохраняет output как отдельные независимы�
 
 GenerationTimeout ограничивает отправку и чтение; gateway owns deadline/linked CTS, HttpClientLibrary owns request/response/stream. До получения полного отчёта caller cancellation распространяется OCE с исходным caller token. После полного отчёта поздняя отмена возвращает Canceled с тем же output/envelope/continuation. Полученный explicit typed HTTP/model/JSON failure сохраняет приоритет. Caller приоритетнее deadline; только локальный deadline даёт Timeout. Неожиданные I/O и cancellation без подтверждённого источника распространяются, без retry.
 
-Согласованный [disposal06](<../Plans/AgentBridge Audit Remediation/06-http-disposal.md>) сохраняет исходный primary при ошибке освобождения JSON body/response. `Exception.Data["HttpClientLibrary.CleanupExceptions"]` содержит immutable secondary список; presence, включая empty standalone origin, исключает JSON/caller/deadline нормализацию в ServiceResult. Cleanup-only распространяется исходным объектом независимо типа/token. Повторный throw того же primary не создаёт self-reference. Exception/Data не являются безопасным UI/log payload; без cleanup failure правила результата/отмены выше сохраняются.
+Согласованный disposal06 (история Git) сохраняет исходный primary при ошибке освобождения JSON body/response. `Exception.Data["HttpClientLibrary.CleanupExceptions"]` содержит immutable secondary список; presence, включая empty standalone origin, исключает JSON/caller/deadline нормализацию в ServiceResult. Cleanup-only распространяется исходным объектом независимо типа/token. Повторный throw того же primary не создаёт self-reference. Exception/Data не являются безопасным UI/log payload; без cleanup failure правила результата/отмены выше сохраняются.
 
 ## Continuation
 

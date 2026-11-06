@@ -1,6 +1,6 @@
 # Поставка DLL для .NET10
 
-Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Текущий compile/metadata checkpoint — [Audit Remediation15](<../Plans/AgentBridge Audit Remediation/15-multiplatform-delivery.md#результаты>), 2026-10-06. Первоначальные [поставка24](<../Plans/AgentBridge Initial Implementation/24-dll-delivery.md>) и [consumer25](<../Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>) сохраняются как историческое evidence.
+Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Текущий compile/metadata checkpoint — Audit Remediation15 (история Git), 2026-10-06. Первоначальные поставка24 (история Git) и consumer25 (история Git) сохраняются как историческое evidence.
 
 С 2026-10-08 используется [разделение провайдеров и общая поставка](28-provider-modules-and-shared-delivery.md). Текущий комплект содержит шесть AgentBridge DLL, включая модуль выбранной БД; остальные драйверы отсутствуют. Таблица состава и результаты15 ниже описывают исторические комплекты до разделения, а не текущую поставку бота.
 

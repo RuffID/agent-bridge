@@ -56,4 +56,4 @@ ExpiredDialogCleanupResult result = await cleanup.CleanupAsync(100, cancellation
 
 Stale-revision case использует исторический NOW до expiry как контролируемую принятую мутацию между read и delete. Это проверяет отказ старому token, а не реальную запись после истечения. Реальные тесты используют управляемую local gateway response, actual AgentRunner и offline BPE; HTTP/server не запускаются. SQLite/PostgreSQL evidence не распространяется на SQL Server/MySQL. Backup/restore maintenance не повторялся без нового риска.
 
-Нормативный SSOT: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [контекст](../../openspec/specs/agent-runtime/context.md), [change22](../../openspec/changes/expired-dialog-cleanup/proposal.md). [Полный отчёт и команды22](<../Plans/AgentBridge Initial Implementation/22-expired-dialog-cleanup.md>).
+Нормативный SSOT: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [контекст](../../openspec/specs/agent-runtime/context.md), [change22](../../openspec/changes/expired-dialog-cleanup/proposal.md). Полный отчёт и команды22 (история Git).

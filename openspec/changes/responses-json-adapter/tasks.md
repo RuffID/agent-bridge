@@ -9,4 +9,4 @@
 
 Этап14 принят координатором по коду, документам и actual TRX257/0/0; локальный Conventional Commit ровно33 файлов manifest разрешён. Перед add проверить normal/staged diff, после add — staged diff/check и manifest. Следующие этапы не начинать.
 
-CLI отсутствует; validation не выполнена, limitation принята координатором, change не архивирован. [Полный отчёт](<../../../Documentation/Plans/AgentBridge Initial Implementation/14-responses-json-adapter.md>).
+CLI отсутствует; validation не выполнена, limitation принята координатором, change не архивирован. Полный отчёт (история Git).

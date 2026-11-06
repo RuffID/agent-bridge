@@ -8,6 +8,6 @@
 
 OpenSpec CLI не обнаружен через Get-Command. Не устанавливать; повторная проверка доступности и явный отчёт об отсутствии CLI validation обязательны. Не архивировать непроверенный change.
 
-Фактическая static проверка: main/delta requirement совпадают, manifest30 соответствует modified/untracked, strict UTF-8 без BOM/LF и254 локальные ссылки проходят, diff --check/index проверены. CLI validation не выполнена. Evidence: [отчёт22](../../../Documentation/Plans/AgentBridge%20Initial%20Implementation/22-expired-dialog-cleanup.md).
+Фактическая static проверка: main/delta requirement совпадают, manifest30 соответствует modified/untracked, strict UTF-8 без BOM/LF и254 локальные ссылки проходят, diff --check/index проверены. CLI validation не выполнена. Evidence: отчёт22 (история Git).
 
 Этап22 принят координатором; local commit ровно30 файлов manifest разрешён отдельным поручением после независимой проверки TRX79/61/16 и отсутствия ресурсов22. До приёмки add/commit не выполнялись. Change не архивировать без CLI validation.

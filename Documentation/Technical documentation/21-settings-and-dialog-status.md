@@ -1,6 +1,6 @@
 # Настройки и статус диалога
 
-Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md); rationale и решения пользователя — [change context](../../openspec/changes/dialog-settings-and-status/context.md). Фактические команды/evidence — [этап21](<../Plans/AgentBridge Initial Implementation/21-settings-and-dialog-status.md>).
+Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md); rationale и решения пользователя — [change context](../../openspec/changes/dialog-settings-and-status/context.md). Фактические команды/evidence — этап21 (история Git).
 
 ## API
 

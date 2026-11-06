@@ -1,6 +1,6 @@
 # Библиотечный каталог диалогов и durable recovery
 
-Реализованный source API для Ledger 01A. Это не HTTP/widget/profile implementation Ledger и не подтверждение его завершения. [Evidence и поставка](<../Plans/Assistant Dialog Capabilities/Evidence.md>) отделяют isolated checks от непроверенной SQL/provider/runtime приёмки.
+Реализованный source API для Ledger 01A. Это не HTTP/widget/profile implementation Ledger и не подтверждение его завершения. Evidence и поставка (история Git) отделяют isolated checks от непроверенной SQL/provider/runtime приёмки.
 
 ## Public API
 

@@ -1,6 +1,6 @@
 # Документация agent-bridge
 
-AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Начните с [руководства потребителя](<Technical documentation/25-usage-guide.md>): бинарные ссылки, DI/options и проверенные C# сценарии. [Карта evidence00–25](<Plans/AgentBridge Initial Implementation/25-usage-guide-and-closure.md>) содержит результаты принятой реализации и явно отмечает непроверенные окружения. [OpenSpec workflow](../openspec/README.md) закрепляет приоритет main над историческими deltas. Фактические final strict results09: main и18 changes проходят, ERROR0/WARNING0; этап09 принят в A workflow/B CLI, archive INFO2 отдельно, changes не архивированы.
+AgentBridge — библиотека ИИ-агентов для .NET10, подключаемая обычными DLL. Начните с [руководства потребителя](<Technical documentation/25-usage-guide.md>): бинарные ссылки, DI/options и проверенные C# сценарии. [OpenSpec workflow](../openspec/README.md) закрепляет приоритет main над историческими deltas. Фактические final strict results09: main и18 changes проходят, ERROR0/WARNING0; этап09 принят в A workflow/B CLI, archive INFO2 отдельно, changes не архивированы.
 
 ## Бизнес-логика
 
@@ -19,11 +19,11 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 ## Техническая документация
 
-[Bounded history B03](<Technical documentation/31-bounded-history.md>) описывает actual opt-in SQL Server reader/runner policy. [Fresh статус и evidence](<Plans/B03 Bounded History/README.md>) отделяют source/isolation от упаковки и приёмки Ledger.
+[Bounded history B03](<Technical documentation/31-bounded-history.md>) описывает opt-in SQL Server reader/runner policy.
 
 [Usage, документы, изображения и явная серверная проверка opaque бюджета](<Technical documentation/27-auxiliary-model-operations.md>) описывают optional расширение для Telegram consumer.
 
-Actual короткое подключение — [Integration facade](<Technical documentation/26-integration-registration.md>); [fresh evidence16](<Plans/AgentBridge Audit Remediation/16-isolated-regression-and-delivery.md#результаты>) подтверждает пять binary kits/external compile-only consumers. [Windows runtime18](<Plans/AgentBridge Audit Remediation/18-runtime-delivery.md#результаты>) проверен в loader/DI/BPE границе; provider/Linux/live/crash evidence остаётся открытым.
+Короткое подключение — [Integration facade](<Technical documentation/26-integration-registration.md>). Состав DLL и ограничения проверок описаны в [документации поставки](<Technical documentation/29-dll-and-nuget-delivery.md>).
 
 [Навигатор Technical documentation](<Technical documentation/README.md>)
 
@@ -59,11 +59,3 @@ Actual короткое подключение — [Integration facade](<Technic
 [Plans](Plans/README.md) — планы реализации и проверок на русском языке с английскими именами файлов и папок.
 
 [Коннектор sub2api](<Plans/sub2api-connector-2026-11-06-(not-started)/main.md>) — план отдельного адаптера с выбором через DI и сохранением существующего API; реализация не начата.
-
-[Каталог диалогов и recovery для Ledger 01A](<Plans/Assistant Dialog Capabilities/README.md>) — библиотечная реализация возобновлена 11.10.2026; [actual API](<Technical documentation/30-dialog-catalog-and-recovery.md>) и отдельное [evidence](<Plans/Assistant Dialog Capabilities/Evidence.md>). Ledger 01A не закрывается этой поставкой.
-
-[Первоначальная реализация AgentBridge](<Plans/AgentBridge Initial Implementation/README.md>) — 26 небольших этапов от подготовки контрактов до DLL и руководства подключения.
-
-[Аудит качества AgentBridge](<Plans/AgentBridge Quality Audit/README.md>) — статический проход 00–15 завершён с ограничениями; общий аудит A/B/C/D частичный. [Реестр](<Plans/AgentBridge Quality Audit/Findings.md>) содержит находки и пределы их доказательств.
-
-[Исправление проблем аудита AgentBridge](<Plans/AgentBridge Audit Remediation/README.md>) —00/08 приняты в A,01–07/10–15 в локальной A/B-границе,09 в A workflow/B CLI,16 в B. [Решения Q-003–005](<Plans/AgentBridge Audit Remediation/Decisions.md>) реализованы09–11; MSSQL12, breaking explicit settings13, facade14 и kits15 проверены локально.17 имеет принятую подготовку A/B, C отложен пользователем;18 принята Windows runtime часть, Linux открыт;19 только A readiness без live/crash harness. [Итог20](<Plans/AgentBridge Audit Remediation/20-final-acceptance.md#результаты>) принят координатором в границе **частичной приёмки доступного локального объёма**; обязательные C/D17–19 остаются открытыми.

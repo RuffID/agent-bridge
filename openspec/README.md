@@ -1,10 +1,10 @@
 # OpenSpec workflow AgentBridge
 
-[Действующая main spec](specs/agent-runtime/spec.md) · [Документация](../Documentation/README.md) · [Результаты09](<../Documentation/Plans/AgentBridge Audit Remediation/09-openspec-reconciliation.md>).
+[Действующая main spec](specs/agent-runtime/spec.md) · [Документация](../Documentation/README.md) · Результаты09 (история Git).
 
 ## Действующие требования и история
 
-По принятому Q-003 действующий контракт находится в main spec. Исходные18 change-папок сохраняют историю и границы своих этапов. Структурное разделение длинных требований09 сохраняет каждое исходное нормативное предложение и прежние сценарии; [карта положений](<../Documentation/Plans/AgentBridge Audit Remediation/09-openspec-clause-map.json>) показывает перенос по новым блокам. Промежуточные ограничения JSON14/SSE15 не отменяют compact18. Старый delta нельзя повторно применять как новый продуктовый контракт. Папки, proposals, contexts и tasks не переименовываются и не архивируются автоматически.
+По принятому Q-003 действующий контракт находится в main spec. Исходные18 change-папок сохраняют историю и границы своих этапов. Структурное разделение длинных требований09 сохраняет каждое исходное нормативное предложение и прежние сценарии; карта положений (история Git) показывает перенос по новым блокам. Промежуточные ограничения JSON14/SSE15 не отменяют compact18. Старый delta нельзя повторно применять как новый продуктовый контракт. Папки, proposals, contexts и tasks не переименовываются и не архивируются автоматически.
 
 Служебные заголовки OpenSpec: `## Purpose`, `## Requirements`, `### Requirement:`, `#### Scenario:`. Названия и содержание требований остаются на русском. Delta использует `## ADDED/MODIFIED/REMOVED/RENAMED Requirements`.
 
@@ -24,7 +24,7 @@
 
 Постоянное разрешение пользователя (userMessage `01a10fa0-7b81-70e1-a47e-5fc67440131d`, «разрешаю всегда прогон этих команд») действует на exact19 strict validation commands из Results/evidence09: main agent-runtime и перечисленные original18, тот же wrapper `D:/Media/User/AppData/npm/openspec.cmd`, cwd `D:/Media/User/source/repos/agent-bridge`, flags `--type spec|change --strict --json --no-interactive`. Повтор именно этих команд не требует нового разрешения. Оно не распространяется на version/help, новые changes, installation или любые CLI mutations, включая sync/rename/archive.
 
-На 2026-10-06 фактически проверен CLI1.14.1. Help подтвердил `validate <item> --type spec|change --strict --json --no-interactive`. [Evidence09](<../Documentation/Plans/AgentBridge Audit Remediation/09-openspec-cli-evidence.json>) сохраняет before/grammar-after и отдельный final после структурных правок: main и все18 changes passed,19 Exit0, ERROR0/WARNING0. Два INFO о collision при archive сохранены отдельно. Этап09 принят в A workflow/B CLI: ABQA-003 закрыт в CLI boundary, ABQA-004 принят по Q-003 workflow. Успешный validate не доказывает archive readiness или runtime compact.
+На 2026-10-06 фактически проверен CLI1.14.1. Help подтвердил `validate <item> --type spec|change --strict --json --no-interactive`. Evidence09 (история Git) сохраняет before/grammar-after и отдельный final после структурных правок: main и все18 changes passed,19 Exit0, ERROR0/WARNING0. Два INFO о collision при archive сохранены отдельно. Этап09 принят в A workflow/B CLI: ABQA-003 закрыт в CLI boundary, ABQA-004 принят по Q-003 workflow. Успешный validate не доказывает archive readiness или runtime compact.
 
 ## Подготовка последующего завершения
 

@@ -1,6 +1,6 @@
 # AgentBridge
 
-Bounded каталог диалогов, durable lifecycle/fencing и append-only recovery: [публичный API](<Documentation/Technical documentation/30-dialog-catalog-and-recovery.md>), [новая DLL-поставка и evidence](<Documentation/Plans/Assistant Dialog Capabilities/Evidence.md>). Библиотечные проверки отделены от SQL/runtime и принятия в Ledger 01A.
+Bounded каталог диалогов, durable lifecycle/fencing и append-only recovery: [публичный API](<Documentation/Technical documentation/30-dialog-catalog-and-recovery.md>), [DLL-поставка](<Documentation/Technical documentation/29-dll-and-nuget-delivery.md>). Библиотечные проверки отделены от SQL/runtime и принятия в Ledger 01A.
 
 AgentBridge — C#-библиотека для приложений на **.NET 10**. Она ведёт диалог с моделью через **codex-lb**, сохраняет историю в БД, собирает и сжимает рабочий контекст, а при необходимости вызывает инструменты вашего приложения.
 
@@ -262,7 +262,7 @@ bool completed = result.Status == AgentRunStatus.Completed && result.TerminalSav
 
 Можно начинать подключение в своём проекте. Проверены изолированные сценарии и сборка бинарных потребителей с пятью комплектами. На Windows также проверены DI, загрузка DLL и нативных библиотек, а также локальная токенизация без HTTP и БД.
 
-Реальные проверки SQL Server, Linux runtime, live codex-lb и восстановления после аварии остаются открытыми. Сборка Linux-комплекта на Windows не подтверждает работу на Linux. Перед рабочим использованием проверьте свой состав зависимостей и реальные интеграции. Точные результаты и ограничения находятся в [итоге плана исправлений](<Documentation/Plans/AgentBridge Audit Remediation/20-final-acceptance.md>).
+Реальные проверки SQL Server, Linux runtime, live codex-lb и восстановления после аварии остаются открытыми. Сборка Linux-комплекта на Windows не подтверждает работу на Linux. Перед рабочим использованием проверьте свой состав зависимостей и реальные интеграции.
 
 ## Документация
 
@@ -272,4 +272,4 @@ bool completed = result.Status == AgentRunStatus.Completed && result.TerminalSav
 - [DLL-комплекты и платформы](<Documentation/Technical documentation/24-dll-delivery.md>)
 - [SQL Server](<Documentation/Technical documentation/12-sql-server-provider.md>)
 - [Техническая документация](<Documentation/Technical documentation/README.md>) · [Бизнес-логика](<Documentation/Business logic/README.md>)
-- [Действующая спецификация](openspec/specs/agent-runtime/spec.md) · [План исправлений](<Documentation/Plans/AgentBridge Audit Remediation/README.md>) · [Решение](agent-bridge.slnx)
+- [Действующая спецификация](openspec/specs/agent-runtime/spec.md) · [Решение](agent-bridge.slnx)
