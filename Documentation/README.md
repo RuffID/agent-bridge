@@ -58,6 +58,8 @@ Actual короткое подключение — [Integration facade](<Technic
 
 [Plans](Plans/README.md) — планы реализации и проверок на русском языке с английскими именами файлов и папок.
 
+[Коннектор sub2api](<Plans/sub2api-connector-2026-11-06-(not-started)/main.md>) — план отдельного адаптера с выбором через DI и сохранением существующего API; реализация не начата.
+
 [Каталог диалогов и recovery для Ledger 01A](<Plans/Assistant Dialog Capabilities/README.md>) — библиотечная реализация возобновлена 11.10.2026; [actual API](<Technical documentation/30-dialog-catalog-and-recovery.md>) и отдельное [evidence](<Plans/Assistant Dialog Capabilities/Evidence.md>). Ledger 01A не закрывается этой поставкой.
 
 [Первоначальная реализация AgentBridge](<Plans/AgentBridge Initial Implementation/README.md>) — 26 небольших этапов от подготовки контрактов до DLL и руководства подключения.

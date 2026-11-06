@@ -117,6 +117,45 @@
     <File Path="Documentation/Plans/AgentBridge Quality Audit/Methodology.md" />
     <File Path="Documentation/Plans/AgentBridge Quality Audit/README.md" />
   </Folder>
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/open-questions.md" />
+  </Folder>
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/01.01-wire-contract.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/01.02-legacy-contract.md" />
+  </Folder>
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/02.01-connector-selection.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/02.02-shared-responses.md" />
+  </Folder>
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/03.01-catalog-and-access.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/03.02-generation-and-tools.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/03.03-compaction.md" />
+  </Folder>
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/04.01-connector-provenance.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/04.02-restart-and-recovery.md" />
+  </Folder>
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/05.01-regression.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/05.02-binary-delivery.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/05.03-live-acceptance.md" />
+  </Folder>
+  <Folder Name="/Documentation/openspec/changes/add-sub2api-connector/">
+    <File Path="openspec/changes/add-sub2api-connector/proposal.md" />
+    <File Path="openspec/changes/add-sub2api-connector/design.md" />
+    <File Path="openspec/changes/add-sub2api-connector/tasks.md" />
+  </Folder>
+  <Folder Name="/Documentation/openspec/changes/add-sub2api-connector/specs/agent-runtime/">
+    <File Path="openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md" />
+  </Folder>
   <Folder Name="/Documentation/Technical documentation/">
     <File Path="Documentation/Technical documentation/01-architecture.md" />
     <File Path="Documentation/Technical documentation/02-efcorelibrary.md" />
