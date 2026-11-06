@@ -1,6 +1,6 @@
 # Устройство планируемого подключения
 
-Реализация отсутствует. Документ описывает направление работ, не подтверждённый runtime API. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/main.md), [технические вопросы](../../../Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/open-questions.md).
+Реализация отсутствует. Документ описывает направление работ, не подтверждённый runtime API. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md), [технические вопросы](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/open-questions.md).
 
 ## Подтверждённая текущая граница
 
@@ -43,3 +43,9 @@ IConfiguration используется для Options binding в регистр
 Сначала фиксируются baseline/API и wire fixtures, затем DI/common protocol, адаптер, guards/restart и acceptance. До live05.03 новый путь не объявляется полностью принятым. Поставляются fresh DLL/manifests с source provenance; старый source consumer и baseline binary проверяются отдельно от нового consumer.
 
 Strict OpenSpec validation, build, isolated tests, external compile, Windows runtime, real persistence и live OAuth имеют отдельные результаты. При отсутствии обязательной проверки сохраняется незавершённый статус. Main requirements и current usage docs обновляются только по реализованному результату; archive не выполняется автоматически.
+
+## Evidence этапа01
+
+[Матрица и образцы](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/wire-matrix.md) фиксируют текущие routes/forwarding и происхождение capabilities. Достаточный публичный input budget не найден: его нельзя заменить context_window либо effective percent. OAuth удаляет max_output_tokens; сервер имеет собственные account retries, invalid-encrypted-content recovery и compact model fallback. Клиентское отсутствие retry не отключает эту серверную политику. T01/T02/T05 требуют отдельного подтверждения целевого профиля и могут блокировать приёмку; нормативный проект не объявляется выполненным.
+
+[Исходный API/PE baseline](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/legacy-api-baseline.md) сохранён до рефакторинга отдельно от исходников. Два внешних compile-only consumers собраны против старой поставки. Проверка неперекомпилированных binaries против будущей новой поставки и runtime/live остаются работой следующих этапов. Главная спецификация не синхронизировалась.

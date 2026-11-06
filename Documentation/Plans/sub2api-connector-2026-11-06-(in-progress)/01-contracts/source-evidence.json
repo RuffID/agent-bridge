@@ -1,0 +1,691 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-06",
+  "provenance": "Local source files read for stage01; SHA256 snapshot, no Git revision claim and no live-server verification",
+  "repositories": {
+    "sub2api": "D:\\Media\\User\\source\\repos\\sub2api",
+    "agentBridge": "D:\\Media\\User\\source\\repos\\agent-bridge",
+    "HttpClientLibrary": "D:\\Media\\User\\source\\repos\\work\\HttpClientLibrary",
+    "EFCoreLibrary": "D:\\Media\\User\\source\\repos\\work\\EFCoreLibrary"
+  },
+  "files": [
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/server/routes/gateway.go",
+      "size": 31477,
+      "sha256": "ac8a09dc0c05107b2d38b584937bae4a3b3686be5fa07d0c7a214fcb785d8543"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/server/middleware/api_key_auth.go",
+      "size": 16500,
+      "sha256": "71e180a0703d5e2caf6fe6832a3717affbd9866e2ad65278fde718277a822616"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/server/middleware/middleware.go",
+      "size": 5674,
+      "sha256": "54f4e3dc376142e268fbc7e65fa5868fc06a0b60c4a5f6cd72f3bc73cb74e591"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/handler/gateway_handler.go",
+      "size": 102924,
+      "sha256": "aa1d8b11a9646b42e556e2f2e2bb7ec3d994428ab86f69e4641eda2fc1ec4687"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/handler/openai_codex_models_handler.go",
+      "size": 5794,
+      "sha256": "06a3b76241082c03e633f6ae24bc976d3dd8256972f7400b14d53da740099ab8"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/handler/openai_gateway_handler.go",
+      "size": 181084,
+      "sha256": "094641fddbfcc4bd3fdd99c006eaaf8c23fb9fa4895aa697c482a047df819920"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_codex_models_service.go",
+      "size": 94131,
+      "sha256": "33b1f510c4de78feb6f0bb9998d75bd1afbada3a990c13de9a9fa31b7ed7539e"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_codex_model_metadata.go",
+      "size": 17074,
+      "sha256": "0176c252f220a5ad81d9ad72fd046ba03e4a0c919c53e9388d24e14e5e53e852"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/upstream_models.go",
+      "size": 66622,
+      "sha256": "3ab072d7daf9aed952390b0b6fd7d04f8093ff29f5018c81ff7b48a27c4adcdb"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_gateway_forward.go",
+      "size": 65004,
+      "sha256": "f506c031beec7f6aa9f0200fec22d11db38aa6f96023cfaa8f93b3c0eaefc7f0"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_codex_transform.go",
+      "size": 53880,
+      "sha256": "8c70bf409868fd6e30fe4473f140e8006c93393b64fa42ab42607b4402476815"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_codex_tool_names.go",
+      "size": 13128,
+      "sha256": "1912aa670039377337435cb9331849916d88336006d52f67a28ae1efe69d4cf1"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_gateway_request_body.go",
+      "size": 88834,
+      "sha256": "a31d6d12de005443c47fae12964ef7797ce13250527fef62462113289c4540bf"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_gateway_passthrough.go",
+      "size": 96208,
+      "sha256": "9fd23fb8cf0f2a077123bcdfb69392397b9a3987bb5026299b4a895eb792edcd"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_compact_fallback.go",
+      "size": 10052,
+      "sha256": "c8165b32251f2f0e9e8bdd9f3794e7f874617e8e41e266658d05f6f07fdc3633"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_compact_stream_bridge.go",
+      "size": 8099,
+      "sha256": "d9ba5ee9f813bb197d12790802f3ea3dd98d3ec1381ef6a077eebbbfb98a0bad"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_compact_sse_keepalive.go",
+      "size": 9530,
+      "sha256": "57f68c88cc7cbd5847d228394faeac53a81900bb6195e0d0acc497f5316c5dcb"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/gateway_usage_billing.go",
+      "size": 62572,
+      "sha256": "e46be85ccf3cc07394beacd7656ca4991072a5846dedd1fb554b4075d12ae074"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/pkg/httputil/upstream_drain.go",
+      "size": 2115,
+      "sha256": "844f742ede2a32b4058fb60fc2cf7e8306f75f41a226716b1a456d0d12fa29d7"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_oauth_passthrough_non_stream_test.go",
+      "size": 8197,
+      "sha256": "ab35c49df20870bb3c794b3bb78f2df8d8060d3d5c8b52119645a683b9b478cb"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_codex_function_call_id_test.go",
+      "size": 9132,
+      "sha256": "d5680a93dec6424160304e93b3e6fdc31d794a651e576cac60b5a76d97ca468c"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_codex_transform_test.go",
+      "size": 70534,
+      "sha256": "75084087bc134d1db273e17903d3122b869a4957c02750ac464505bc7acb904a"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj",
+      "size": 668,
+      "sha256": "4e29f2f9fb95b9b07bfce8d18d2784ff3ea6361be075a5545c2b43ecee2f03cc"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Auxiliary/CodexLbAuxiliaryGateway.cs",
+      "size": 15343,
+      "sha256": "674a34b56715613beadc6cbe7361f92dace82adbbcc227366ff47f636474abf6"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Configuration/CodexLbAuxiliaryExtensions.cs",
+      "size": 1980,
+      "sha256": "9696089d1d8aec43332c251d7d5def9f7571a8f72415347fb317fffee76434df"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Configuration/CodexLbAuxiliaryOptions.cs",
+      "size": 837,
+      "sha256": "d27d690066287da005968a25641d2dc66c1e5550a2ca8dfdf227facf42e9bffa"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Configuration/CodexLbConfigurationExtensions.cs",
+      "size": 5100,
+      "sha256": "015f35c30b76a21416abb7118600609802e94675108d6f684bf62b52fb24379c"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Configuration/CodexLbModelCatalogExtensions.cs",
+      "size": 2010,
+      "sha256": "bc824fbefb3f9399e6254d93ffcc65f58137128e41fd52bdaab22df987d13ce5"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Configuration/CodexLbOptions.cs",
+      "size": 1640,
+      "sha256": "767a41bbd5672954431662983dcb1ab6b4cd4e6f115a11d9adb15d0a7ad133c3"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Configuration/CodexLbResponsesExtensions.cs",
+      "size": 1225,
+      "sha256": "018fba29d3b28ef5e730838beccb66c46ec12476b33f6edad4b92e5215ea81ac"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Configuration/ModelKeySourceMode.cs",
+      "size": 618,
+      "sha256": "e77769e5815147340949f8fac087f6ba11b32272f57785e9e1395f51392ea5b0"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Models/CodexLbModelAccessResolver.cs",
+      "size": 1724,
+      "sha256": "a7c56681aeb9e03998c277ebe7c6cf6c838f1def80c48c55c22384ecc6cc54c0"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Models/CodexLbModelCatalog.cs",
+      "size": 2427,
+      "sha256": "3e727fac33869f59d22f6bc7a610f90ee613d25b9f66bd57749e3b2ffa3d6059"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Models/CodexLbModelSettingsReader.cs",
+      "size": 3444,
+      "sha256": "f54fb429c2c79e60bae5f6cc52f3b02ffce5df4afbb3dbe17cc76b3d3b1fc788"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Models/ModelCatalogJsonReader.cs",
+      "size": 5950,
+      "sha256": "74efcafdce9b665b2d5a930a849ce799a4dceefc55612560b7250c7db488fdc2"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "size": 200,
+      "sha256": "93d67476196ebfc80d1d7d8844b91146cfd678d105f5ce635eb900ca40610c9b"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/obj/Debug/net10.0/AgentBridge.CodexLb.AssemblyInfo.cs",
+      "size": 1218,
+      "sha256": "cd173b2a79a2d466e23c5701c305c39577d771def878a730e75b7c72b024678c"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/obj/Debug/net10.0/AgentBridge.CodexLb.GlobalUsings.g.cs",
+      "size": 239,
+      "sha256": "a3c6048bb4d922b1799a9977f84362a3787b68810cac67aa86ac3aa23295f227"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/obj/Release/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "size": 200,
+      "sha256": "93d67476196ebfc80d1d7d8844b91146cfd678d105f5ce635eb900ca40610c9b"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/obj/Release/net10.0/AgentBridge.CodexLb.AssemblyInfo.cs",
+      "size": 1033,
+      "sha256": "7ea2eca6df16bad912467ae852c7ab106445d903b0a96fb4a88a591dee3cc666"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/obj/Release/net10.0/AgentBridge.CodexLb.GlobalUsings.g.cs",
+      "size": 239,
+      "sha256": "a3c6048bb4d922b1799a9977f84362a3787b68810cac67aa86ac3aa23295f227"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/CodexLbModelGateway.cs",
+      "size": 13282,
+      "sha256": "f535ae3f820a8c2ac6ded149e0eeb436df24061a07f551d23813cd30ad16414a"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/CodexLbServiceError.cs",
+      "size": 1487,
+      "sha256": "99cc0d0572a2fcb6b11fe7da177e48dc925869605b8177b2564eac68b59cb830"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/CompactJsonReader.cs",
+      "size": 2143,
+      "sha256": "303c090ef3897e8ad01b323a3e90781a560730845a696f7802784893cba6aee5"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/CompactRequestWriter.cs",
+      "size": 3636,
+      "sha256": "a8e50b7b797cc70ace9391d5392889a54e3162ecc0e5c5e791538c6533ac6310"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/Models/ResponseContinuationState.cs",
+      "size": 512,
+      "sha256": "a831da89ae3e7dfaa9eeb6854da551f2b92db64c7a2cb7dcb0581c3d45b3502e"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/Models/ResponseRequestBody.cs",
+      "size": 419,
+      "sha256": "1d7dd86b075ab86fa3d5b18be060591c34afca650ff19d6a8f84ea4aef03ab5b"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/NestedControlsValidator.cs",
+      "size": 3034,
+      "sha256": "9bbac52b744ac7eff11bde47c7b72752faca24b885ec0cc671329533346a1742"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/ResponseContinuationMapper.cs",
+      "size": 5436,
+      "sha256": "d07b427c4986cd486f729f3ad28d53f8013ff263dde58fd1aea35e91c2ac39fc"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/ResponseErrorReader.cs",
+      "size": 3699,
+      "sha256": "4191b153d75b94c07215609389b44ab086c77af9abbcad571a11217160242bab"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/ResponseJsonReader.cs",
+      "size": 1988,
+      "sha256": "3436bf59bf0c1bec2fd114edcd2fcd60b463c484340ab96dfd84bb4f78f2ac68"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/ResponseRequestWriter.cs",
+      "size": 5191,
+      "sha256": "4467112f26e5e4468ffea91d13c36c377cdff4583491ea76e37a056c6122dc3d"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/ResponseSseState.cs",
+      "size": 11010,
+      "sha256": "81dbb4f555e6c7616b3759fdede92fd1b5d2233002b87796105437955fbecfc6"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.CodexLb/Responses/SseEventReader.cs",
+      "size": 1895,
+      "sha256": "c058662fa6945b724e1f5a68c5c85102ac458744095c19d7c14be6377595c294"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/AgentBridge.Integration.csproj",
+      "size": 768,
+      "sha256": "641edeaf2d1c144f92103412b8738b0837e9bf7fa62cbaf0c5cd39296359ef24"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/AgentBridgeIntegrationExtensions.cs",
+      "size": 6213,
+      "sha256": "62949d56efdd704c72d4e33d1383d47164a5be85ed0316685a23618c1c160d05"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "size": 200,
+      "sha256": "93d67476196ebfc80d1d7d8844b91146cfd678d105f5ce635eb900ca40610c9b"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/obj/Debug/net10.0/AgentBridge.Integration.AssemblyInfo.cs",
+      "size": 1230,
+      "sha256": "46cc185eaa1edb192fb01f5ecb8dd6d2062d53fe6082e3e62be4d5d958528758"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/obj/Debug/net10.0/AgentBridge.Integration.GlobalUsings.g.cs",
+      "size": 239,
+      "sha256": "a3c6048bb4d922b1799a9977f84362a3787b68810cac67aa86ac3aa23295f227"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/obj/Release/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs",
+      "size": 200,
+      "sha256": "93d67476196ebfc80d1d7d8844b91146cfd678d105f5ce635eb900ca40610c9b"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/obj/Release/net10.0/AgentBridge.Integration.AssemblyInfo.cs",
+      "size": 1045,
+      "sha256": "110a51b70b69a292ebfb39ba2b479dbb012f4be2f88287cb531598917a5e3695"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "adapters/AgentBridge.Integration/obj/Release/net10.0/AgentBridge.Integration.GlobalUsings.g.cs",
+      "size": 239,
+      "sha256": "a3c6048bb4d922b1799a9977f84362a3787b68810cac67aa86ac3aa23295f227"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/agent-bridge.csproj",
+      "size": 1113,
+      "sha256": "0205c6cad03fe4a43b07aa13e01fdbfc76f92751a1dfb228052699a274a5c8f9"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/ContextBuilder.cs",
+      "size": 10496,
+      "sha256": "54a0f790e1537e019b959ee9c4d2a67fdce644c1eb85ba725d1e773f2231f238"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/ContextCompactor.cs",
+      "size": 13489,
+      "sha256": "74e38cfbb9bab68280215e05d28302a96a5abfad3a75b1eedc1bf1d359e7975a"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/ContextModelGuard.cs",
+      "size": 3569,
+      "sha256": "3d94bd58ef76bddab061bab582573aed23d5daa76d4f58e6784bef1da0e03698"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/Models/ModelCapabilities.cs",
+      "size": 3802,
+      "sha256": "76c44db43a5e499e795df1354b438f4d018fda3c07b8fa35a312171fc6970045"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/ModelSelectionValidator.cs",
+      "size": 2517,
+      "sha256": "608e6895259e2e3b2da0865fc81f533a45d1a876a2f588d88d53147105605179"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/Ports/IIndividualModelKeySource.cs",
+      "size": 618,
+      "sha256": "82dc862211c3aefa8f396f089dc7fa1ad8d0ce837a3b5978ddcdfa90c19e5942"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/Ports/IModelAccessResolver.cs",
+      "size": 682,
+      "sha256": "b53aad6cc6f7448d23fc083f250e15967013a0161243e660163c839ce8eb5c72"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/Ports/IModelAuxiliaryGateway.cs",
+      "size": 2030,
+      "sha256": "7d179ef6f6d791c44d880b621cbc15cbc3c555f3a901ca01ad003f47be5e46f6"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/Ports/IModelCatalog.cs",
+      "size": 630,
+      "sha256": "f7920c1b8a480c0cc19187c194313299b313ba21c8a43b7169c8fe1f50c9ad2f"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/Ports/IModelGateway.cs",
+      "size": 1827,
+      "sha256": "bc9a0f76ac100549991088b1c5bc03e1e2d0e0c2f83090e83e420fa0c1353cec"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Application/Ports/IModelSettingsReader.cs",
+      "size": 1542,
+      "sha256": "412b8a089f131cf94ff0c4b8b46bc90ce50da704f0ca9ce699702942fb225878"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentBridgeCompactionExtensions.cs",
+      "size": 861,
+      "sha256": "5a94f76a720fccb4b85e1d3427fc5f07b1f735d7781bfecb60d68dabd375cbcc"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentBridgeConfigurationExtensions.cs",
+      "size": 7848,
+      "sha256": "9d57eaafb5bad93d0d0dbc7575b6af1ea37f99227c079f06e850e695121e185e"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentBridgeDialogCleanupExtensions.cs",
+      "size": 844,
+      "sha256": "64dc2c8afdf271bb4e61b836904283169eb5541925852bc1ca467f478c1637d7"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentBridgeRunnerExtensions.cs",
+      "size": 997,
+      "sha256": "d40ca7c22a4ebdddbacb558492df51b5c6c528ae44f4982a5b82898dd5238598"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentBridgeSettingsExtensions.cs",
+      "size": 1067,
+      "sha256": "89fd5e826bf5ac8132375c09e86be833fd675c7f756ff5943bce6ecbb93f1e84"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentBridgeTokenizationExtensions.cs",
+      "size": 2294,
+      "sha256": "5b22820d489b17c1214a7b1d80b3945621658e10c0f9ced993450d7f070873f6"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentBridgeToolsExtensions.cs",
+      "size": 2315,
+      "sha256": "69c23a9a118e9f2981bee9904b9a00a28f865e8fcdd1d8439af0f6bf743ff282"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentInstructionsSource.cs",
+      "size": 586,
+      "sha256": "57ca6c93d1ce3df752767d15814c576e57dbfb3d763d1dcca48cce41eeef70f1"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/AgentOptions.cs",
+      "size": 823,
+      "sha256": "dd4ad19b255db37fa1333daf55f662094a85c908373b4b9df21475ed0e5d696e"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/ContextBudgetPolicy.cs",
+      "size": 664,
+      "sha256": "adc2a4c8008e055786b51555c15e9186beff360b3bf06836bf96a0106f8577ce"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/ContextCompactionOptions.cs",
+      "size": 1213,
+      "sha256": "eb58ac4183a39436bd1432868eedc8b78f1d5d294bbbe10dd18391666c661a6f"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/DialogRetentionOptions.cs",
+      "size": 2562,
+      "sha256": "eb16c42dcc6b1285d328cb371b3dc0ec16bd1043d0df6c67f20e507322e8ad8c"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/DialogRetentionPolicy.cs",
+      "size": 1611,
+      "sha256": "6da42fbb0fe773608faff2de19c3d7394db94707c5a39059d24287f2aefb4bf2"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/SafeOptionsBindingExtensions.cs",
+      "size": 3811,
+      "sha256": "0f055f7b87b67c0b42a7b3d968a9817d8077dc7fa439e9ce1a3582e8bd53b2d7"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/TokenizationOptions.cs",
+      "size": 1535,
+      "sha256": "cf47ce0d24f8991f28e3cd84fcb2126cf8d38a9a6fce2f7f46efbdad616bd680"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "AgentBridge/Configuration/TokenizationOptionsValidator.cs",
+      "size": 1980,
+      "sha256": "b9d25c63f45e37ec0a67889d9bafd7df78c95542e306a45417b95ddefcbe6fa5"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/AccountSummaryTool.cs",
+      "size": 1520,
+      "sha256": "464165442283982a81f84594a5d1dae12b8009b5821396e9642061c011ea273b"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/AccountSummaryValidator.cs",
+      "size": 1204,
+      "sha256": "5b5397678647b03ec3f5aae397cf21a3b588c5b761932991f1fc40d78bd2946e"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj",
+      "size": 750,
+      "sha256": "b1e0d7b649bae0dde47b42cc9bbab880ffc70adc96211af6dcf70a1fe25ae8a6"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/AssistantDialogCapabilities.cs",
+      "size": 2280,
+      "sha256": "5b2f5c31aaac472e5ddf3c2b5ad1dbd23b279c1fff44908875ccbf1eacb89896"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/BinaryContractProbe.cs",
+      "size": 2618,
+      "sha256": "4e6fa18ce1286384951311da041a2b12b0e71079a3a46c8f7640dbb70e6fe540"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/BoundedHistoryRegistration.cs",
+      "size": 1721,
+      "sha256": "4dfd4c53946baa4c7857f65eabcecae14e109159186f63cae6552d6cbf3be72d"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/IAccountSummarySource.cs",
+      "size": 1345,
+      "sha256": "d112bb1f42c948bff1909d600d577689b22056ea9000790e2ec95901d0ed1787"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/IndividualKeySource.cs",
+      "size": 832,
+      "sha256": "2c15e8c258933519e1ba4cdd09a7b9b7af2d1c06ceb2b73f8eef43a9059a4265"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/LegacyTransportSurfaceProbe.cs",
+      "size": 4798,
+      "sha256": "4ffb4cf7d367a278e7588cec1c195aba5333a821925c216126521290873a7d45"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/SimpleRegistration.cs",
+      "size": 779,
+      "sha256": "cd0bfe747b77462f0eab68d18adb01f73ba696cdf5e493ba9ecebeb73237afbe"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/SqlServerRegistration.cs",
+      "size": 1579,
+      "sha256": "c78a3c33f88113a39438b9d424cf6ee7e7e8c701695baf3b5c92d8c3c6781a22"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/StrictConfigurationRegistration.cs",
+      "size": 2650,
+      "sha256": "c9aa9724970f861c35421f4e39365c7bff006b0fcf6e80708d0c4c3a11270334"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/UsageFlow.cs",
+      "size": 6771,
+      "sha256": "88827614d25df685627454c8b30221a97e94d67f52dc6e79f1a4ce3e4639dbab"
+    },
+    {
+      "repository": "agent-bridge",
+      "path": "tests/Delivery/Consumer/UsageRegistration.cs",
+      "size": 2654,
+      "sha256": "e881a36333456dc961783f6e37fb5c21bfe45b9fa7c8849c0a9eb0c442ef74cf"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/handler/openai_models_handler.go",
+      "size": 3474,
+      "sha256": "3355edd308905d4e9561628221d9479b03ac3cdc35a7bc368a897d59447a83fa"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/handler/stream_error_event.go",
+      "size": 6625,
+      "sha256": "5bb761eff636c79497a936470850cb9aad80ef375f70c63a27546cb2f4cd0c2a"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/pkg/openai/constants.go",
+      "size": 10123,
+      "sha256": "3d1259c39da1b74b27c508d14c66ad2c287f7020e2e59045729fa08309a545b4"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/pkg/openai/codex_gpt61_sol.json",
+      "size": 66347,
+      "sha256": "ed7a95435d6a9fa5e4a3dcdeeab0e6f5eb25d56f9f5145b79149ed3cfc8009c0"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_tool_continuation.go",
+      "size": 13841,
+      "sha256": "d914256794938b4b5c6fc48cbaec7e8705a89836332fcd1a742b59b396afe6c3"
+    },
+    {
+      "repository": "sub2api",
+      "path": "backend/internal/service/openai_gateway_response_handling.go",
+      "size": 90746,
+      "sha256": "18646ec8ecad12310160005b85a31f35aec2198bfc0ffe4c08c11cbe911acf4e"
+    },
+    {
+      "repository": "HttpClientLibrary",
+      "path": "HttpClientLibrary.csproj",
+      "size": 917,
+      "sha256": "97dad7b94677732e9ab6342797fa39ccae1d7ef311765ea6d9f652af4010ff81"
+    },
+    {
+      "repository": "HttpClientLibrary",
+      "path": "Clients/HttpApiClient.cs",
+      "size": 8064,
+      "sha256": "47e37ac16fe626eb29e96cd92331f138d095e74eddac6f4efb13fc50438c81b6"
+    },
+    {
+      "repository": "EFCoreLibrary",
+      "path": "EFCoreLibrary.csproj",
+      "size": 977,
+      "sha256": "ccd291ff5e11fb8c2bca71da32a994cb6308170d113682f3b1b82abec80ef94a"
+    }
+  ]
+}

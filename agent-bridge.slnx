@@ -21,36 +21,42 @@
     <File Path="Documentation/Plans/AGENTS.md" />
     <File Path="Documentation/Plans/README.md" />
   </Folder>
-  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/">
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/main.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/open-questions.md" />
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/open-questions.md" />
   </Folder>
-  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/">
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/main.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/01.01-wire-contract.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/01-contracts/01.02-legacy-contract.md" />
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/01.01-wire-contract.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/01.02-legacy-contract.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/wire-matrix.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/wire-samples.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/legacy-api-baseline.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/compatibility-checks.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/source-evidence.json" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/baseline-evidence.json" />
   </Folder>
-  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/">
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/main.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/02.01-connector-selection.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/02-composition/02.02-shared-responses.md" />
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/02.01-connector-selection.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/02.02-shared-responses.md" />
   </Folder>
-  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/">
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/main.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/03.01-catalog-and-access.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/03.02-generation-and-tools.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/03-sub2api/03.03-compaction.md" />
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.01-catalog-and-access.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.02-generation-and-tools.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03-compaction.md" />
   </Folder>
-  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/">
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/main.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/04.01-connector-provenance.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/04-dialog-state/04.02-restart-and-recovery.md" />
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/04.01-connector-provenance.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/04.02-restart-and-recovery.md" />
   </Folder>
-  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/">
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/main.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/05.01-regression.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/05.02-binary-delivery.md" />
-    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/05-acceptance/05.03-live-acceptance.md" />
+  <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/">
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/main.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/05.01-regression.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/05.02-binary-delivery.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/05.03-live-acceptance.md" />
   </Folder>
   <Folder Name="/Documentation/openspec/changes/add-sub2api-connector/">
     <File Path="openspec/changes/add-sub2api-connector/proposal.md" />
@@ -122,6 +128,7 @@
     <File Path="tests/Delivery/Build/Assemble-NuGetDelivery.ps1" />
     <File Path="tests/Delivery/Build/Prepare-DeliveryTests.ps1" />
     <File Path="tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj" />
+    <File Path="tests/Delivery/Consumer/LegacyTransportSurfaceProbe.cs" />
     <Project Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
   </Folder>
 </Solution>

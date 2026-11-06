@@ -21,7 +21,7 @@ AgentBridge использует ключ, выпущенный в sub2api. Ти
 
 Изменяются Integration и транспортные адаптеры; общие application ports и business tools не получают обязательного нового аргумента. Схема БД и соседние библиотеки заранее не меняются. Если для безопасной provenance потребуется schema/public contract change, это отдельное адресное согласование.
 
-OpenSpec main пока не синхронизируется: delta описывает будущую возможность. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(not-started)/main.md) содержит этапы и приёмку; [design](design.md) — решения и ограничения.
+OpenSpec main пока не синхронизируется: delta описывает будущую возможность. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md) содержит этапы и приёмку; [design](design.md) — решения и ограничения.
 
 ## Out of Scope
 

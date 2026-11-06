@@ -1,0 +1,728 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-06",
+  "baselineRoot": "C:\\Users\\Spike\\AppData\\Local\\AgentBridge\\CompatibilityBaselines\\sub2api-2026-11-06",
+  "originalKit": "D:/Media/User/source/repos/agent-bridge/artifacts/delivery-tests/current/sdk/SqlServer/win-x64",
+  "sourceRevision": "working-tree-92817551086a4491990344c09e0d366c5a62d2b556fb29999eb47ccbc498b46f",
+  "sourceFingerprint": "1ad73d56ceb4db7abaf2bd63c19280c8b8cf3ec9c7267ce4c3655288385e080b",
+  "fingerprintMatchedBeforeProbe": true,
+  "manifestFilesVerified": 112,
+  "preservedFilesVerified": 127,
+  "peOnlyNoTargetCodeExecution": true,
+  "newDeliveryAbiVerified": false,
+  "consumerCompileOnly": [
+    {
+      "name": "original-consumer",
+      "restoreExit": 0,
+      "buildExit": 0,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "name": "surface-consumer",
+      "restoreExit": 0,
+      "buildExit": 0,
+      "warnings": 0,
+      "errors": 0
+    }
+  ],
+  "assemblies": [
+    {
+      "name": "AgentBridge.CodexLb",
+      "version": "1.0.0.0",
+      "culture": "",
+      "publicKey": "",
+      "sha256": "3d66eb87f71a9e8348e2488fad379ac8e2e2014ca51b303e5d0d244696b46e88",
+      "publicTopLevelTypes": 13,
+      "references": [
+        {
+          "name": "System.Runtime",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "AgentBridge",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "HttpClientLibrary",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "Microsoft.Extensions.Options",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Collections",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Text.Json",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.Net.Primitives",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.ComponentModel",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Net.Http",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Security.Cryptography",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Linq",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Memory",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.Text.Encoding.Extensions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        }
+      ]
+    },
+    {
+      "name": "AgentBridge",
+      "version": "1.0.0.0",
+      "culture": "",
+      "publicKey": "",
+      "sha256": "d1114a4a04c516093e3d645fb6bab66b6d4d59bcdf0ec6b889711fe2ee868efb",
+      "publicTopLevelTypes": 169,
+      "references": [
+        {
+          "name": "System.Runtime",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Text.Json",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.Collections",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.Options",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.ML.Tokenizers",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.IO.Compression",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B77A5C561934E089"
+        },
+        {
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.ComponentModel",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Threading",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Linq",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Text.Encodings.Web",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.Text.RegularExpressions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.Logging",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.Extensions.Options.ConfigurationExtensions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Memory",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "Microsoft.Extensions.Configuration.Binder",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Threading.Tasks.Parallel",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        }
+      ]
+    },
+    {
+      "name": "AgentBridge.Integration",
+      "version": "1.0.0.0",
+      "culture": "",
+      "publicKey": "",
+      "sha256": "068482735401c01bbe477bdbea807ea02818c6a9c095309737cf491493e9d29a",
+      "publicTopLevelTypes": 1,
+      "references": [
+        {
+          "name": "System.Runtime",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.ComponentModel",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Net.Http",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "AgentBridge",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "AgentBridge.CodexLb",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "System.Linq",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "AgentBridge.Persistence.EfCore",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "Microsoft.Extensions.Options",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "HttpClientLibrary",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Collections",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.Logging.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        }
+      ]
+    },
+    {
+      "name": "AgentBridge.Persistence.EfCore",
+      "version": "1.0.0.0",
+      "culture": "",
+      "publicKey": "",
+      "sha256": "e5b199ca04720fb28e79f2ffbbd78bd00ec9304a7c2d4a85a73dac3ef3245882",
+      "publicTopLevelTypes": 57,
+      "references": [
+        {
+          "name": "System.Runtime",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Linq.Expressions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore.Relational",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "AgentBridge",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "System.Text.Json",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.Collections",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "EFCoreLibrary",
+          "version": "0.0.9.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "System.Linq",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.Options",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.Extensions.Configuration.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.ComponentModel",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "EFCoreLibrary.Maintenance",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore.Abstractions",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Security.Cryptography",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Transactions.Local",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.Data.Common",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Threading",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Linq.Queryable",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Memory",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "CC7B13FFCD2DDD51"
+        },
+        {
+          "name": "System.Text.RegularExpressions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Runtime.InteropServices",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        }
+      ]
+    },
+    {
+      "name": "AgentBridge.Persistence.Migrations.SqlServer",
+      "version": "1.0.0.0",
+      "culture": "",
+      "publicKey": "",
+      "sha256": "39f7964672ae3805986c60f78d5097f85d2e95ca7aa4a9c562bc8111967d0f1c",
+      "publicTopLevelTypes": 3,
+      "references": [
+        {
+          "name": "System.Runtime",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "AgentBridge.Persistence.EfCore",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore.SqlServer",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore.Relational",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Linq.Expressions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Collections",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore.Abstractions",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        }
+      ]
+    },
+    {
+      "name": "AgentBridge.Persistence.SqlServer",
+      "version": "1.0.0.0",
+      "culture": "",
+      "publicKey": "",
+      "sha256": "ade7346f075eeb409e0099f8676f377b93e7c1e15e532eb3d1912bbb4f0c189a",
+      "publicTopLevelTypes": 2,
+      "references": [
+        {
+          "name": "System.Runtime",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "AgentBridge.Persistence.EfCore",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "EFCoreLibrary.Maintenance",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "System.ComponentModel",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore.SqlServer",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "System.Collections",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "System.Linq.Expressions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        },
+        {
+          "name": "AgentBridge",
+          "version": "1.0.0.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "EFCoreLibrary.Maintenance.SqlServer",
+          "version": "1.0.1.0",
+          "publicKeyOrToken": ""
+        },
+        {
+          "name": "System.Linq",
+          "version": "10.0.0.0",
+          "publicKeyOrToken": "B03F5F7F11D50A3A"
+        },
+        {
+          "name": "Microsoft.EntityFrameworkCore.Relational",
+          "version": "10.0.14.0",
+          "publicKeyOrToken": "ADB9793829DDAE60"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "preservation.json",
+      "size": 24057,
+      "sha256": "b367f3bb15557204b26999623b4cbe398e59d05e26e66d2a4beb484972557a32"
+    },
+    {
+      "path": "pe-metadata.json",
+      "size": 729663,
+      "sha256": "fa254c89008e1dabe9f3c31d11a271d22c6a0bb371c5f1c3b5654cba4cc3562b"
+    },
+    {
+      "path": "source-ready.json",
+      "size": 173,
+      "sha256": "6d05371a88b0ee07c7f798bce42539ca6eceb53372a7796a48e7162dd224981b"
+    },
+    {
+      "path": "kit/delivery.manifest.json",
+      "size": 48264,
+      "sha256": "7478ea546270c2d096cf45af802a53eba4dc038871276f2c0f6f2ffdc2c175da"
+    },
+    {
+      "path": "frozen-binaries/original/AgentBridge.BinaryConsumer.dll",
+      "size": 40448,
+      "sha256": "5cc6345e2f63f7130a4d628b2c2aa3826abe95d733f68e9add0fcde69c79e153"
+    },
+    {
+      "path": "frozen-binaries/surface/AgentBridge.BinaryConsumer.dll",
+      "size": 43008,
+      "sha256": "03c009905a668fc9d42515fe807d3cc61b8f0f075fa66c2869c5f036aea25faf"
+    }
+  ],
+  "consumerSources": [
+    {
+      "path": "original-consumer/AccountSummaryTool.cs",
+      "sha256": "464165442283982a81f84594a5d1dae12b8009b5821396e9642061c011ea273b"
+    },
+    {
+      "path": "original-consumer/AccountSummaryValidator.cs",
+      "sha256": "5b5397678647b03ec3f5aae397cf21a3b588c5b761932991f1fc40d78bd2946e"
+    },
+    {
+      "path": "original-consumer/AgentBridge.BinaryConsumer.csproj",
+      "sha256": "b1e0d7b649bae0dde47b42cc9bbab880ffc70adc96211af6dcf70a1fe25ae8a6"
+    },
+    {
+      "path": "original-consumer/AssistantDialogCapabilities.cs",
+      "sha256": "5b2f5c31aaac472e5ddf3c2b5ad1dbd23b279c1fff44908875ccbf1eacb89896"
+    },
+    {
+      "path": "original-consumer/BinaryContractProbe.cs",
+      "sha256": "4e6fa18ce1286384951311da041a2b12b0e71079a3a46c8f7640dbb70e6fe540"
+    },
+    {
+      "path": "original-consumer/BoundedHistoryRegistration.cs",
+      "sha256": "4dfd4c53946baa4c7857f65eabcecae14e109159186f63cae6552d6cbf3be72d"
+    },
+    {
+      "path": "original-consumer/IAccountSummarySource.cs",
+      "sha256": "d112bb1f42c948bff1909d600d577689b22056ea9000790e2ec95901d0ed1787"
+    },
+    {
+      "path": "original-consumer/IndividualKeySource.cs",
+      "sha256": "2c15e8c258933519e1ba4cdd09a7b9b7af2d1c06ceb2b73f8eef43a9059a4265"
+    },
+    {
+      "path": "original-consumer/SimpleRegistration.cs",
+      "sha256": "cd0bfe747b77462f0eab68d18adb01f73ba696cdf5e493ba9ecebeb73237afbe"
+    },
+    {
+      "path": "original-consumer/SqlServerRegistration.cs",
+      "sha256": "c78a3c33f88113a39438b9d424cf6ee7e7e8c701695baf3b5c92d8c3c6781a22"
+    },
+    {
+      "path": "original-consumer/StrictConfigurationRegistration.cs",
+      "sha256": "c9aa9724970f861c35421f4e39365c7bff006b0fcf6e80708d0c4c3a11270334"
+    },
+    {
+      "path": "original-consumer/UsageFlow.cs",
+      "sha256": "88827614d25df685627454c8b30221a97e94d67f52dc6e79f1a4ce3e4639dbab"
+    },
+    {
+      "path": "original-consumer/UsageRegistration.cs",
+      "sha256": "e881a36333456dc961783f6e37fb5c21bfe45b9fa7c8849c0a9eb0c442ef74cf"
+    },
+    {
+      "path": "surface-consumer/AccountSummaryTool.cs",
+      "sha256": "464165442283982a81f84594a5d1dae12b8009b5821396e9642061c011ea273b"
+    },
+    {
+      "path": "surface-consumer/AccountSummaryValidator.cs",
+      "sha256": "5b5397678647b03ec3f5aae397cf21a3b588c5b761932991f1fc40d78bd2946e"
+    },
+    {
+      "path": "surface-consumer/AgentBridge.BinaryConsumer.csproj",
+      "sha256": "b1e0d7b649bae0dde47b42cc9bbab880ffc70adc96211af6dcf70a1fe25ae8a6"
+    },
+    {
+      "path": "surface-consumer/AssistantDialogCapabilities.cs",
+      "sha256": "5b2f5c31aaac472e5ddf3c2b5ad1dbd23b279c1fff44908875ccbf1eacb89896"
+    },
+    {
+      "path": "surface-consumer/BinaryContractProbe.cs",
+      "sha256": "4e6fa18ce1286384951311da041a2b12b0e71079a3a46c8f7640dbb70e6fe540"
+    },
+    {
+      "path": "surface-consumer/BoundedHistoryRegistration.cs",
+      "sha256": "4dfd4c53946baa4c7857f65eabcecae14e109159186f63cae6552d6cbf3be72d"
+    },
+    {
+      "path": "surface-consumer/IAccountSummarySource.cs",
+      "sha256": "d112bb1f42c948bff1909d600d577689b22056ea9000790e2ec95901d0ed1787"
+    },
+    {
+      "path": "surface-consumer/IndividualKeySource.cs",
+      "sha256": "2c15e8c258933519e1ba4cdd09a7b9b7af2d1c06ceb2b73f8eef43a9059a4265"
+    },
+    {
+      "path": "surface-consumer/LegacyTransportSurfaceProbe.cs",
+      "sha256": "4ffb4cf7d367a278e7588cec1c195aba5333a821925c216126521290873a7d45"
+    },
+    {
+      "path": "surface-consumer/SimpleRegistration.cs",
+      "sha256": "cd0bfe747b77462f0eab68d18adb01f73ba696cdf5e493ba9ecebeb73237afbe"
+    },
+    {
+      "path": "surface-consumer/SqlServerRegistration.cs",
+      "sha256": "c78a3c33f88113a39438b9d424cf6ee7e7e8c701695baf3b5c92d8c3c6781a22"
+    },
+    {
+      "path": "surface-consumer/StrictConfigurationRegistration.cs",
+      "sha256": "c9aa9724970f861c35421f4e39365c7bff006b0fcf6e80708d0c4c3a11270334"
+    },
+    {
+      "path": "surface-consumer/UsageFlow.cs",
+      "sha256": "88827614d25df685627454c8b30221a97e94d67f52dc6e79f1a4ce3e4639dbab"
+    },
+    {
+      "path": "surface-consumer/UsageRegistration.cs",
+      "sha256": "e881a36333456dc961783f6e37fb5c21bfe45b9fa7c8849c0a9eb0c442ef74cf"
+    }
+  ],
+  "localDependencies": [
+    {
+      "assemblyName": "HttpClientLibrary",
+      "assemblyVersion": "1.0.0.0",
+      "fileVersion": "0.0.0.6",
+      "path": "lib/HttpClientLibrary.dll",
+      "sha256": "5a335e9203f67880df0a5c134ad57e11c01b17e79debfa0cd4482d60cca8f7cc"
+    },
+    {
+      "assemblyName": "EFCoreLibrary",
+      "assemblyVersion": "0.0.9.0",
+      "fileVersion": "0.0.9.0",
+      "path": "lib/EFCoreLibrary.dll",
+      "sha256": "627d86c4eb47ca1bacefddc51f747086b26ace34c60a58c3e00fc98de963f6fa"
+    },
+    {
+      "assemblyName": "EFCoreLibrary.Maintenance",
+      "assemblyVersion": "1.0.0.0",
+      "fileVersion": "1.0.0.0",
+      "path": "lib/EFCoreLibrary.Maintenance.dll",
+      "sha256": "dbea4569a4555289bc645bca3c258cb2df859cd9a77d020f04bf94d4e341d769"
+    },
+    {
+      "assemblyName": "EFCoreLibrary.Maintenance.SqlServer",
+      "assemblyVersion": "1.0.1.0",
+      "fileVersion": "1.0.1.0",
+      "path": "lib/EFCoreLibrary.Maintenance.SqlServer.dll",
+      "sha256": "337fea7513f99c1e34cea7950c25ca827d6c54cddb52f75f62c280c001009a39"
+    }
+  ]
+}
