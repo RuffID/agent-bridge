@@ -2,6 +2,28 @@
 
 Дата: 2026-11-07. Статус: **blocked**, частичная реализация03.01. [Этап](main.md) · [Блокеры и расширение контракта](contract-blockers.md).
 
+## Актуальное решение: sub2api не дорабатывается
+
+Пользователь исключил доработку sub2api: адаптируется только AgentBridge к существующему серверу. Подготовленное ниже серверное предложение **отклонено** и сохранено как запись отвергнутого варианта. Его согласование, новые headers/pool revision/metadata и single-attempt enforcement не являются следующими шагами или условиями плана. Требование отсутствия клиентских retries ошибочно расширялось до общего server single-attempt; это расширение устранено из активного OpenSpec delta и инструкций.
+
+В [текущем пути адаптации](contract-blockers.md) сохранены факты о текущем API и отдельно указаны клиентские границы. Existing ServerValidation допускает неизвестную стоимость opaque, но `ModelSelectionValidator` всё ещё требует положительный InputContextWindow; `ContextBudgetGuard` и сохраняемый `TurnModelSettings` используют известное окно. Поэтому переключить policy или подставить локальный порог как model budget нельзя. Existing passthrough также не является доказательством полной canonical preservation: shared prelude и compatibility normalizers сохраняются. Эти вопросы относятся к клиентской адаптации и оценке конкретного existing сценария, а не к запросу переделать sub2api.
+
+Синхронизированы активные main/open-questions/подэтапы, навигаторы, current integration guide, локальный AGENTS и OpenSpec change. Предыдущие результаты ниже описывают предшествующий разбор, а не действующий план серверных работ. Нового C# транспорта в этой корректировке нет; budget/gateway guards сохранены, T01/T05 открыты,04 не начат. Код, main spec и исторические01–02 не менялись; сборки/тесты/live/CLI/Git не запускались. От пользователя не требуется согласовывать серверную доработку: этот вариант исключён.
+
+Проверка корректировки:19 документов/solution,188 относительных ссылок без missing targets,3 JSON-примера, XML/UTF-8/EOL корректны. SHA25617 historical01/02/04/main-spec файлов и size/SHA25646 sub2api sources не изменились. Эта проверка статическая; новых результатов выполнения адаптера нет.
+
+## Предшествующий разбор03: отвергнутый путь серверного расширения
+
+Повторно проверены actual source paths sub2api0.2.19 и доступные versioned публичные Model/routes/release материалы. Все28 sub2api hashes evidence01 совпали; [новая опись46 sources](contract-source-evidence.json) включает дополнительные владеющие файлы. Проверка публичных материалов ограничена описанными источниками, не подтверждает deployment и не доказывает отсутствие частной спецификации.
+
+Достаточного существующего контракта не установлено. Уточнены причины: capabilities intersection не привязан публичной revision к фактическому generation pool; ordinary/passthrough применяют account mapping по-разному; compact способен заменить модель ещё до первого HTTP; encrypted items могут удаляться при invalid-lineage и cross-mode failover. MaxAccountSwitches0 оставляет default3, pool retry count0 не исключает OAuth deadline retry. Internal raw-model observer существует, но public Responses/compact не дают его как обязательную processing metadata; admin usage не является допустимым источником клиента.
+
+Подготовлено [адресное серверное предложение](server-contract-proposal.md): точные владельцы и функции, versioned opt-in headers/response fields, полный pool snapshot и field-level provenance, семантика гарантированного input budget, общий single-attempt enforcement, requested/sent/reported model, явные отказы и regression tests ordinary/passthrough/non-stream/compact. Предложение не согласовано и не реализовано в sub2api. Безопасные guard/settings сохранены; новых C# transport/settings paths нет. T01/T05 не закрыты. Новый блок результатов относится только к этому продолжению; прежние фактические прогоны ниже сохранены.
+
+В этом продолжении изменены только документы, локальная инструкция адаптера и solution items. Исправлено устаревшее текущее руководство26: доступ/ordinary ID catalog уже работают, Unsupported относится к settings с неизвестным бюджетом и generation/compact. Исторические отчёты01–02 не переписывались. Compile-check/.NET и Go tests повторно не запускались: исполняемый код/build chain не менялись; прежние568 passed не являются новым прогоном или приёмкой sub2api. CLI OpenSpec, Git, проектные скрипты, live gateway/OAuth, host, БД, Docker и deployment не выполнялись. Этап04 не начат; новая поставка/baseline/frozen DLL не затрагивались.
+
+Статическая проверка документов этого продолжения и сохранности исходников описана в конце файла. Она не заменяет strict CLI validation, compile-check или выполнение тестов.
+
 ## Реализовано
 
 Существующий Sub2Api bundle получил отдельные internal access resolver, ordinary ModelCatalog и ModelSettingsReader вместо четырёхпортового PendingConnector. Facade передаёт прежнюю app-owned HTTP factory в тот же composition path. Не добавлены параллельный способ подключения, public transport API, протокольный framework, скрипты или подготовка artifacts для обычных тестов.
@@ -69,3 +91,9 @@ CodexLb regression сохраняет JSON/SSE/compact/tools, canonical/legacy c
 - Runtime: только Windows isolated DI/actual HttpClientLibrary с fake handlers/local streams. Нет live HTTP/OAuth, provider DB, приложения/host, Docker, deployment, новых DLL kits или других RID. Ordinary tests не зависят от AppData/kit/готового artifacts-комплекта.
 
 Документы/AGENTS/навигаторы/solution items/OpenSpec tasks обновлены, исторические01–02 и main spec сохранены. Статически проверены137 относительных ссылок без broken targets, наличие всех6 stage03 Markdown solution items, XML решения и41 UTF-8 файлов без U+FFFD/четырёх question marks. Сохранены LF исходников/Markdown и CRLF решения; русский текст просмотрен без mojibake. Изменённый ConnectorSelectionTests18114 байт, Integration7118; все новые C# файлы меньше20000 байт (максимум CatalogTests12442). CLI OpenSpec/strict validation и Git не выполнялись. Stage03 остаётся blocked; переход к04 не выполнен.
+
+## Статическая проверка продолжения03
+
+Проверены19 новых/изменённых документов и solution:187 относительных ссылок без отсутствующих targets, XML решения и включение всех8 stage03 файлов. JSON evidence и3 синтетических JSON-примера предложения разбираются; это проверка синтаксиса, не server fixtures или transport acceptance. UTF-8 прочитан строгим decoder без U+FFFD/четырёх question marks; русский текст просмотрен без mojibake. Сохранены LF Markdown/JSON и CRLF solution, без добавления BOM.
+
+Повторная SHA256/size сверка46 файлов sub2api совпала с новой описью. SHA25617 файлов исторических01–02, незапущенного04 и main spec до/после продолжения совпадают. Это проверка конкретных файлов, не Git revision, deployment, runtime или полная опись соседнего репозитория. Сохранность frozen kit/consumer DLL в этом продолжении отдельно не проверялась; записи/пересборки этих файлов не выполнялись. Статусы03.01–03.03/этап03 согласованы как blocked,04 остаётся not-started; все T01–T05 открыты. Новое предложение требует отдельного согласования серверных работ либо эквивалентных versioned доказательств, после чего остаются обязательные adapter/live проверки.

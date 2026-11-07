@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-07",
+  "kind": "static-source-review",
+  "repository": "sub2api",
+  "repositoryRoot": "D:/Media/User/source/repos/sub2api",
+  "declaredVersion": "0.2.19",
+  "gitRevision": null,
+  "limitations": [
+    "No Git operations, server execution, Go tests or live gateway/OAuth calls.",
+    "Hashes identify local source files, not the deployed server or public tag equivalence.",
+    "The 28 sub2api files from stage01 source-evidence.json matched before this continuation.",
+    "Source inventory includes previous evidence plus the additional owning files reviewed for T01/T05."
+  ],
+  "publicDocumentation": [
+    {
+      "url": "https://github.com/Wei-Shaw/sub2api/releases/tag/v0.2.19",
+      "finding": "Public versioned release exists; release number does not establish a processing-profile contract."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Wei-Shaw/sub2api/v0.2.19/backend/internal/pkg/openai/constants.go",
+      "finding": "Public Model fields contain IDs/display metadata, not a versioned input budget or pool/profile provenance."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Wei-Shaw/sub2api/v0.2.19/backend/internal/server/routes/gateway.go",
+      "finding": "modelsHandler uses nonempty client_version to choose Codex manifest; /v1 alone does not establish capability semantics."
+    }
+  ],
+  "files": [
+    {
+      "path": "backend/cmd/server/VERSION",
+      "size": 8,
+      "sha256": "efb53e7bfd5da3c290cea3bba09b00ec3011b2637638142a816fd27f9e029c51"
+    },
+    {
+      "path": "backend/internal/handler/dto/mappers_usage_test.go",
+      "size": 10506,
+      "sha256": "8b8db525e7ca6c14844b73f7acf0d5e410028cbb6058f055b541234917c8ff0e"
+    },
+    {
+      "path": "backend/internal/handler/dto/mappers.go",
+      "size": 32939,
+      "sha256": "a73e79e24780f8a7efa5b9092a2cbfcf79b89cf3d95245d551b8e1ba90e7c4ba"
+    },
+    {
+      "path": "backend/internal/handler/failover_loop.go",
+      "size": 14465,
+      "sha256": "bc9733c415df26c41f618e1afe21653724253e9596ab75f037aea42b27f2c82c"
+    },
+    {
+      "path": "backend/internal/handler/gateway_handler.go",
+      "size": 102924,
+      "sha256": "aa1d8b11a9646b42e556e2f2e2bb7ec3d994428ab86f69e4641eda2fc1ec4687"
+    },
+    {
+      "path": "backend/internal/handler/openai_codex_models_handler.go",
+      "size": 5794,
+      "sha256": "06a3b76241082c03e633f6ae24bc976d3dd8256972f7400b14d53da740099ab8"
+    },
+    {
+      "path": "backend/internal/handler/openai_gateway_handler.go",
+      "size": 181084,
+      "sha256": "094641fddbfcc4bd3fdd99c006eaaf8c23fb9fa4895aa697c482a047df819920"
+    },
+    {
+      "path": "backend/internal/handler/openai_gateway_reasoning_failover_test.go",
+      "size": 7511,
+      "sha256": "369a70f99f4297d1b27c5b71c7cb095f99c0476a797eacf32dbaefc853834696"
+    },
+    {
+      "path": "backend/internal/handler/openai_gateway_reasoning_failover.go",
+      "size": 2169,
+      "sha256": "196e70d42432ff07f671f96b986be6a27b796fa24578b12e8afd73973c26550d"
+    },
+    {
+      "path": "backend/internal/handler/openai_models_handler.go",
+      "size": 3474,
+      "sha256": "3355edd308905d4e9561628221d9479b03ac3cdc35a7bc368a897d59447a83fa"
+    },
+    {
+      "path": "backend/internal/handler/stream_error_event.go",
+      "size": 6625,
+      "sha256": "5bb761eff636c79497a936470850cb9aad80ef375f70c63a27546cb2f4cd0c2a"
+    },
+    {
+      "path": "backend/internal/pkg/httputil/upstream_drain.go",
+      "size": 2115,
+      "sha256": "844f742ede2a32b4058fb60fc2cf7e8306f75f41a226716b1a456d0d12fa29d7"
+    },
+    {
+      "path": "backend/internal/pkg/openai/codex_gpt61_sol.json",
+      "size": 66347,
+      "sha256": "ed7a95435d6a9fa5e4a3dcdeeab0e6f5eb25d56f9f5145b79149ed3cfc8009c0"
+    },
+    {
+      "path": "backend/internal/pkg/openai/constants.go",
+      "size": 10123,
+      "sha256": "3d1259c39da1b74b27c508d14c66ad2c287f7020e2e59045729fa08309a545b4"
+    },
+    {
+      "path": "backend/internal/server/middleware/api_key_auth.go",
+      "size": 16500,
+      "sha256": "71e180a0703d5e2caf6fe6832a3717affbd9866e2ad65278fde718277a822616"
+    },
+    {
+      "path": "backend/internal/server/middleware/middleware.go",
+      "size": 5674,
+      "sha256": "54f4e3dc376142e268fbc7e65fa5868fc06a0b60c4a5f6cd72f3bc73cb74e591"
+    },
+    {
+      "path": "backend/internal/server/routes/gateway.go",
+      "size": 31477,
+      "sha256": "ac8a09dc0c05107b2d38b584937bae4a3b3686be5fa07d0c7a214fcb785d8543"
+    },
+    {
+      "path": "backend/internal/service/account.go",
+      "size": 100929,
+      "sha256": "65c641236f9358b36dfe7a29b8b7c985441be7ad87e8dc8ad51c9e1f0f602687"
+    },
+    {
+      "path": "backend/internal/service/gateway_usage_billing.go",
+      "size": 62572,
+      "sha256": "e46be85ccf3cc07394beacd7656ca4991072a5846dedd1fb554b4075d12ae074"
+    },
+    {
+      "path": "backend/internal/service/openai_account_scheduler.go",
+      "size": 114700,
+      "sha256": "9d5e542c8dfc70fe02648d74baaeaf97b5e71cc78565fb518eee4d5350fca7d5"
+    },
+    {
+      "path": "backend/internal/service/openai_codex_function_call_id_test.go",
+      "size": 9132,
+      "sha256": "d5680a93dec6424160304e93b3e6fdc31d794a651e576cac60b5a76d97ca468c"
+    },
+    {
+      "path": "backend/internal/service/openai_codex_model_metadata.go",
+      "size": 17074,
+      "sha256": "0176c252f220a5ad81d9ad72fd046ba03e4a0c919c53e9388d24e14e5e53e852"
+    },
+    {
+      "path": "backend/internal/service/openai_codex_models_service.go",
+      "size": 94131,
+      "sha256": "33b1f510c4de78feb6f0bb9998d75bd1afbada3a990c13de9a9fa31b7ed7539e"
+    },
+    {
+      "path": "backend/internal/service/openai_codex_tool_names.go",
+      "size": 13128,
+      "sha256": "1912aa670039377337435cb9331849916d88336006d52f67a28ae1efe69d4cf1"
+    },
+    {
+      "path": "backend/internal/service/openai_codex_transform_test.go",
+      "size": 70534,
+      "sha256": "75084087bc134d1db273e17903d3122b869a4957c02750ac464505bc7acb904a"
+    },
+    {
+      "path": "backend/internal/service/openai_codex_transform.go",
+      "size": 53880,
+      "sha256": "8c70bf409868fd6e30fe4473f140e8006c93393b64fa42ab42607b4402476815"
+    },
+    {
+      "path": "backend/internal/service/openai_compact_fallback_test.go",
+      "size": 25113,
+      "sha256": "134f4389a1e15118d4f9f682ea7526a788b1d5b7d25cdbb03cf824ad99ff29cc"
+    },
+    {
+      "path": "backend/internal/service/openai_compact_fallback.go",
+      "size": 10052,
+      "sha256": "c8165b32251f2f0e9e8bdd9f3794e7f874617e8e41e266658d05f6f07fdc3633"
+    },
+    {
+      "path": "backend/internal/service/openai_compact_model_mapping_test.go",
+      "size": 9176,
+      "sha256": "1b5b5708c43f2d60a5e9edc7153de3c8290aff8a25251cc7ac333e062d38e905"
+    },
+    {
+      "path": "backend/internal/service/openai_compact_sse_keepalive.go",
+      "size": 9530,
+      "sha256": "57f68c88cc7cbd5847d228394faeac53a81900bb6195e0d0acc497f5316c5dcb"
+    },
+    {
+      "path": "backend/internal/service/openai_compact_stream_bridge.go",
+      "size": 8099,
+      "sha256": "d9ba5ee9f813bb197d12790802f3ea3dd98d3ec1381ef6a077eebbbfb98a0bad"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_forward.go",
+      "size": 65004,
+      "sha256": "f506c031beec7f6aa9f0200fec22d11db38aa6f96023cfaa8f93b3c0eaefc7f0"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_passthrough.go",
+      "size": 96208,
+      "sha256": "9fd23fb8cf0f2a077123bcdfb69392397b9a3987bb5026299b4a895eb792edcd"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_request_body.go",
+      "size": 88834,
+      "sha256": "a31d6d12de005443c47fae12964ef7797ce13250527fef62462113289c4540bf"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_response_handling.go",
+      "size": 90746,
+      "sha256": "18646ec8ecad12310160005b85a31f35aec2198bfc0ffe4c08c11cbe911acf4e"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_scheduling.go",
+      "size": 69862,
+      "sha256": "bceb2f20f21ca2b1cee0949ffdc1b18869ec575fac2312a7e80cdd80c81a4c05"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_service.go",
+      "size": 46804,
+      "sha256": "585822f57a645551af4055fc824a00dafed613d1a5b1054fca638d45a0276bb0"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_upstream_errors.go",
+      "size": 35514,
+      "sha256": "0120b9fbbadaf1215c538bf8205c14d0b6a7b800123b8a947a0b368718e79c0f"
+    },
+    {
+      "path": "backend/internal/service/openai_gateway_usage.go",
+      "size": 47662,
+      "sha256": "cd9545602b348067c989eadbdfb177dbe592000a8a888cd49381a849b6eb4f69"
+    },
+    {
+      "path": "backend/internal/service/openai_oauth_passthrough_non_stream_test.go",
+      "size": 8197,
+      "sha256": "ab35c49df20870bb3c794b3bb78f2df8d8060d3d5c8b52119645a683b9b478cb"
+    },
+    {
+      "path": "backend/internal/service/openai_response_model_rewrite_test.go",
+      "size": 4362,
+      "sha256": "afb37b7e912ed2bade5975d0e7d5992752e3c7e7aeede12a15f025ca4a2777b4"
+    },
+    {
+      "path": "backend/internal/service/openai_responses_rejected_field_retry_test.go",
+      "size": 35764,
+      "sha256": "fed0f6b78cc34507f4b983a3e8e28180a99ccaec63b65e450f643e6803b3d9fc"
+    },
+    {
+      "path": "backend/internal/service/openai_responses_rejected_field_retry.go",
+      "size": 16337,
+      "sha256": "bbbef34d428cdc6a6ad5f2cdc197f97d227c4be6c3a738fa9a96a3371e998011"
+    },
+    {
+      "path": "backend/internal/service/openai_tool_continuation.go",
+      "size": 13841,
+      "sha256": "d914256794938b4b5c6fc48cbaec7e8705a89836332fcd1a742b59b396afe6c3"
+    },
+    {
+      "path": "backend/internal/service/upstream_models.go",
+      "size": 66622,
+      "sha256": "3ab072d7daf9aed952390b0b6fd7d04f8093ff29f5018c81ff7b48a27c4adcdb"
+    },
+    {
+      "path": "backend/internal/service/upstream_response_model.go",
+      "size": 10009,
+      "sha256": "8edca05121fdea70a8a10bc319d3482986c2cc5801d139d0af39787bbc21e6ab"
+    }
+  ]
+}

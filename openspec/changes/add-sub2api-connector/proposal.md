@@ -23,6 +23,8 @@ AgentBridge использует ключ, выпущенный в sub2api. Ти
 
 OpenSpec main пока не синхронизируется: полная возможность delta ещё не реализована. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md) содержит этапы и приёмку; [design](design.md) — решения и ограничения. На03 existing bundle получил доступ/каталог ID/settings; запуск Unsupported по неизвестному бюджету T01, generation/compact Unsupported до доказанного T05. [Фактические результаты03](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md).
 
+Продолжение03 подготовило [серверное предложение](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md), которое пользователь **отклонил**. Доработка sub2api исключена; требуется [адаптация только AgentBridge к существующему серверу](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md). Новые server fields/enforcement не являются зависимостью. Runtime код не расширялся, T01/T05 остаются открытыми, этап04 не начат.
+
 ## Out of Scope
 
 WebSocket, другие платформы sub2api, admin API, автоматический fallback между шлюзами, переключение на каждый запрос, перенос всех старых opaque-диалогов и sub2api auxiliary usage/files/images. Действующие auxiliary API codex-lb сохраняются.

@@ -44,6 +44,26 @@ AgentBridge MUST сохранять действующую сигнатуру Ad
 - **WHEN** выбранная модель видна, но входной бюджет либо effort не подтверждены
 - **THEN** запуск не получает выдуманные defaults и завершается явным Unsupported.
 
+### Requirement: Адаптация к существующему sub2api
+
+AgentBridge MUST адаптироваться к существующим sub2api routes и поведению без доработки sub2api и без обязательных новых server headers/fields. Запрет клиентских retries MUST NOT трактоваться как запрет всех внутренних server retries. Коннектор MUST сохранять canonical данные на своей границе, не выдумывать budget/capabilities и не выдавать requested model echo за доказанную actual upstream identity. Один guessed flag или успешная fixture MUST NOT снимать неподтверждённые ограничения.
+
+#### Scenario: Неизвестный профиль при вручную переданных settings
+
+- **WHEN** встроенному sub2api gateway переданы custom settings, но обязательные гарантии допустимого текущего сценария не подтверждены
+- **THEN** generation и compact отклоняются до HTTP factory и callbacks, без изменения canonical input.
+
+#### Scenario: Разные гарантии forwarding paths
+
+- **WHEN** подтверждение относится только к ordinary либо только к passthrough, а фактический pool допускает другую ветку или non-stream conversion без доказанной совместимости
+- **THEN** коннектор не объявляет весь pool поддержанным и сохраняет безопасный отказ.
+
+#### Scenario: Отсутствие достоверной upstream model metadata
+
+- **WHEN** публичный ответ содержит только клиентское model echo
+- **THEN** коннектор сохраняет его только как объявленное значение и не заявляет независимо подтверждённую upstream identity.
+- **AND** сценарий, которому такая гарантия обязательна, остаётся Unsupported без смены ключа/модели/коннектора или повторного выполнения business tool.
+
 ### Requirement: HTTP Responses sub2api с полным рабочим контекстом
 
 Первая версия sub2api-коннектора MUST поддерживать existing JSON/SSE generation API через HttpClientLibrary с полным рабочим контекстом без исходящего previous_response_id. Canonical items, reasoning и пары tools MUST сохраняться. Отказ MUST NOT запускать скрытый retry, смену модели, ключа или коннектора.

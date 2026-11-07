@@ -34,6 +34,12 @@ IConfiguration используется для Options binding в регистр
 
 Текущая реализация03 читает только ordinary ID без client_version/выдуманных capabilities и использует прежний validator. [Необходимый versioned server contract](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md) описывает бюджет, processing profile/pool, opaque/model guarantees и наблюдаемую actual модель. До доказательств gateway блокирует любой direct/custom-settings вызов до HTTP; это безопасная граница, а не JSON/SSE/compact implementation. Этап04 здесь не реализуется.
 
+Продолжение03 уточнило actual owning paths: manifest пересекает часть metadata, но не связывает её публичной revision с runtime pool; ordinary/passthrough mapping различаются. Compact может изменить модель до первого send, known-invalid lineage и cross-mode failover могут удалить encrypted items, а существующие retry limits не задают общий запрет. Internal raw-model observation уже существует, однако публикуется в admin usage и не служит public Responses processing contract.
+
+[Серверное предложение](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md) **отклонено**: sub2api не дорабатывается. Versioned opt-in/pool revision/single-attempt enforcement/new metadata не являются зависимостью или новым требованием к серверу. Запрет client retry не запрещает все server retries; изменения тела и совместимость opaque оцениваются отдельно по actual existing paths.
+
+[Текущий путь адаптации](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md) сохраняет существующие routes и существующую композицию/HttpClientLibrary. Unknown budget не превращается в выдуманное число, response.model echo — в independently verified model; unsupported compact не подменяется generation. Existing ServerValidation не решает неизвестный budget: validator/guard/сохраняемые настройки требуют известное окно. Изменение этой клиентской границы либо provenance/persistence04 не выполняется скрыто под видом adapter03. T01/T05 открыты;04 не начат.
+
 ## Сохранённые диалоги
 
 Сохранность истории и успешное продолжение через другой шлюз — разные свойства. Не удалять историю, не сбрасывать opaque items, не переписывать настройки/выбор модели ради прохождения запроса. Connector identity учитывается при проверке compact и непокрытых outputs, даже когда model ID совпадает.
