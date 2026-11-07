@@ -174,12 +174,17 @@ public class ResponsesJsonTests
             fixture.SetJson("{\"object\":\"response.compact\",\"output\":[]}");
             return fixture.Compact(request);
         }
+
         if (path == "sse")
         {
             fixture.Handler.MediaType = "text/event-stream";
             fixture.SetJson("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"response-controls\",\"status\":\"completed\",\"output\":[]}}\n\n");
-            return fixture.Gateway.GenerateAsync(fixture.Call, request, new(KEY), (_, _) => ValueTask.CompletedTask);
+            ModelAccess access = new(KEY);
+            request = request.WithConnectorProvenance(((IModelContextGateway)fixture.Gateway).GetContextProvenance(fixture.Call, access));
+            return fixture.Gateway.GenerateAsync(fixture.Call, request, access, (_, _) => ValueTask.CompletedTask,
+                TestContext.Current.CancellationToken);
         }
+
         return fixture.Generate(request);
     }
 

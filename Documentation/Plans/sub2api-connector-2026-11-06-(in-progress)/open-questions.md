@@ -6,7 +6,7 @@
 
 ## Технические вопросы разработчику — внутренний раздел
 
-T01–T05 открыты. Первая версия согласована без compact: T05 относится к отложенной работе. Полный контекст и явный отказ при превышении бюджета сохраняются. [Результаты03](03-sub2api/results.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованную generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge; server transformations допустимы без обещания upstream сохранности. 04.01 реализован с единственным новым форматом и ожидает выполнения тестов;04.02 не начат.
+T01/T02/T04/T05 открыты. Первая версия согласована без compact: T05 относится к отложенной работе. Полный контекст и явный отказ при превышении бюджета сохраняются. [Результаты03](03-sub2api/results.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованную generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge; server transformations допустимы без обещания upstream сохранности. Provenance T03 проверен в изолированных границах04.01;04.02 verification после16 новых isolated runner/restart/recovery cases. Реальный persistence restart04.02.04 не выполнялся; БД/Docker запрещены в текущем запуске.
 
 ### T01. Доказанный входной бюджет и происхождение metadata
 
@@ -19,10 +19,6 @@ T01–T05 открыты. Первая версия согласована бе�
 Actual Sub2Api JSON/SSE generation реализована и проверена через existing composition/HttpClientLibrary с fake handlers/local streams. Передаются полное принятое compact-окно, непокрытый хвост и текущий input без previous_response_id/legacy turn-state; call/output пары и ordering сохраняются на клиентской границе. Incoming continuation отклоняется до factory, returned response id не создаёт continuation. Client retries, смена ключа/модели/коннектора и business tool replay запрещены. Isolated проверки не подтверждают развёрнутый OAuth/tool chain; эта часть T02 остаётся открытой для05.
 
 OAuth stream/store и SSE→JSON не объявляются потерями сами по себе. При отсутствии terminal возможен SSE fallback: будущий клиент обязан сохранять partial output и не подтверждать Completed по HTTP200/EOF. Live/OAuth, caller server drain и биллинг в текущем запуске не проверяются.
-
-### T03. Проверка происхождения нового сохранённого контекста
-
-04.01 — verification: отдельные connector identity/binding и один новый JSON-формат реализованы, compile-check пройден; тесты не запускались. Совпадение model ID не обходит guard каждого opaque источника. Поддержка ранее сохранённых диалогов обоих коннекторов отменена: старый JSON явно отклоняется без reader v1, backfill и ветвления версий. Публичные сигнатуры и независимый v1/v2 бюджетного snapshot сохраняются. Проверки нового формата остаются открытыми; restart, pinned settings и no-replay относятся к ещё не начатому04.02. [Результаты04](04-dialog-state/results.md).
 
 ### T04. Новая поставка и прежняя бинарная поверхность
 

@@ -5,6 +5,7 @@ using AgentBridge.Application.Ports;
 using AgentBridge.Configuration;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Sub2Api.Configuration;
+using AgentBridge.Tokenization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,7 @@ internal class Sub2ApiCatalogFixture : IDisposable
         ServiceCollection services = new();
         services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Trace).AddProvider(Logs));
         services.AddScoped<IIndividualModelKeySource, Source>();
+        services.AddSingleton<IContextContentInspector, ContextTokenCounter>();
         services.Configure<ContextCompactionOptions>(options =>
         {
             options.TokenThreshold = 100;

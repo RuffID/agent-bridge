@@ -325,6 +325,7 @@ public class BoundedHistoryTests
     [Fact]
     public async Task RunnerWriteLoaderCannotLoadUnboundedOldCompacts()
     {
+        // Arrange
         CatalogWriteFixture seed = new();
         DialogWriteToken token = (await seed.CreateAsync()).Token;
         seed.Committed.Contexts.Add(new()
@@ -333,12 +334,17 @@ public class BoundedHistoryTests
         });
         seed.Committed.Contexts.Add(new()
         {
-            DialogId = token.DialogId.Value, Version = 2, Compaction = new() { Status = ModelResponseStatus.Completed }
+            DialogId = token.DialogId.Value, Version = 2,
+            Compaction = ModelResponseRecord.FromModelResponse(ModelResponse.Completed([]))
         });
         string before = JsonSerializer.Serialize(seed.Committed);
         CatalogWriteFixture storage = new(seed.Committed, loadLimits: new(100, 16384, 64));
         await using CatalogRunnerFixture runner = new(storage);
+
+        // Act
         AgentRunResult result = await runner.RunAsync(token, Guid.NewGuid(), TestContext.Current.CancellationToken, bounded: true);
+
+        // Assert
         Assert.Equal("history_load_limit_exceeded", result.Error!.Message);
         Assert.Equal(AgentRunStatus.Failed, result.Status);
         Assert.False(result.TerminalSaved);

@@ -31,14 +31,14 @@
 | [01. Контракты и совместимость](01-contracts/main.md) | completed | Нет | Матрица с источниками/образцами и сохранённый source/PE baseline; два compile-check green |
 | [02. DI и общая обработка Responses](02-composition/main.md) | completed | 01 | Выбор bundle, собственные Sub2Api options, shared source и проверенная legacy поверхность |
 | [03. Коннектор sub2api](03-sub2api/main.md) | verification | 02 | Первая версия без compact; доступ/settings/generation и полный контекст проверены изолированно, T01/T02 открыты; отложенный compact blocked T05 |
-| [04. История и продолжение](04-dialog-state/main.md) | in-progress | Обязательный объём03 без compact | 04.01 verification: provenance и один новый JSON-формат реализованы, compile-check пройден; 04.02 не начат |
+| [04. История и продолжение](04-dialog-state/main.md) | verification | Обязательный объём03 без compact | 04.01 и04.02.01–03 проверены изолированно; реальный persistence restart04.02.04 не выполнен |
 | [05. Проверки и поставка](05-acceptance/main.md) | not-started | 04 | Регрессия, DLL consumer и отдельная live-приёмка |
 
 Зависимости в таблицах этапов обязательны. Независимые подэтапы не требуют делегирования. Запуск каждого этапа — только после отдельного поручения реализации.
 
 ### Детализация оставшейся работы03
 
-В [навигаторе03](03-sub2api/main.md) сохранены03.01/03.02. Обязательный объём03.03 первой версии ограничен [03.03.01 — безопасным полным контекстом](03-sub2api/03.03.01-full-context-mode.md), completed изолированно. [03.03.02 — пригодность compact-окна](03-sub2api/03.03.02-window-compatibility.md) остаётся blocked T05: анализ завершён без основания допуска.03.03.03–03.03.06 — not-started, отдельная отложенная работа. Без нового достаточного основания и поручения compact transport не начинается. T01 не блокирует unknown-window режим; live T02 остаётся05.03. Отдельно порученный04.01 — verification;04.02 не начат.
+В [навигаторе03](03-sub2api/main.md) сохранены03.01/03.02. Обязательный объём03.03 первой версии ограничен [03.03.01 — безопасным полным контекстом](03-sub2api/03.03.01-full-context-mode.md), completed изолированно. [03.03.02 — пригодность compact-окна](03-sub2api/03.03.02-window-compatibility.md) остаётся blocked T05: анализ завершён без основания допуска.03.03.03–03.03.06 — not-started, отдельная отложенная работа. Без нового достаточного основания и поручения compact transport не начинается. T01 не блокирует unknown-window режим; live T02 остаётся05.03. 04.01 completed изолированно;04.02 verification, с отдельными04.02.01–04 в его навигаторе.
 
 ## Итоговая приёмка
 
@@ -74,7 +74,7 @@ Isolated green, бинарная компиляция, Windows runtime и live O
 
 ## Текущий результат этапа03
 
-Текущее продолжение после03: [04.01](04-dialog-state/04.01-connector-provenance.md) — verification; [результаты04](04-dialog-state/results.md) фиксируют реализацию и compile-check без запуска тестов. 04.02 и05 не начаты. Приведённые ниже результаты03 относятся к его собственному завершённому проходу.
+Текущее продолжение после03: [04.01](04-dialog-state/04.01-connector-provenance.md) завершён изолированно; [04.02](04-dialog-state/04.02-restart-and-recovery.md) — verification. [Результаты04](04-dialog-state/results.md): 1660 isolated cases passed, failed/skipped0, включая16 новых сценариев полного runner path/restart/recovery. Реальный persistence restart04.02.04 остаётся непроверенным из-за текущего запрета БД/Docker;05 не начат. Приведённые ниже результаты03 относятся к его собственному завершённому проходу.
 
 Пользователь разрешил отдельный ServerValidationWithUnknownWindow и budget snapshot v1/v2 со чтением прежнего формата. Реализованы declared manifest settings, validator/guard/status/compactor без числовой подстановки и без ослабления старых политик. T01 открыт как вопрос доказанного бюджета, но не блокирует явный новый settings режим.
 

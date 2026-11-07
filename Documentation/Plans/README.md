@@ -4,7 +4,7 @@
 
 | План | Статус | Содержание |
 | --- | --- | --- |
-| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | 03 verification: первая версия без compact, отложенный compact blocked T05. 04.01 verification: отдельное происхождение и один новый JSON-формат реализованы, compile-check пройден, тесты не запускались; поддержка старых диалогов отменена. 04.02 и05 не начаты |
+| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | 03 verification: первая версия без compact, отложенный compact blocked T05. 04.01 completed изолированно;04.02 verification: 16 новых runner/restart/recovery cases прошли, реальный persistence restart не выполнен. 1660 isolated cases passed;05 не начат |
 
 Создание плана само по себе не разрешает реализацию. Завершённые планы удалены; их материалы доступны в истории Git.
 

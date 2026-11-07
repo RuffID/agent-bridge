@@ -8,7 +8,7 @@
 
 ## Границы
 
-Актуальное продолжение: [04.01](../04-dialog-state/04.01-connector-provenance.md) — verification после реализации и compile-check единственного нового формата; тесты не запускались. 04.02 и05 не начаты. Описания результата03 ниже относятся к его собственному проходу; текущий статус04 — в [результатах04](../04-dialog-state/results.md).
+Актуальное продолжение: [04.01](../04-dialog-state/04.01-connector-provenance.md) completed изолированно;04.02 verification после16 новых runner/restart/recovery cases, реальный provider restart04.02.04 не выполнялся. Этап05 не начат. Описания результата03 ниже относятся к его собственному проходу; текущий статус04 — в [результатах04](../04-dialog-state/results.md).
 
 Новый net10.0 adapter и isolated tests. Только ключ sub2api, HTTP/SSE и выбранное OpenAI-направление; live acceptance относится к05.03.
 
