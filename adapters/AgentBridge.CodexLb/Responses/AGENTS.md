@@ -1,5 +1,7 @@
 # JSON/SSE Responses
 
+- Внутренние writers, NestedControlsValidator, CanonicalOutputReader и SseEventReader находятся в adapters/AgentBridge.Responses (source link обоих адаптеров). Gateway, lifecycle readers, SSE state, safe typed errors и bound continuation остаются здесь. Public types/constructors остаются в AgentBridge.CodexLb.dll. Извлечение не меняет allowlists, canonical payload, literal URL append или legacy continuation.
+
 ## Compact этапа18
 
 - CompactRequestWriter отдельно сохраняет model/effort/instructions/input/store=false и reasoning/service_tier/prompt_cache_key. Tools/continuation/unknown controls дают Unsupported до HTTP; malformed/duplicate controls — Validation. Generation writer не используется как скрытая нормализация compact.

@@ -5,6 +5,7 @@
 ## Ответственность и границы
 
 - Проект `AgentBridge.CodexLb.csproj` реализует транспортные порты ядра; зависит от `AgentBridge/agent-bridge.csproj`. Обратная ссылка из ядра и зависимость от EF-хранилища запрещены.
+- Общие internal JSON writers/controls/output и SSE framing подключены Compile/Link из adapters/AgentBridge.Responses. Public CodexLb types остаются в прежней сборке; gateway/catalog/options/typed errors/legacy continuation не переносятся в общий код и не меняются ради sub2api.
 - Здесь находятся wire DTO, преобразование JSON/SSE Responses, compact и транспортные ошибки. Доменные решения, права пользователя и выполнение инструментов остаются вне адаптера.
 - Исходящий HTTP выполняется только через локальный ProjectReference HttpClientLibrary. Models содержит чтение `/v1/models`, проекцию capabilities, выбор доступа и чтение настроек. Responses реализует JSON/SSE GenerateAsync этапов 14–15; границы в `Responses/AGENTS.md`. CompactAsync реализован на этапе18 с отдельными CompactRequestWriter/CompactJsonReader и CompactTimeout.
 - HTTP 2xx, text delta и EOF не заменяют подтверждённое terminal-состояние. Сохранять caller cancellation и владение потоком; не вводить скрытые retry или смену ключа/модели.

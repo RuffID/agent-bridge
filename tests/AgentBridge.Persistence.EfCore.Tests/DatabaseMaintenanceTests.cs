@@ -96,7 +96,7 @@ public class DatabaseMaintenanceTests
         public int Finish() { Finishes++; if (unknown) throw new IOException("synthetic-secret-finish"); return 10; }
     }
 
-    /// <summary>Actual coordinator и EF lease сохраняют primary после ошибки CloseConnectionAsync.</summary>
+    /// <summary>Actual coordinator освобождает заранее подготовленный EF lease и сохраняет primary при ошибке cleanup.</summary>
     [Theory]
     [InlineData("typed", false)][InlineData("typed", true)]
     [InlineData("caller", false)][InlineData("caller", true)]
@@ -104,61 +104,157 @@ public class DatabaseMaintenanceTests
     [InlineData("success", false)][InlineData("success", true)]
     public async Task ActualPinCleanupPreservesPrimary(string failure, bool cleanupFails)
     {
-        using CancellationTokenSource caller = new();
-        using FakePinnedConnection connection = new() { FailClose = cleanupFails };
-        using DbContext context = new(new DbContextOptionsBuilder()
-            .UseSqlite(connection).Options);
+        // Arrange
+        using CancellationTokenSource caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        using FakePinnedConnection connection = new();
+        using DbContext context = new(new DbContextOptionsBuilder().UseSqlite(connection).Options);
         EfMigrationOperations<AgentBridgeContextKey> migrations = new(
             new EfDbContextAdapter<DbContext, AgentBridgeContextKey>(context));
-        FakeMaintenanceBoundary fake = new() { PinFactory = migrations.PinAsync, Pending = failure == "success" ? [] : ["pending"] };
-        if (failure == "typed") fake.ChangeReceipt = receipt => receipt with { TargetIdentity = "wrong" };
-        if (failure is "caller" or "deadline") fake.BackupAction = async budget =>
+
+        // Инициализация EF и actual OpenConnectionAsync не расходуют budget проверяемого cleanup-сценария.
+        IAsyncDisposable? preparedPin = await migrations.PinAsync(caller.Token);
+        try
         {
-            if (failure == "caller") caller.Cancel();
-            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, budget.Token);
-        };
-        using ServiceProvider root = Root(fake);
-        using IServiceScope scope = root.CreateScope();
-        Exception? error = await Record.ExceptionAsync(() => Service(scope).UpdateExistingAsync(
-            failure == "deadline" ? TimeSpan.FromSeconds(1) : Timeout, caller.Token));
-        MaintenanceError? primary = failure switch
-        {
-            "typed" => MaintenanceError.BackupNotConfirmed,
-            "caller" => MaintenanceError.Cancelled,
-            "deadline" => MaintenanceError.DeadlineExceeded,
-            _ => null
-        };
-        if (cleanupFails)
-        {
-            MaintenanceException cleanup = Assert.IsType<MaintenanceException>(error);
-            Assert.Equal(MaintenanceError.CleanupUnconfirmed, cleanup.Code);
-            Assert.Equal(primary, cleanup.PrimaryError);
+            connection.FailClose = cleanupFails;
+            FakeMaintenanceBoundary fake = new();
+            if (failure == "success")
+            {
+                fake.Pending = [];
+            }
+
+            fake.PinFactory = token =>
+            {
+                token.ThrowIfCancellationRequested();
+                IAsyncDisposable pin = preparedPin
+                    ?? throw new InvalidOperationException("Prepared EF lease has already been transferred.");
+                preparedPin = null;
+
+                return Task.FromResult(pin);
+            };
+
+            if (failure == "typed")
+            {
+                fake.ChangeReceipt = receipt => receipt with { TargetIdentity = "wrong" };
+            }
+
+            if (failure is "caller" or "deadline")
+            {
+                fake.BackupAction = async budget =>
+                {
+                    Assert.Null(preparedPin);
+                    Assert.Equal(System.Data.ConnectionState.Open, connection.State);
+                    if (failure == "caller")
+                    {
+                        caller.Cancel();
+                    }
+
+                    await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, budget.Token);
+                };
+            }
+
+            using ServiceProvider root = Root(fake);
+            using IServiceScope scope = root.CreateScope();
+            TimeSpan operationTimeout = Timeout;
+            if (failure == "deadline")
+            {
+                operationTimeout = TimeSpan.FromSeconds(1);
+            }
+
+            MaintenanceError? primary = failure switch
+            {
+                "typed" => MaintenanceError.BackupNotConfirmed,
+                "caller" => MaintenanceError.Cancelled,
+                "deadline" => MaintenanceError.DeadlineExceeded,
+                _ => null
+            };
+
+            // Act
+            Exception? error = await Record.ExceptionAsync(() =>
+                Service(scope).UpdateExistingAsync(operationTimeout, caller.Token));
+
+            // Assert
+            Assert.Null(preparedPin);
+            Assert.False(fake.Pinned);
+            Assert.Equal(1, connection.Closes);
+            if (failure is "caller" or "deadline")
+            {
+                Assert.Contains("backup", fake.Calls);
+            }
+
+            if (cleanupFails)
+            {
+                MaintenanceException cleanup = Assert.IsType<MaintenanceException>(error);
+                Assert.Equal(MaintenanceError.CleanupUnconfirmed, cleanup.Code);
+                Assert.Equal(primary, cleanup.PrimaryError);
+                Exception cause = Assert.IsAssignableFrom<Exception>(cleanup.InnerException);
+                if (primary.HasValue)
+                {
+                    cause = Assert.IsType<AggregateException>(cause).InnerExceptions[1];
+                }
+
+                Assert.Equal(MaintenanceError.CleanupUnconfirmed, Assert.IsType<MaintenanceException>(cause).Code);
+                Assert.IsType<IOException>(cause.InnerException);
+            }
+            else if (failure == "caller")
+            {
+                Assert.Equal(caller.Token, Assert.IsType<OperationCanceledException>(error).CancellationToken);
+            }
+            else if (primary.HasValue)
+            {
+                Assert.Equal(primary, Assert.IsType<MaintenanceException>(error).Code);
+            }
+            else
+            {
+                Assert.Null(error);
+            }
+
+            if (!cleanupFails)
+            {
+                if (failure == "deadline")
+                {
+                    Assert.IsAssignableFrom<OperationCanceledException>(error!.InnerException);
+                }
+                else
+                {
+                    Assert.Null(error?.InnerException);
+                }
+            }
+
+            Assert.DoesNotContain("migrate", fake.Calls);
+            Assert.DoesNotContain("synthetic-secret", error?.Message ?? "");
+            connection.FailClose = false;
+            fake.BackupAction = null;
+            fake.PinFactory = migrations.PinAsync;
+            if (cleanupFails)
+            {
+                string[] calls = fake.Calls.ToArray();
+                using IServiceScope next = root.CreateScope();
+
+                // Act
+                MaintenanceException blocked = await Assert.ThrowsAsync<MaintenanceException>(() =>
+                    Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken));
+
+                // Assert
+                Assert.Equal(MaintenanceError.GatePoisoned, blocked.Code);
+                Assert.Equal(calls, fake.Calls);
+            }
+            else
+            {
+                // Act
+                DatabaseInspection inspection = await Service(scope).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
+
+                // Assert
+                Assert.True(inspection.Exists);
+            }
         }
-        else if (failure == "caller") Assert.Equal(caller.Token, Assert.IsType<OperationCanceledException>(error).CancellationToken);
-        else if (primary.HasValue) Assert.Equal(primary, Assert.IsType<MaintenanceException>(error).Code);
-        else Assert.Null(error);
-        Assert.Equal(1, connection.Closes);
-        Assert.DoesNotContain("migrate", fake.Calls);
-        Assert.DoesNotContain("synthetic-secret", error?.Message ?? "");
-        if (cleanupFails)
+        finally
         {
-            Exception cause = Assert.IsAssignableFrom<Exception>(error!.InnerException);
-            if (primary.HasValue) cause = Assert.IsType<AggregateException>(cause).InnerExceptions[1];
-            Assert.Equal(MaintenanceError.CleanupUnconfirmed, Assert.IsType<MaintenanceException>(cause).Code);
-            Assert.IsType<IOException>(cause.InnerException);
+            connection.FailClose = false;
+            if (preparedPin is not null)
+            {
+                await preparedPin.DisposeAsync();
+            }
         }
-        else if (failure == "deadline") Assert.IsAssignableFrom<OperationCanceledException>(error!.InnerException);
-        else Assert.Null(error?.InnerException);
-        connection.FailClose = false;
-        fake.BackupAction = null;
-        if (cleanupFails)
-        {
-            string[] calls = fake.Calls.ToArray();
-            using IServiceScope next = root.CreateScope();
-            Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken))).Code);
-            Assert.Equal(calls, fake.Calls);
-        }
-        else await Service(scope).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
     }
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);

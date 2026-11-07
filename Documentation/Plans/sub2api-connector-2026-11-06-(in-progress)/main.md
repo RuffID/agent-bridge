@@ -1,24 +1,24 @@
 # Подключение sub2api к AgentBridge
 
-Дата создания: 2026-11-06. Статус плана: **in-progress**. Этап01 завершён; реализация коннектора не начата.
+Дата создания: 2026-11-06. Статус плана: **in-progress**. Этапы01–02 завершены в своих границах; транспорт этапа03 не реализован.
 
 ## Цель и основание
 
 Добавить рядом с codex-lb отдельный коннектор sub2api. Приложение выбирает технологию в DI; его существующие вызовы AgentBridge для диалогов, агента, инструментов и настроек сохраняются. AgentBridge авторизуется API-ключом, выпущенным в sub2api; отдельный OpenAI API key приложению не требуется.
 
-Выполнен этап01: контракты, образцы, legacy API/PE baseline и контрольные compile-only consumers. Проекты коннектора, новая DI-регистрация и новая transport DLL ещё не созданы. Анализ исходников не подтверждает работу с развёрнутым sub2api.
+Выполнены контракты/baseline01 и композиция/shared Responses02. Созданы Sub2Api проект, options и выбор bundle; его транспортные порты пока возвращают Unsupported. Новая проверенная DLL-поставка не подготовлена. Анализ исходников и isolated tests не подтверждают работу с развёрнутым sub2api.
 
 Предлагаемые проверяемые требования находятся в [OpenSpec change](../../../openspec/changes/add-sub2api-connector/proposal.md), пояснения — в [design](../../../openspec/changes/add-sub2api-connector/design.md). [Действующий контракт](../../../openspec/specs/agent-runtime/spec.md) пока не изменяется. [Вопросы](open-questions.md) содержат только оставшиеся технические проверки.
 
 ## Границы первой версии
 
 - Основная работа принадлежит agent-bridge. Репозиторий sub2api используется для чтения и проверки wire-контрактов; его изменение не входит в план. HttpClientLibrary остаётся единственной HTTP-границей.
-- Планируемый адаптер: отдельная физическая папка `adapters/AgentBridge.Sub2Api/`, собственный csproj net10.0, DLL и локальный AGENTS.md. Тесты — в `tests/AgentBridge.Sub2Api.Tests/`.
+- Подготовленный на02 адаптер: отдельная физическая папка `adapters/AgentBridge.Sub2Api/`, собственный csproj net10.0, DLL и локальный AGENTS.md. Тесты — в `tests/AgentBridge.Sub2Api.Tests/`; реализация операций — этап03.
 - Первый транспорт — HTTP JSON/SSE Responses с полным рабочим контекстом без исходящего previous_response_id. Рабочий контекст включает принятое compact-окно, непокрытую историю и текущий input; это не обязательно вся история БД.
 - Проверяется OpenAI-направление sub2api, включая аккаунты подписки через OAuth. Подключение Anthropic/Gemini/Grok, WebSocket, административных API, автоматический failover между коннекторами и одновременный выбор коннектора на каждый запрос не входят.
 - Existing optional auxiliary API usage/files/images сохраняется у codex-lb. Его реализация для sub2api отдельно не обещается; неподдержанные операции не направляются на другой шлюз.
 - Перенос opaque-состояния старых диалогов между шлюзами не считается автоматической возможностью. История остаётся доступной для чтения; неподтверждённое продолжение должно явно отклоняться до отправки.
-- Точное новое имя DI-метода — проектируемая деталь. Предпочтительный вид: регистрация sub2api-коннектора перед существующим AddAgentBridge(configuration, httpClientFactory). Старый вызов без выбора сохраняет codex-lb, прежнюю конфигурацию и overrides.
+- На02 реализован AddAgentBridgeSub2ApiConnector перед существующим AddAgentBridge(configuration, httpClientFactory); явный codex-lb — AddAgentBridgeCodexLbConnector. Старый вызов без выбора сохраняет codex-lb, прежнюю конфигурацию и overrides.
 - Сохранение публичного API не означает отсутствие дополнительных DLL. Состав поставки проверяется отдельно; удаление legacy DLL/типов ради минимизации комплекта не планируется.
 
 ## Этапы
@@ -26,7 +26,7 @@
 | Этап | Статус | Зависимости | Результат |
 | --- | --- | --- | --- |
 | [01. Контракты и совместимость](01-contracts/main.md) | completed | Нет | Матрица с источниками/образцами и сохранённый source/PE baseline; два compile-check green |
-| [02. DI и общая обработка Responses](02-composition/main.md) | not-started | 01 | Выбор одного коннектора без регрессии codex-lb |
+| [02. DI и общая обработка Responses](02-composition/main.md) | completed | 01 | Выбор bundle, собственные Sub2Api options, shared source и проверенная legacy поверхность |
 | [03. Коннектор sub2api](03-sub2api/main.md) | not-started | 02 | Каталог, JSON/SSE, инструменты и compact |
 | [04. История и продолжение](04-dialog-state/main.md) | not-started | 03 | Безопасные границы контекста, restart и смены шлюза |
 | [05. Проверки и поставка](05-acceptance/main.md) | not-started | 04 | Регрессия, DLL consumer и отдельная live-приёмка |
@@ -57,4 +57,10 @@ Isolated green, бинарная компиляция, Windows runtime и live O
 
 Не найден подтверждённый публичный input budget; OAuth удаляет output-limit control; выявлены server-side retry/opaque normalization и compact model fallback. Технические T01/T02/T05 остаются обязательными, T03 относится к provenance04, T04 — к новой поставке05. Main spec не изменён, strict CLI нового change, old→new ABI, runtime и live OAuth не подтверждены.
 
-Работа остановлена после этапа01. Этап02 не начат и автоматически не разрешён.
+Этап01 завершён до реализации02; его frozen baseline не перезаписывается последующими проверками.
+
+## Результат этапа02
+
+Добавлены AddAgentBridgeSub2ApiConnector/AddAgentBridgeCodexLbConnector перед прежним facade, собственные options и единые internal JSON/SSE исходники обоих адаптеров. Default codex-lb/direct registrations/overrides и legacy continuation сохранены. Sub2Api пока явно Unsupported; каталог/access/generation/compact не подменяются заглушками успеха.
+
+[Результаты02](02-composition/results.md): сохранность baseline127/112 и frozen hashes, compile-check0 warnings/errors, 497 isolated cases passed (27 новый набор + 414 codex-lb + 56 facade), semantic PE/API comparison и source-linked legacy probe. External consumer/new kit, полный old→new ABI, другие RID, БД и live OAuth не подтверждены; T01–T05 открыты. Strict CLI не выполнялся, main spec не синхронизировалась. Работа остановлена после02; этап03 не начат.

@@ -4,6 +4,6 @@
 
 | План | Статус | Содержание |
 | --- | --- | --- |
-| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | Контракты01 и baseline готовы; реализация02–05 и live OAuth не начаты |
+| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | Этапы01–02 готовы: baseline, DI и shared Responses; транспорт03–05/live OAuth не реализованы |
 
 Создание плана само по себе не разрешает реализацию. Завершённые планы удалены; их материалы доступны в истории Git.

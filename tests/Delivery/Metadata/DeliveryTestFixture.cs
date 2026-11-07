@@ -15,20 +15,26 @@ public class DeliveryTestFixture : IDisposable
     {
         string lockPath = Path.Combine(DeliveryTestPaths.ArtifactsRoot, "preparation.lock");
         if (!File.Exists(lockPath))
-            throw new InvalidOperationException("Поставка не подготовлена. Соберите delivery-тесты без --no-build и AgentBridgeSkipDeliveryPreparation.");
+        {
+            throw new InvalidOperationException("Поставка не подготовлена. Явно выполните tests/Delivery/Build/Prepare-DeliveryTests.ps1 перед metadata-тестами.");
+        }
 
         preparationLock = new FileStream(lockPath, FileMode.Open, FileAccess.Read, FileShare.Read);
         try
         {
             string readyPath = Path.Combine(DeliveryTestPaths.CurrentRoot, "ready.json");
             if (!File.Exists(readyPath))
-                throw new InvalidOperationException("Подготовка поставки не завершена. Повторите сборку delivery-тестов.");
+            {
+                throw new InvalidOperationException("Подготовка поставки не завершена. Повторите явный запуск tests/Delivery/Build/Prepare-DeliveryTests.ps1.");
+            }
 
             using JsonDocument ready = JsonDocument.Parse(File.ReadAllText(readyPath));
 
             if (ready.RootElement.GetProperty("schemaVersion").GetInt32() != 1
                 || string.IsNullOrWhiteSpace(ready.RootElement.GetProperty("fingerprint").GetString()))
+            {
                 throw new InvalidDataException("Некорректный маркер подготовки delivery-тестов.");
+            }
         }
         catch
         {

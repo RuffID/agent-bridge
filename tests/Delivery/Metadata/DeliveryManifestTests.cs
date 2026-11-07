@@ -85,13 +85,24 @@ public class DeliveryManifestTests
         Assert.Equal(provider == "SqlServer" ? 13 : 0, entries.Values.Count(entry => entry.GetProperty("kind").GetString() == "resource"));
     }
 
-    /// <summary>Cross-build сохраняет public types/method signatures и generated XML шести AgentBridge assembly выбранного провайдера.</summary>
+    /// <summary>Cross-build сохраняет public types/method signatures и generated XML всех AgentBridge assembly выбранного провайдера.</summary>
     [Fact]
     public void SqlServerManagedApiAndXmlAreIdenticalAcrossRids()
     {
+        // Arrange
         string baseline = Path.Combine(GetKit("SqlServer", "win-x64"), "lib");
+        string[] expectedNames =
+        [
+            "AgentBridge.dll", "AgentBridge.Integration.dll", "AgentBridge.CodexLb.dll", "AgentBridge.Sub2Api.dll",
+            "AgentBridge.Persistence.EfCore.dll", "AgentBridge.Persistence.SqlServer.dll",
+            "AgentBridge.Persistence.Migrations.SqlServer.dll"
+        ];
+
+        // Act
         string[] names = Directory.GetFiles(baseline, "AgentBridge*.dll").Select(Path.GetFileName).OfType<string>().Order(StringComparer.Ordinal).ToArray();
-        Assert.Equal(6, names.Length);
+
+        // Assert
+        Assert.Equal(expectedNames.Order(StringComparer.Ordinal), names);
         foreach (string rid in new[] { "linux-x64", "linux-arm64" })
         {
             string other = Path.Combine(GetKit("SqlServer", rid), "lib");

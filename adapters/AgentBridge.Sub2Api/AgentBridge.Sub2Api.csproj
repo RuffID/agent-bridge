@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**;**\bin\**;**\obj\**;**\artifacts\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../AgentBridge.Responses/*.cs" Link="Responses/Shared/%(Filename)%(Extension)" />
+    <InternalsVisibleTo Include="AgentBridge.Integration" />
+    <InternalsVisibleTo Include="AgentBridge.Sub2Api.Tests" />
+    <ProjectReference Include="../../AgentBridge/agent-bridge.csproj" />
+    <ProjectReference Include="../../../work/HttpClientLibrary/HttpClientLibrary.csproj" />
+  </ItemGroup>
+</Project>

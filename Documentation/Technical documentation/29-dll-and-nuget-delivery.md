@@ -19,12 +19,14 @@ AgentBridge, выбранный модуль БД и его migrations assembly,
 
 ```text
 AgentBridge/
-  lib/                            10 собственных DLL и доступные XML
+  lib/                            11 собственных DLL и доступные XML
   AgentBridge.Delivery.props      общий импорт и проверки
   AgentBridge.References.props    только локальные Reference/HintPath
   AgentBridge.Dependencies.props  обязательные exact PackageReference
   delivery.manifest.json          schema3, SHA256, package roots/source graphs
 ```
+
+Текущая source closure включает AgentBridge.Sub2Api.dll через Integration. На этапе02 это подготовленный bundle с ответами Unsupported; транспорт относится к этапу03. Новый состав требует повторной подготовки и проверки комплекта; результаты прежних датированных поставок не подтверждают его приёмку.
 
 SQL Server поддерживает win-x64/linux-x64/linux-arm64; SQLite/PostgreSQL комплекты проверены для win-x64. Наши DLL одинаковы для RID выбранного комплекта; native-файлы, разные варианты сторонних сборок и локализации выбирает NuGet/SDK. Они не хранятся в libs. Некоторые Microsoft/System сборки web-приложения предоставляет shared framework ASP.NET Core: SDK не копирует их повторно в output. .NET 10 runtime устанавливается отдельно.
 

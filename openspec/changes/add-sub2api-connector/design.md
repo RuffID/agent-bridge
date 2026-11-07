@@ -1,10 +1,10 @@
 # Устройство планируемого подключения
 
-Реализация отсутствует. Документ описывает направление работ, не подтверждённый runtime API. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md), [технические вопросы](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/open-questions.md).
+Реализована только композиция/shared protocol этапа02; операции sub2api03 и приёмка04–05 отсутствуют. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md), [технические вопросы](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/open-questions.md), [evidence02](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/results.md).
 
 ## Подтверждённая текущая граница
 
-[IModelGateway](../../../AgentBridge/Application/Ports/IModelGateway.cs) отделяет генерацию/compact от транспорта; IModelCatalog, IModelAccessResolver и IModelSettingsReader также принадлежат ядру. [Facade](../../../adapters/AgentBridge.Integration/AgentBridgeIntegrationExtensions.cs) сейчас непосредственно подключает CodexLb options и AddCodexLbResponses. [Settings validator](../../../AgentBridge/Application/ModelSelectionValidator.cs) требует подтверждённого input budget и exact effort.
+[IModelGateway](../../../AgentBridge/Application/Ports/IModelGateway.cs) отделяет генерацию/compact от транспорта; IModelCatalog, IModelAccessResolver и IModelSettingsReader также принадлежат ядру. [Facade](../../../adapters/AgentBridge.Integration/AgentBridgeIntegrationExtensions.cs) подключает выбранный bundle; default остаётся CodexLb options и AddCodexLbResponses. [Settings validator](../../../AgentBridge/Application/ModelSelectionValidator.cs) требует подтверждённого input budget и exact effort.
 
 [CodexLb continuation](../../../adapters/AgentBridge.CodexLb/Responses/ResponseContinuationMapper.cs) содержит adapter marker и binding диалога/owner/agent/endpoint/key. [ContextModelGuard](../../../AgentBridge/Application/ContextModelGuard.cs) сравнивает provenance модели, но совпадение model ID само по себе не доказывает совместимость двух шлюзов.
 
@@ -12,9 +12,9 @@
 
 ## Проекты и зависимости
 
-AgentBridge.Sub2Api размещается отдельным csproj в adapters, зависит от ядра и HttpClientLibrary. CodexLb остаётся самостоятельным адаптером. Общие Responses readers/writers/SSE выделяются только по подтверждённому совпадению протокола; возможный AgentBridge.Responses не содержит конфигурацию конкретного шлюза. Старые public CodexLb types/constructors и assembly identity сохраняются через прежние точки входа, при необходимости wrappers.
+AgentBridge.Sub2Api размещён отдельным csproj в adapters, зависит от ядра и HttpClientLibrary. CodexLb остаётся самостоятельным адаптером. AgentBridge.Responses — папка единых internal исходников writers/controls/output/SSE framing, подключённых Compile/Link в оба адаптера; отдельная protocol DLL/public framework не требуется. Gateway/lifecycle/typed errors/continuation не переносились. Старые public CodexLb types/constructors и assembly identity сохраняются в прежней сборке.
 
-Integration собирает один connector bundle. Существующий AddAgentBridge(configuration, httpClientFactory) и отсутствие нового выбора сохраняют codex-lb. Для sub2api предлагается отдельная регистрация до facade; точное имя ещё не реализовано. Новый раздел Sub2Api не требует фиктивного CodexLb. Изменение выбора после facade и неоднозначность отклоняются; documented custom service overrides не теряются.
+Integration собирает один connector bundle. Существующий AddAgentBridge(configuration, httpClientFactory) и отсутствие нового выбора сохраняют codex-lb. AddAgentBridgeSub2ApiConnector либо AddAgentBridgeCodexLbConnector вызывается до facade; повтор того же выбора идемпотентен. Новый раздел Sub2Api не требует фиктивного CodexLb. Смена выбора после facade и неоднозначность отклоняются; custom service overrides сохраняются. Пример: приложение вызывает AddAgentBridgeSub2ApiConnector(), затем прежний facade с AgentBridge/Database/Sub2Api; startup options и DI scopes работают, но transport-порты возвращают явный Unsupported до реализации03.
 
 Legacy facade может сохранять статическую ссылку на CodexLb. Поэтому отдельные csproj не объявляются доказательством DLL-поставки только одного коннектора. Сначала проверяется совместимость старого приложения, затем фиксируется реальный closure.
 

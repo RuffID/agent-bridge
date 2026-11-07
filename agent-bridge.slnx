@@ -40,6 +40,7 @@
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/main.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/02.01-connector-selection.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/02.02-shared-responses.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/results.md" />
   </Folder>
   <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/">
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/main.md" />
@@ -101,6 +102,7 @@
   <Project Path="AgentBridge/agent-bridge.csproj" />
   <Folder Name="/Adapters/">
     <Project Path="adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
+    <Project Path="adapters/AgentBridge.Sub2Api/AgentBridge.Sub2Api.csproj" />
     <Project Path="adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.SqlServer/AgentBridge.Persistence.SqlServer.csproj" />
@@ -111,6 +113,7 @@
     <Project Path="adapters/AgentBridge.Persistence.Migrations.SqlServer/AgentBridge.Persistence.Migrations.SqlServer.csproj" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="tests/AgentBridge.Sub2Api.Tests/AgentBridge.Sub2Api.Tests.csproj" />
     <Project Path="tests/AgentBridge.Tests/AgentBridge.Tests.csproj" />
     <Project Path="tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj" />
     <Project Path="tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj" />
@@ -129,6 +132,9 @@
     <File Path="tests/Delivery/Build/Prepare-DeliveryTests.ps1" />
     <File Path="tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj" />
     <File Path="tests/Delivery/Consumer/LegacyTransportSurfaceProbe.cs" />
-    <Project Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
+    <File Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
+    <File Path="tests/Delivery/LegacyBaseline/AGENTS.md" />
+    <File Path="tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.Tests.csproj" />
+    <File Path="tests/Delivery/LegacyBaseline/LegacyBaselineTests.cs" />
   </Folder>
 </Solution>

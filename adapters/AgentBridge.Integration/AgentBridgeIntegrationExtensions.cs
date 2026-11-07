@@ -5,6 +5,7 @@ using AgentBridge.Configuration;
 using AgentBridge.Diagnostics;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Persistence.EfCore.Configuration;
+using AgentBridge.Sub2Api.Configuration;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,7 @@ public static class AgentBridgeIntegrationExtensions
 {
     /// <summary>Подключает options, хранение, transport и прикладные сценарии, сохраняя зависимости приложения.</summary>
     /// <param name="services">Контейнер с заранее зарегистрированным ILoggerFactory и optional индивидуальным источником ключей.</param>
-    /// <param name="configuration">Конфигурация приложения с разделами AgentBridge, CodexLb и Database.</param>
+    /// <param name="configuration">Разделы AgentBridge, Database и выбранный CodexLb (по умолчанию) либо Sub2Api.</param>
     /// <param name="httpClientFactory">Scoped callback получения принадлежащего приложению HttpClient без I/O, retry и смены аккаунта.</param>
     /// <remarks>Приложение владеет client/handlers/timeout/disposal, logger/sinks, авторизацией, business tools,
     /// обслуживанием БД и расписанием. Повтор с теми же объектами config/factory идемпотентен;
@@ -31,40 +32,71 @@ public static class AgentBridgeIntegrationExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(httpClientFactory);
+        AgentBridgeConnectorKind connector = AgentBridgeConnectorSelection.Find(services)?.Kind ?? AgentBridgeConnectorKind.CodexLb;
+        AgentBridgeConnectorExtensions.EnsureCompatible(services, connector);
         Registration? registration = services.FirstOrDefault(descriptor => descriptor.ServiceType == typeof(Registration))
             ?.ImplementationInstance as Registration;
         if (registration is not null)
         {
             if (!ReferenceEquals(registration.Configuration, configuration) || !ReferenceEquals(registration.HttpClientFactory, httpClientFactory))
+            {
                 throw new InvalidOperationException("AddAgentBridge уже подключён с другой configuration или HTTP factory.");
+            }
+
             return services;
         }
+
         if (!services.Any(descriptor => descriptor.ServiceType == typeof(ILoggerFactory)))
+        {
             throw new InvalidOperationException("AddAgentBridge требует ILoggerFactory приложения; сначала настройте logging.");
+        }
 
         bool hasIndividualSource = services.Any(descriptor => descriptor.ServiceType == typeof(IIndividualModelKeySource));
         services.AddAgentBridgeConfiguration(configuration.GetSection("AgentBridge"));
-        services.AddCodexLbConfiguration(configuration.GetSection("CodexLb"));
+        if (connector == AgentBridgeConnectorKind.CodexLb)
+        {
+            services.AddCodexLbConfiguration(configuration.GetSection("CodexLb"));
+            services.AddOptions<CodexLbOptions>().Validate(options => options.KeySource != ModelKeySourceMode.Individual || hasIndividualSource,
+                "CodexLb.KeySource: Individual требует IIndividualModelKeySource приложения до AddAgentBridge.");
+        }
+        else
+        {
+            Sub2ApiComposition.AddConfiguration(services, configuration.GetSection("Sub2Api"), hasIndividualSource);
+        }
+
         services.AddDatabaseConfiguration(configuration.GetSection("Database"));
-        services.AddOptions<CodexLbOptions>().Validate(options => options.KeySource != ModelKeySourceMode.Individual || hasIndividualSource,
-            "CodexLb.KeySource: Individual требует IIndividualModelKeySource приложения до AddAgentBridge.");
         services.TryAddScoped<IIndividualModelKeySource, SharedKeySource>();
 
         ServiceCollection modules = new();
         modules.AddAgentBridgePersistence();
-        modules.AddCodexLbResponses(httpClientFactory);
+        if (connector == AgentBridgeConnectorKind.CodexLb)
+        {
+            modules.AddCodexLbResponses(httpClientFactory);
+        }
+        else
+        {
+            Sub2ApiComposition.AddPorts(modules);
+        }
+
         foreach (ServiceDescriptor descriptor in modules)
         {
             // Options delegates дополняют pipeline; остальные регистрации являются заменяемыми defaults.
             if (descriptor.ServiceType.IsGenericType && descriptor.ServiceType.GetGenericTypeDefinition()
                 == typeof(IDbContextOptionsConfiguration<>))
+            {
                 services.Add(descriptor);
+            }
             else if (descriptor.ServiceType.IsGenericType && descriptor.ServiceType.GetGenericTypeDefinition()
                 == typeof(IValidateOptions<>))
+            {
                 services.TryAddEnumerable(descriptor);
+            }
             else
+            {
                 services.TryAdd(descriptor);
+            }
         }
+
         services.AddAgentBridgeDiagnostics();
         services.TryAddScoped<ContextBuilder>(provider => new ContextBuilder(provider.GetServices<IContextProvider>()));
         services.AddAgentBridgeTools();
@@ -73,7 +105,9 @@ public static class AgentBridgeIntegrationExtensions
         services.AddAgentBridgeRunner();
         services.AddAgentBridgeSettings();
         services.AddAgentBridgeDialogCleanup();
+        services.TryAddSingleton(new AgentBridgeConnectorSelection(connector));
         services.AddSingleton(new Registration(configuration, httpClientFactory));
+
         return services;
     }
 

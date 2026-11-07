@@ -8,16 +8,21 @@
 
 ## Фактические проекты
 
+Этап02 [плана sub2api](<../Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/main.md>) добавил отдельный подготовленный transport bundle и выбор в [Integration](26-integration-registration.md); операции sub2api пока Unsupported. Общие internal JSON/SSE механизмы подключены source link в оба адаптера. Главная спецификация не объявляет полный коннектор реализованным.
+
 Этап17 добавляет `Tokenization/` в существующее ядро: offline Microsoft.ML.Tokenizers2.0.0 с двумя embedded dictionaries, direct Bcl.Memory10.0.4, IContextTokenCounter, explicit DI и Application.ContextBudgetGuard. Новый проект/host/адаптер не создаётся; DB/HTTP границы не меняются. [Точные mapping/источники/границы](07-tokenizer-and-settings.md#проверенный-exact-mapping-и-источники).
 
 | Путь от корня | Сборка / назначение | ProjectReference |
 | --- | --- | --- |
 | `AgentBridge/agent-bridge.csproj` | `AgentBridge.dll`, ядро/Application | Нет |
 | `adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj` | `AgentBridge.CodexLb.dll` | Ядро, локальный HttpClientLibrary |
-| `adapters/AgentBridge.Integration/AgentBridge.Integration.csproj` | `AgentBridge.Integration.dll`, [стандартная регистрация](26-integration-registration.md) | Ядро, CodexLb, EF adapter; ядро не зависит от facade/ASP.NET Core |
+| `adapters/AgentBridge.Sub2Api/AgentBridge.Sub2Api.csproj` | `AgentBridge.Sub2Api.dll`, подготовка options/портов без HTTP операций | Ядро, локальный HttpClientLibrary |
+| `adapters/AgentBridge.Responses/` | Единые internal исходники, отдельной сборки нет | Compile/Link в CodexLb и Sub2Api |
+| `adapters/AgentBridge.Integration/AgentBridge.Integration.csproj` | `AgentBridge.Integration.dll`, [стандартная регистрация](26-integration-registration.md) | Ядро, CodexLb, Sub2Api, EF adapter; ядро не зависит от facade/ASP.NET Core |
 | `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и maintenance SQLite/PostgreSQL |
 | `tests/AgentBridge.Tests/AgentBridge.Tests.csproj` | Проверки ядра | Ядро |
 | `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |
+| `tests/AgentBridge.Sub2Api.Tests/AgentBridge.Sub2Api.Tests.csproj` | Изолированные DI/shared/baseline/API проверки | Integration и disconnected SQL Server module |
 | `tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj` | Проверки хранения | EF-хранилище |
 
 Во всех проектах включены nullable и генерация XML-документации. Glob ядра ограничен папкой `AgentBridge/` и исключает вложенные `bin/obj/artifacts`; результаты сборки соседних проектов не компилируются в ядро. Production-проекты используют обычный `Microsoft.NET.Sdk`, без явных framework references. Ядро содержит `Microsoft.Extensions.Options.ConfigurationExtensions 10.0.12` и `Microsoft.Extensions.Logging 10.0.12`. EF-адаптер подключает EFCoreLibrary, Microsoft EF/Relational/SQLite 10.0.12 и Npgsql provider 10.0.3; тестовый DI согласован на 10.0.12. HttpClientLibrary 0.0.0.5 подключена только к codex-lb адаптеру. ASP.NET Core, WPF, Telegram и Serilog в production не подключены; Serilog pipeline настраивается приложением.

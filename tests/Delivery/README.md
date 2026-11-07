@@ -1,51 +1,56 @@
-# Проектная проверка поставки
+# Отдельные проверки поставки и исторического API
 
-Metadata-тесты используют комплекты из `artifacts/delivery-tests/current/` в этом репозитории. Пользовательские `AGENTBRIDGE_DELIVERY_ROOT`, `AGENTBRIDGE_NUGET_DELIVERY_ROOT` и `AGENTBRIDGE_SHARED_DELIVERY_ROOT` больше не влияют на выбор файлов; удалять их в настройках Windows для запуска этих тестов не требуется.
+В обычном решении подключены пять тестовых проектов ядра, транспорта, композиции, хранения и hosting. API-тесты Sub2Api читают текстовый эталон из embedded resource и не требуют сохранённых DLL или каталога профиля.
 
-## Запуск
+Metadata, LegacyBaseline и внешний Compatibility представлены в solution как документы для отдельного запуска. Сборка решения и самих тестовых проектов не запускает упаковщики или PowerShell.
 
-Из корня репозитория:
+## Проверка текущей поставки
 
-```powershell
-dotnet test --project tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj -c Debug --no-restore -p:GeneratePackageOnBuild=false --results-directory artifacts/test-results/delivery-tests
-```
+Metadata-тесты проверяют реальные файлы комплектов, поэтому используют `artifacts/delivery-tests/current/`. Это generated output проверки поставки, а не источник expected для обычных unit-тестов. Пользовательские AGENTBRIDGE_*_DELIVERY_ROOT не читаются.
 
-Для первой сборки самого тестового проекта при отсутствии его assets сначала требуется обычный `dotnet restore` этого `.csproj`. SDK .NET 10 и PowerShell 7 (`pwsh` в PATH) обязательны. Подготовка комплектов сама выполняет NuGet restore runtime-графов; при недостающих пакетах может потребоваться доступ к настроенным NuGet-источникам.
-
-Обычная сборка delivery-тестов перед компиляцией вызывает [Prepare-DeliveryTests.ps1](Build/Prepare-DeliveryTests.ps1):
-
-1. Проверяет SHA256 исходников AgentBridge/EFCoreLibrary/HttpClientLibrary, упаковщиков и build inputs, а также выбранный SDK.
-2. При изменении входов последовательно выполняет отдельные restore/build пяти Release-вариантов: SQL Server win-x64/linux-x64/linux-arm64 и SQLite/PostgreSQL win-x64.
-3. Создаёт свежие полные SDK-комплекты, DLL/NuGet и shared bundle через существующие упаковщики.
-4. После повторной проверки входов заменяет `current` и записывает маркер успешной подготовки. Если входы не менялись, использует готовый комплект; его фактические hashes проверяют metadata-тесты.
-
-```text
-artifacts/delivery-tests/
-  preparation.lock
-  current/
-    ready.json
-    sdk/<Provider>/<RID>/
-    nuget/<Provider>/
-    shared/SqlServer/
-```
-
-Build output всех проектов каждого варианта изолирован в собственном staging. Готовая поставка не смешивается с предыдущими файлами. Неудачная подготовка оставляет staging для диагностики, удаляет маркер актуальности старого комплекта и останавливает сборку. Подготовка и выполнение тестов блокируют взаимную замену файлов.
-
-## Visual Studio и Microsoft.Testing.Platform
-
-Проект сохраняет xUnit v3 и Microsoft.Testing.Platform из `global.json`. Путь к артефактам записывается в `AssemblyMetadata` во время сборки: MTP, Visual Studio adapter и запуск из другого рабочего каталога читают одну проектную поставку.
-
-При запуске из Test Explorer должна быть включена сборка проектов перед тестами. `DisableFastUpToDateCheck` отключает пропуск MSBuild для этого тестового проекта; повторная подготовка внутри MSBuild использует проверку SHA256. Design-time build и discovery сами по себе не запускают упаковщики. Тесты не создают дочерние процессы.
-
-`--no-build` или отключённая сборка перед тестами проверяют последний успешно подготовленный комплект. Такой запуск не пересобирает изменённые исходники. После незавершённой подготовки assembly fixture завершает запуск ошибкой вместо проверки предыдущей поставки.
-
-Compile-check без выполнения подготовительных скриптов:
+Сначала явно подготовить комплекты разрешённой командой из корня репозитория:
 
 ```powershell
-dotnet build tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj -c Debug --no-restore -p:GeneratePackageOnBuild=false -p:AgentBridgeSkipDeliveryPreparation=true
+pwsh -NoLogo -NoProfile -File "tests/Delivery/Build/Prepare-DeliveryTests.ps1"
 ```
 
-Эта команда проверяет компиляцию тестов, но не актуальность или состав комплектов. По правилам репозитория первый запуск добавленного Exec и подготовительных скриптов требует отдельного разрешения точной команды. Runtime, приложение, Docker, БД и SQL не запускаются; metadata-проверки не доказывают работу провайдеров на реальных платформах.
+Нужны .NET 10 и PowerShell 7. Скрипт выполняет restore/build пяти Release-вариантов: SQL Server win-x64/linux-x64/linux-arm64 и SQLite/PostgreSQL win-x64; создаёт DLL/NuGet и shared bundles. Перед заменой current проверяет SHA256 входов, использует отдельный staging и блокировку. При неизменных входах использует ранее подготовленный комплект. Отказ не активирует предыдущую поставку; staging остаётся для диагностики. При недостающих пакетах может потребоваться доступ к настроенным NuGet-источникам.
+
+После подготовки отдельно восстановить/собрать и запустить конкретный проект:
+
+```powershell
+dotnet restore tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj --source C:/Users/Spike/.nuget/packages -p:NuGetAudit=false
+dotnet build tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj -c Debug --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:GeneratePackageOnBuild=false
+dotnet test --project tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj -c Debug --no-build --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:GeneratePackageOnBuild=false --no-progress
+```
+
+Путь к локальному источнику пакетов заменить своим. Без готового ready.json tests завершаются понятной ошибкой; файлы не создаются и не пропускаются молча. Новый source build сам по себе не обновляет kit: перед проверкой поставки изменённых исходников повторить явную подготовку. Пути комплекта записываются в AssemblyMetadata и не зависят от cwd или BaseOutputPath.
+
+Обычный compile-check Metadata выполняет только компиляцию. AgentBridgeSkipDeliveryPreparation больше не нужен, Exec/BeforeCompile и DisableFastUpToDateCheck удалены. Проект можно открыть отдельно в Visual Studio; подготовка комплекта остаётся явной. Runtime, native loading, HTTP, БД и Docker metadata-тестами не запускаются.
+
+## Исторический baseline этапа01
+
+[LegacyBaseline](LegacyBaseline/AgentBridge.LegacyBaseline.Tests.csproj) отдельно проверяет сохранность старых DLL, frozen consumers и происхождение текстового API-эталона. Это acceptance evidence, а не обязательные локальные файлы каждого разработчика.
+
+Путь выбирается явно и записывается в metadata тестовой сборки:
+
+```powershell
+dotnet restore tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.Tests.csproj --source C:/Users/Spike/.nuget/packages -p:NuGetAudit=false
+dotnet build tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.Tests.csproj -c Debug --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:GeneratePackageOnBuild=false -p:AgentBridgeLegacyBaselineRoot="C:/path/to/preserved-baseline"
+dotnet test --project tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.Tests.csproj -c Debug --no-build --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:GeneratePackageOnBuild=false -p:AgentBridgeLegacyBaselineRoot="C:/path/to/preserved-baseline" --no-progress
+```
+
+Сначала проверяются шесть pinned hashes evidence этапа01, затем описи127/112, включая frozen DLL; только после этого текстовый API сравнивается со старыми PE. Отсутствующий/повреждённый baseline — ошибка явного audit-запуска. Нет default профиля, поиска другого kit, автоматической генерации или Skip. Старый комплект и frozen consumers никогда не перезаписываются.
+
+[legacy-api-baseline.json](../AgentBridge.Sub2Api.Tests/Fixtures/legacy-api-baseline.json) хранит 2657 семантических записей трёх старых сборок и SHA256 их исходных DLL. Он встроен в оба проекта. Обновлять expected по новым исходникам запрещено: изменения API должны оцениваться как изменения совместимости. Source compilation/API subset comparison и проверка старого комплекта не заменяют old→new CLR ABI resolution, runtime или live OAuth.
+
+## Внешний DLL-потребитель
+
+`Compatibility/` проверяется отдельно после копирования исходников за пределы репозиториев с импортом целого выбранного binary kit. Правила — [Compatibility/AGENTS.md](Compatibility/AGENTS.md). Это отдельный этап проверки поставки, а не source ProjectReference unit-тест.
+
+## Разрешения
+
+Скрипты подготовки требуют разрешения точной команды по AGENTS.md. Обычная сборка тестов их не вызывает. Generated комплекты хранятся только в ignored artifacts; защищённый исторический baseline выбирается отдельно и доступен только для чтения.
 
 ## Проверка изменений 2026-10-08
 

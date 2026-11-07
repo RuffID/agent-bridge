@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace AgentBridge.CodexLb.Responses;
+namespace AgentBridge.Responses;
 
 /// <summary>Разбирает SSE framing независимо от сетевых границ и JSON протокола Responses.</summary>
 internal static class SseEventReader
@@ -20,25 +20,56 @@ internal static class SseEventReader
             if (firstLine)
             {
                 firstLine = false;
-                if (line.StartsWith('\uFEFF')) { line = line[1..]; }
+                if (line.StartsWith('\uFEFF'))
+                {
+                    line = line[1..];
+                }
             }
+
             if (line.Length == 0)
             {
-                if (hasData) { yield return (eventName, data.ToString()); }
+                if (hasData)
+                {
+                    yield return (eventName, data.ToString());
+                }
+
                 data.Clear();
                 eventName = null;
                 hasData = false;
                 continue;
             }
-            if (line[0] == ':') { continue; }
+
+            if (line[0] == ':')
+            {
+                continue;
+            }
+
             int colon = line.IndexOf(':');
-            string field = colon < 0 ? line : line[..colon];
-            string value = colon < 0 ? "" : line[(colon + 1)..];
-            if (value.StartsWith(' ')) { value = value[1..]; }
-            if (field == "event") { eventName = value; }
+            string field = line;
+            string value = "";
+            if (colon >= 0)
+            {
+                field = line[..colon];
+                value = line[(colon + 1)..];
+            }
+
+            if (value.StartsWith(' '))
+            {
+                value = value[1..];
+            }
+
+            if (field == "event")
+            {
+                eventName = value;
+            }
+
             if (field == "data")
             {
-                if (hasData) { data.Append('\n'); }
+                if (hasData)
+                {
+                    data.Append('\n');
+                }
+
                 data.Append(value);
                 hasData = true;
             }

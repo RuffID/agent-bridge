@@ -85,13 +85,14 @@ foreach ($rid in $rids) {
         $kitLocal[$entry.path] = @{ entry = $entry; file = (Join-Path $kitRoot $entry.path) }
     }
     $moduleName = "AgentBridge.Persistence.$($manifest.provider)"
-    foreach ($assembly in @('AgentBridge', 'AgentBridge.Integration', 'AgentBridge.CodexLb', 'AgentBridge.Persistence.EfCore', $moduleName,
+    $requiredAssemblies = @('AgentBridge', 'AgentBridge.Integration', 'AgentBridge.CodexLb', 'AgentBridge.Sub2Api', 'AgentBridge.Persistence.EfCore', $moduleName,
             "AgentBridge.Persistence.Migrations.$($manifest.provider)", 'EFCoreLibrary', 'EFCoreLibrary.Maintenance',
-            "EFCoreLibrary.Maintenance.$($manifest.provider)", 'HttpClientLibrary')) {
+            "EFCoreLibrary.Maintenance.$($manifest.provider)", 'HttpClientLibrary')
+    foreach ($assembly in $requiredAssemblies) {
         if (-not $kitLocal.ContainsKey("lib/$assembly.dll")) { throw "Missing local DLL: $assembly" }
         if ($assembly -ne 'EFCoreLibrary' -and -not $kitLocal.ContainsKey("lib/$assembly.xml")) { throw "Missing local XML: $assembly" }
     }
-    if (@($kitLocal.Values | Where-Object { $_.entry.kind -eq 'managed' }).Count -ne 10) { throw 'Unexpected local library closure.' }
+    if (@($kitLocal.Values | Where-Object { $_.entry.kind -eq 'managed' }).Count -ne $requiredAssemblies.Count) { throw 'Unexpected local library closure.' }
     if ($null -eq $baseline) {
         $baseline = $manifest
         $localAssets = $kitLocal
@@ -164,4 +165,4 @@ $manifest = [ordered]@{ schemaVersion = 3; layout = 'dll-nuget'; provider = $bas
     requiredPackages = @($requiredPackages.Keys | Sort-Object | ForEach-Object { [ordered]@{ id = $_; version = $requiredPackages[$_] } });
     sourceKits = $sourceKits.ToArray(); files = @($files.ToArray() | Sort-Object path) }
 [IO.File]::WriteAllText((Join-Path $destinationRoot 'delivery.manifest.json'), ($manifest | ConvertTo-Json -Depth 20) + "`n", [Text.UTF8Encoding]::new($false))
-Write-Output "Assembled DLL/NuGet $($baseline.provider): 10 local libraries, $($requiredPackages.Count) direct packages at $destinationRoot"
+Write-Output "Assembled DLL/NuGet $($baseline.provider): $($requiredAssemblies.Count) local libraries, $($requiredPackages.Count) direct packages at $destinationRoot"

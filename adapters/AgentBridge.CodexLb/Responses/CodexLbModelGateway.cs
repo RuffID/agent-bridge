@@ -6,6 +6,7 @@ using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.CodexLb.Configuration;
 using AgentBridge.CodexLb.Responses.Models;
+using AgentBridge.Responses;
 using HttpClientLibrary.Clients;
 using HttpClientLibrary.Exceptions;
 using HttpClientLibrary.Models;

@@ -7,7 +7,25 @@ IServiceCollection AddAgentBridge(this IServiceCollection services,
     IConfiguration configuration, Func<IServiceProvider, HttpClient> httpClientFactory);
 ```
 
-Конфигурация содержит разделы `AgentBridge` (Agent/Retention/Compaction), `CodexLb`, `Database`. Можно передать выбранный раздел приложения с такой внутренней структурой. Библиотека не регистрирует IConfiguration и не открывает файлы. Existing [required options13](05-configuration-and-lifecycle.md) и стандартные Configure/PostConfigure/reload сохраняются; отсутствие ключа не исправляется предшествующим Configure. Options проверяются при получении либо явном `IStartupValidator.Validate` до операций; host необязателен.
+Конфигурация содержит разделы `AgentBridge` (Agent/Retention/Compaction), `Database` и выбранный `CodexLb` (default) либо `Sub2Api`. Можно передать выбранный раздел приложения с такой внутренней структурой. Библиотека не регистрирует IConfiguration и не открывает файлы. Existing [required options13](05-configuration-and-lifecycle.md) и стандартные Configure/PostConfigure/reload сохраняются; отсутствие ключа не исправляется предшествующим Configure. Options проверяются при получении либо явном `IStartupValidator.Validate` до операций; host необязателен.
+
+## Выбор коннектора и граница sub2api
+
+Без нового вызова сохраняется codex-lb. Явный выбор выполняется в том же namespace до facade:
+
+```csharp
+services.AddAgentBridgeSub2ApiConnector();
+services.AddAgentBridge(configuration, httpClientFactory);
+// Альтернатива для отдельной composition: AddAgentBridgeCodexLbConnector().
+```
+
+Sub2ApiOptions и Sub2ApiKeySourceMode находятся в AgentBridge.Sub2Api.Configuration. Раздел Sub2Api имеет BaseAddress, Model, ReasoningEffort, KeySource, SharedApiKey, GenerationTimeout, CompactTimeout; все необходимые значения задаются явно, SharedApiKey допускается отсутствующим только при Individual. Фиктивный CodexLb не требуется. На этапе02 подготовлены только options и четыре scoped порта: **access/catalog/settings/generation/compact возвращают Unsupported**. Этот пример не включает пригодный к работе sub2api транспорт; реализация относится к03 и проверкам T01/T02/T05.
+
+Повтор selector того же коннектора — no-op до/после facade. Другой выбор, включая смену default после facade, отклоняется до I/O и изменений второго bundle. Известные прямые CodexLb gateway/catalog/access/settings registrations нельзя смешивать с выбором Sub2Api перед facade. Произвольные factory/instance overrides приложения не исполняются для проверки их реализации и сохраняются. Direct AddCodexLb* остаются низкоуровневыми добавляющими регистрациями; не используйте их как selector после facade. Последующие app Add/Replace сохраняют стандартную ответственность приложения за согласованность.
+
+Оба адаптера компилируют единые internal механизмы [Responses](../../adapters/AgentBridge.Responses/AGENTS.md) через Compile/Link. Gateway/options/catalog/identity, bound legacy continuation, lifecycle и typed ошибки codex-lb остаются отдельными. Новая protocol DLL не добавляется; AgentBridge.Sub2Api.dll добавлена в source closure Integration и должна быть учтена новой поставкой05. Старый kit не обновлялся.
+
+Нормы и текущие требования — [agent-runtime](../../openspec/specs/agent-runtime/spec.md); полное подключение sub2api пока описано только [будущим change](../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md). Его требования не объявляются реализованными после одной DI-подготовки.
 
 ## Обязательные зависимости приложения
 
@@ -64,5 +82,7 @@ Defaults для public ports, HttpApiClient, counter, inspector, ContextBuilder 
 Фасад не строит ServiceProvider, не включает maintenance/миграции/initializer/background services, не запускает cleanup/compact/HTTP/БД/files, не создаёт auth policies/endpoints/scheduler. Provider migrations DLL поставляется отдельно для выбранной БД. Authorization owner/agent, business services и внешние действия принадлежат приложению.
 
 ## Проверки
+
+[Этап02](<../Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/results.md>) проверил 27 новых isolated cases (DI/baseline/API/shared), 414 codex-lb и 56 прежних facade cases; compile-check трёх projects0 warnings/errors. Baseline сохранён, legacy constructors/types/signatures сверены PE/API. Source-linked probe не заменяет external source compilation/full old→new ABI resolution frozen consumers, новую поставку и live OAuth. T01–T05 открыты; strict CLI OpenSpec не выполнялся.
 
 [Public facade tests](../../tests/AgentBridge.Persistence.EfCore.Tests/IntegrationRegistrationTests.cs) используют in-memory configuration и ValidateScopes/ValidateOnBuild без host. Actual DI/EF metadata/HTTP library отделены от fake handler/local stream, отсутствующей БД/native/runtime. [Simple consumer](../../tests/Delivery/Consumer/SimpleRegistration.cs) и [advanced consumer](../../tests/Delivery/Consumer/UsageRegistration.cs) компилируются как source; methods не исполняются. External binary kits/MSSQL/три RID относятся к15/16, runtime/provider/live — к17–19. Results14 (история Git).

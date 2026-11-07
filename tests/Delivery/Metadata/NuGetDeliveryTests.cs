@@ -130,9 +130,28 @@ public class NuGetDeliveryTests
     [InlineData("PostgreSql")]
     public void BundleContainsOnlyLocalAssetsAndPortableReferences(string provider)
     {
+        // Arrange
         string root = Path.Combine(Root(), provider);
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "delivery.manifest.json")));
         JsonElement[] entries = manifest.RootElement.GetProperty("files").EnumerateArray().ToArray();
+        string[] expectedAssemblies =
+        [
+            "AgentBridge", "AgentBridge.Integration", "AgentBridge.CodexLb", "AgentBridge.Sub2Api",
+            "AgentBridge.Persistence.EfCore", $"AgentBridge.Persistence.{provider}",
+            $"AgentBridge.Persistence.Migrations.{provider}", "EFCoreLibrary", "EFCoreLibrary.Maintenance",
+            $"EFCoreLibrary.Maintenance.{provider}", "HttpClientLibrary"
+        ];
+
+        // Act
+        string[] actual = Directory.GetFiles(root, "*", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/')).ToArray();
+        XDocument references = XDocument.Load(Path.Combine(root, "AgentBridge.References.props"));
+        string[] managed = entries.Where(entry => entry.GetProperty("kind").GetString() == "managed")
+            .Select(entry => Path.GetFullPath(Path.Combine(root, entry.GetProperty("path").GetString()!))).ToArray();
+        string[] hintPaths = references.Descendants("HintPath").Select(item =>
+            Path.GetFullPath(item.Value.Replace("$(MSBuildThisFileDirectory)", root + Path.DirectorySeparatorChar, StringComparison.Ordinal))).ToArray();
+
+        // Assert
         foreach (JsonElement entry in entries)
         {
             string path = entry.GetProperty("path").GetString()!;
@@ -145,23 +164,11 @@ public class NuGetDeliveryTests
             Assert.Contains(entry.GetProperty("kind").GetString(), new[] { "managed", "xml", "metadata" });
         }
 
-        string[] actual = Directory.GetFiles(root, "*", SearchOption.AllDirectories)
-            .Select(file => Path.GetRelativePath(root, file).Replace('\\', '/')).ToArray();
         Assert.Equal(entries.Select(entry => entry.GetProperty("path").GetString()!).Append("delivery.manifest.json").Order(StringComparer.Ordinal),
             actual.Order(StringComparer.Ordinal));
-        XDocument references = XDocument.Load(Path.Combine(root, "AgentBridge.References.props"));
-        string[] managed = entries.Where(entry => entry.GetProperty("kind").GetString() == "managed")
-            .Select(entry => Path.GetFullPath(Path.Combine(root, entry.GetProperty("path").GetString()!))).ToArray();
-        string[] hintPaths = references.Descendants("HintPath").Select(item =>
-            Path.GetFullPath(item.Value.Replace("$(MSBuildThisFileDirectory)", root + Path.DirectorySeparatorChar, StringComparison.Ordinal))).ToArray();
         Assert.Equal(managed.Order(StringComparer.Ordinal), hintPaths.Order(StringComparer.Ordinal));
-        Assert.Equal(10, managed.Length);
-        foreach (string file in managed)
-        {
-            string name = Path.GetFileNameWithoutExtension(file);
-            Assert.True(name.StartsWith("AgentBridge", StringComparison.Ordinal) || name.StartsWith("EFCoreLibrary", StringComparison.Ordinal)
-                || name == "HttpClientLibrary", name);
-        }
+        Assert.Equal(expectedAssemblies.Order(StringComparer.Ordinal),
+            managed.Select(file => Path.GetFileNameWithoutExtension(file)).Order(StringComparer.Ordinal));
     }
 
     /// <summary>Получает корень подготовленной проектной матрицы DLL/NuGet-комплектов.</summary>

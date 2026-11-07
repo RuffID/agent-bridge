@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace AgentBridge.CodexLb.Responses.Models;
+namespace AgentBridge.Responses;
 
 /// <summary>Содержит подготовленный независимый JSON transport body, без публичного wire DTO в ядре.</summary>
 internal class ResponseRequestBody(JsonElement content)

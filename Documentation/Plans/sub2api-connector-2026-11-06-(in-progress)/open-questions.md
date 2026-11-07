@@ -6,6 +6,8 @@
 
 ## Технические вопросы разработчику — внутренний раздел
 
+После этапа02 все T01–T05 остаются открытыми. [Результаты02](02-composition/results.md) подтверждают только локальную композицию, shared protocol regression и исходную/PE-поверхность. Unsupported подготовленных sub2api-портов не закрывает capability/OAuth/server-profile вопросы.
+
 ### T01. Подтверждённый публичный входной бюджет и provenance возможностей
 
 В [матрице01.01](01-contracts/wire-matrix.md) установлено: ordinary list не обещает metadata; Codex manifest смешивает upstream и локальные шаблоны. Публичный контракт input_context_window / доказанная формула входного бюджета не найдены. context_window, max_context_window и effective percent=95 не доказывают доступный input budget; внутренний UpstreamModelMetadata.MaxOutputTokens не гарантированно публикуется в manifest. При этом settings ядра требуют подтверждённый входной бюджет.
@@ -23,6 +25,8 @@
 Continuation уже имеет adapter/binding, но проверка совместимости контекста учитывает прежде всего модель. На 04.01 определить место хранения identity коннектора для результатов и compact, учитывая legacy записи без identity. Пример: одинаковый model ID у двух шлюзов не подтверждает совместимость encrypted reasoning. Сначала проверить достаточность versioned metadata существующих JSON-контрактов. Если нужна схема БД или изменение публичного контракта, остановить эту часть и согласовать адресное расширение; не добавлять migration в рамках обычной адаптации незаметно.
 
 ### T04. Новая поставка против сохранённой прежней бинарной поверхности
+
+На02 выполнено PE/API subset comparison AgentBridge/CodexLb/Integration: прежние declaring types/assembly identity и декодированные public/protected сигнатуры/constraints/defaults сохранены. Legacy probe компилируется как source-linked код, без выполнения. Это не external consumer и не проверка CLR resolution старых binaries; custom attributes/nullable и identities полного referenced closure не покрыты этим comparator. Перечисленные ниже проверки05.02 сохраняются.
 
 На01.02 source fingerprints текущего kit совпали, PE identities/API зафиксированы, kit и две frozen consumer DLL сохранены вне репозиториев. Оба исходных compile-only consumers собраны против baseline DLL, без исполнения. [Опись и методика](01-contracts/compatibility-checks.md) содержит точные пути/команды/hashes.
 

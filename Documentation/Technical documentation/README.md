@@ -29,7 +29,7 @@
 | [Очистка истёкших диалогов](22-expired-dialog-cleanup.md) | Явный bounded пакет, отдельные scopes/fresh UTC, partial/canceled/unknown и existing guards/cascade |
 | [Поставка DLL](24-dll-delivery.md) | .NET10/win-x64, полный состав SQLite/PostgreSQL, XML/inheritdoc, бинарные ссылки и внешние требования |
 | [Подключение и использование](25-usage-guide.md) | Проверяемые C# примеры DI/config/dialog/tools, ключи/модели, status/expiry/cleanup и обязанности приложения |
-| [Стандартная регистрация](26-integration-registration.md) | Actual Integration facade, required logger/source/factory, lifetimes/overrides/повтор и отсутствие I/O |
+| [Стандартная регистрация](26-integration-registration.md) | Выбор bundle, default codex-lb, подготовка sub2api/Unsupported, required logger/source/factory и lifetimes/overrides без I/O |
 | [Usage, files и images](27-auxiliary-model-operations.md) | Optional gateway, deadlines, snapshots и явный ServerValidation/ручной force compact |
 | [Модули провайдеров и общая поставка](28-provider-modules-and-shared-delivery.md) | Явный SQL Server/SQLite/PostgreSQL, независимый общий EF-адаптер и DLL dedup по SHA256 |
 | [Собственные DLL и NuGet](29-dll-and-nuget-delivery.md) | Обязательные PackageReference, exact версии, locks и компактная поставка для приложения |

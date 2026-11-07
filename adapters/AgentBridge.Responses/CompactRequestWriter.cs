@@ -1,9 +1,8 @@
 using System.Text.Json;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Results;
-using AgentBridge.CodexLb.Responses.Models;
 
-namespace AgentBridge.CodexLb.Responses;
+namespace AgentBridge.Responses;
 
 /// <summary>Записывает отдельный compact-контракт без скрытого удаления generation-параметров.</summary>
 internal static class CompactRequestWriter
@@ -16,6 +15,7 @@ internal static class CompactRequestWriter
             return ServiceResult<ResponseRequestBody>.Fail(new(ServiceErrorType.Unsupported,
                 "Compact не поддерживает continuation и определения инструментов."));
         }
+
         Dictionary<string, JsonElement> parameters = new(StringComparer.Ordinal);
         if (request.Parameters is not null)
         {
@@ -26,9 +26,17 @@ internal static class CompactRequestWriter
                     return ServiceResult<ResponseRequestBody>.Fail(new(ServiceErrorType.Unsupported,
                         "Параметр не поддерживается compact-адаптером."));
                 }
-                bool valid = property.Name == "reasoning"
-                    ? NestedControlsValidator.Reasoning(property.Value)
-                    : property.Value.ValueKind == JsonValueKind.String;
+
+                bool valid;
+                if (property.Name == "reasoning")
+                {
+                    valid = NestedControlsValidator.Reasoning(property.Value);
+                }
+                else
+                {
+                    valid = property.Value.ValueKind == JsonValueKind.String;
+                }
+
                 if (!valid || !parameters.TryAdd(property.Name, property.Value))
                 {
                     return ServiceResult<ResponseRequestBody>.Fail(new(ServiceErrorType.Validation,
@@ -36,6 +44,7 @@ internal static class CompactRequestWriter
                 }
             }
         }
+
         using MemoryStream buffer = new();
         using (Utf8JsonWriter writer = new(buffer))
         {
@@ -44,27 +53,47 @@ internal static class CompactRequestWriter
             writer.WriteString("instructions", request.Instructions);
             writer.WriteBoolean("store", false);
             writer.WriteStartArray("input");
-            foreach (CanonicalModelItem item in request.Input) { item.Content.WriteTo(writer); }
+            foreach (CanonicalModelItem item in request.Input)
+            {
+                item.Content.WriteTo(writer);
+            }
+
             writer.WriteEndArray();
             if (request.ReasoningEffort is not null || parameters.ContainsKey("reasoning"))
             {
                 writer.WriteStartObject("reasoning");
-                if (request.ReasoningEffort is not null) { writer.WriteString("effort", request.ReasoningEffort); }
+                if (request.ReasoningEffort is not null)
+                {
+                    writer.WriteString("effort", request.ReasoningEffort);
+                }
+
                 if (parameters.TryGetValue("reasoning", out JsonElement reasoning))
                 {
-                    foreach (JsonProperty property in reasoning.EnumerateObject()) { property.WriteTo(writer); }
+                    foreach (JsonProperty property in reasoning.EnumerateObject())
+                    {
+                        property.WriteTo(writer);
+                    }
                 }
+
                 writer.WriteEndObject();
             }
+
             foreach (KeyValuePair<string, JsonElement> parameter in parameters)
             {
-                if (parameter.Key == "reasoning") { continue; }
+                if (parameter.Key == "reasoning")
+                {
+                    continue;
+                }
+
                 writer.WritePropertyName(parameter.Key);
                 parameter.Value.WriteTo(writer);
             }
+
             writer.WriteEndObject();
         }
+
         using JsonDocument document = JsonDocument.Parse(buffer.ToArray());
+
         return ServiceResult<ResponseRequestBody>.Ok(new(document.RootElement.Clone()));
     }
 }
