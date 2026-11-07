@@ -58,4 +58,6 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 [Plans](Plans/README.md) — планы реализации и проверок на русском языке с английскими именами файлов и папок.
 
-[Коннектор sub2api](<Plans/sub2api-connector-2026-11-06-(in-progress)/main.md>) — этапы01–02 готовы; на03 реализованы доступ, каталог, [unknown-window settings и JSON/SSE generation](<Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md>). Canonical гарантия относится к границе AgentBridge; T01/T02 открыты, compact блокирует T05. [Результаты03](<Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md>); sub2api не дорабатывается, provenance04 и поставка/live05 не начаты.
+[Коннектор sub2api](<Plans/sub2api-connector-2026-11-06-(in-progress)/main.md>) — этапы01–02 готовы; на03 реализованы доступ, каталог, [unknown-window settings и JSON/SSE generation](<Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md>). Automatic compact отключён: полный request выше threshold проходит separate guard, ручной/force compact Unsupported. Совместимость compact T05 и T01/T02 открыты. [Результаты03](<Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md>); sub2api не дорабатывается, provenance04 и поставка/live05 не начаты.
+
+[Подэтапы compact03.03.01–03.03.06](<Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03-compaction.md>) отделяют уже выполненный безопасный режим от подтверждения совместимости, request/response, принятия окна и регрессии. Декомпозиция не меняет статусы реализации.

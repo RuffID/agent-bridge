@@ -17,6 +17,9 @@ internal class Sub2ApiModelGateway(Func<HttpApiClient> httpFactory, IOptionsSnap
     ILogger<Sub2ApiModelGateway> logger) : IModelGateway
 {
     /// <inheritdoc/>
+    public bool AutomaticCompactionEnabled => false;
+
+    /// <inheritdoc/>
     public async Task<ServiceResult<ModelResponse>> GenerateAsync(ApplicationCallContext call, ModelRequest request, ModelAccess access,
         Func<ModelStreamUpdate, CancellationToken, ValueTask>? onUpdate = null, CancellationToken cancellationToken = default)
     {
@@ -94,7 +97,7 @@ internal class Sub2ApiModelGateway(Func<HttpApiClient> httpFactory, IOptionsSnap
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult(ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Unsupported,
-            "Сжатие sub2api недоступно: маршрут может заменить модель до отправки; совместимость compact T05 не подтверждена.")));
+            "Сжатие sub2api отключено: использование сжатого окна следующей генерацией не подтверждено; сервер может удалить непрочитанный compact. Исходный контекст не изменён.")));
     }
 
     /// <summary>Итог относится к lifecycle ответа, не upstream identity; logger не меняет результат/primary.</summary>

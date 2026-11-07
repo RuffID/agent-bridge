@@ -6,6 +6,10 @@ namespace AgentBridge.Application.Ports;
 /// <summary>Независимый шлюз генерации и сжатия; JSON/SSE и авторизация принадлежат адаптеру.</summary>
 public interface IModelGateway
 {
+    /// <summary>Разрешает автоматический compact; прежние реализации сохраняют включённый режим.</summary>
+    /// <remarks>Отключение не подтверждает бюджет и не разрешает игнорировать ошибки явного CompactAsync.</remarks>
+    bool AutomaticCompactionEnabled => true;
+
     /// <summary>Возвращает lifecycle-отчёт либо ожидаемый отказ без отчёта; неожиданные исключения распространяются.</summary>
     /// <remarks>Обновления вызываются последовательно и ожидаются до возврата. После возврата callbacks запрещены.
     /// Caller cancellation до получения отчёта распространяется как OperationCanceledException с исходным токеном;

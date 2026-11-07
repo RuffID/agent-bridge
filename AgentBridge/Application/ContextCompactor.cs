@@ -118,6 +118,11 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
             return Report(ContextCompactionStatus.UnknownBudget);
         }
 
+        if (!force && !gateway.AutomaticCompactionEnabled)
+        {
+            return Report(ContextCompactionStatus.Disabled);
+        }
+
         if (!force && (estimate ?? count.KnownTokens) < settings.TokenThreshold)
         {
             return Report(estimate is null ? ContextCompactionStatus.UnknownBudget : ContextCompactionStatus.NotRequired);

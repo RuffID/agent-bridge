@@ -27,6 +27,8 @@ OpenSpec main пока не синхронизируется: полная во�
 
 Продолжение03 подготовило [серверное предложение](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md), которое пользователь **отклонил**. Доработка sub2api исключена; выполнена [адаптация бюджета/settings AgentBridge к существующему серверу](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md). Новые server fields/enforcement не являются зависимостью. T01/T05 остаются открытыми, этап04 не начат.
 
+Текущий безопасный режим03.03 явно отключает automatic compact sub2api, сохраняя полный generation input выше локального threshold через отдельный budget guard. Ручной/force compact остаётся Unsupported. Аддитивный default interface member сохраняет автоматическое сжатие прежних IModelGateway; Disabled добавлен после прежних значений enum. Это не включение compact, новая поставка/ABI приёмка или restart04. Совместимость compact-окна с generation и recovery остаётся T05; mapping сам по себе не объявляется доказанной несовместимостью.
+
 ## Out of Scope
 
 WebSocket, другие платформы sub2api, admin API, автоматический fallback между шлюзами, переключение на каждый запрос, перенос всех старых opaque-диалогов и sub2api auxiliary usage/files/images. Действующие auxiliary API codex-lb сохраняются.

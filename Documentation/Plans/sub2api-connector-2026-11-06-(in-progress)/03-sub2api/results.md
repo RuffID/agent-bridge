@@ -1,8 +1,54 @@
 # Результаты этапа03
 
-Дата: 2026-11-07. Статус: **blocked compact T05**;03.01/03.02 verification, generation реализована. [Этап](main.md) · [Ограничения](contract-blockers.md) · [Клиентская адаптация](client-adaptation.md).
+Дата: 2026-11-07. Статус: **blocked compact T05**; безопасный режим без автоматического compact реализован и проверен;03.01/03.02 verification. [Этап](main.md) · [Ограничения](contract-blockers.md) · [Клиентская адаптация](client-adaptation.md).
 
-## Актуальный результат: generation по принятому плану Б
+## Актуальный результат03.03: полный контекст без автоматического compact
+
+Уточнение плана2026-11-07: этот реализованный режим выделен в [03.03.01](03.03.01-full-context-mode.md); [03.03.02](03.03.02-window-compatibility.md) остаётся blocked T05. Request, response, активация и регрессия вынесены в03.03.03–03.03.06, not-started; [полная декомпозиция](03.03-compaction.md). Изменена только документация/solution items, новые compile-check/tests не запускались. Статически проверены37 Markdown с313 относительными ссылками без missing targets; все34 Markdown плана включены в119 File/Project items корректного XML решения без дубликатов. UTF-8 и прежние окончания строк сохранены, включая CRLF solution; U+FFFD/четыре question marks/проверенные mojibake-последовательности не найдены. Hashes13 исторических файлов01–02 совпали; results03 без этого уточнения и solution без шести новых items совпадают с исходными hashes. Нижеследующие результаты относятся к прежней реализации и не являются приёмкой будущего compact. Исторические разделы сохранены.
+
+Принят безопасный режим: автоматический compact sub2api выключен, полный рабочий контекст проходит отдельный generation guard. Порог сжатия не является пределом входного окна. При unknown window после guard решение о размере остаётся серверу; known window по-прежнему проверяется локально. Ошибка не запускает обрезание, retry, смену выбора или повтор инструмента. Ручной/force compact остаётся Unsupported до factory/HTTP. Best-effort compact и текстовое резюме не включены.
+
+### Реализовано
+
+- IModelGateway.AutomaticCompactionEnabled получил default true, сохраняя прежние реализации. Sub2Api gateway возвращает false. Это локальное решение о dispatch, без нового конфигурационного флага/server API или объявления capability.
+- ContextCompactor сохраняет прежние validation/builder/counter checks. При отключённом automatic возвращает новый ContextCompactionStatus.Disabled с полным PreparedRequest, прежним token/window и нулём passes, без gateway compact/save. Новое значение enum добавлено после прежних. Separate full guard AgentRunner не менялся; ошибки выполненного compact не перехватываются ради generation.
+- Диагностика ручного compact объясняет неподтверждённое использование окна следующей generation и возможность удаления непрочитанного compact. Mapping больше не выдаётся за доказательство несовместимости. Canonical items, reasoning, инструкции/effort/ordering/tool pairs, прежнее окно/terminal prefix/хвост и история сохраняются.
+
+### Конкретное основание ограничения
+
+[Разбор03.03](03.03-compaction.md) показывает: после compact, покрывающего turns1–10, следующий input содержит окно + turn11. При invalid_encrypted_content HTTP recovery удаляет весь compaction/compaction_summary с encrypted_content; успешный ответ может быть получен без покрытого prefix. Source regression `TestOpenAIGatewayService_Forward_HTTPRetryRecoveryDropsCompaction` описывает именно этот HTTP-путь. Go tests прочитаны, не выполнены. Это доказательство поведения recovery при ошибке, не доказанная несовместимость конкретных моделей/pool. Independently verified actual identity не требуется сама по себе, requested echo не является подтверждением совместимости.
+
+### Фактические проверки
+
+Перед сборками перечитан graph трёх test csproj:13 проектов и3 дополнительных build inputs (global.json двух repo и HttpClientLibrary Directory.Build.props). Ancestor props/targets/NuGet.config/locks проверены; custom Exec/targets/import hooks и locks не найдены. Сеть/restore не требовались. Все сборки с BuildProjectReferences=false и GeneratePackageOnBuild=false: read-only соседние библиотеки не пересобирались, использованы их существующие compile-check outputs.
+
+Собраны семь конкретных проектов: AgentBridge/agent-bridge.csproj, adapters/AgentBridge.Sub2Api/AgentBridge.Sub2Api.csproj, adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj, adapters/AgentBridge.Integration/AgentBridge.Integration.csproj и три test projects ниже. Sub2Api tests повторно собраны после добавления проверки прежнего окна/хвоста. Все сборки Exit0,0 warnings/errors; использован Build без Rebuild.
+
+```powershell
+dotnet build <конкретный.csproj> -c Debug --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false -v:q
+dotnet test --project <конкретный.test.csproj> --no-build --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false --no-progress
+```
+
+| Финальный набор текущего продолжения | Passed | Failed | Skipped |
+| --- | --- | --- | --- |
+| tests/AgentBridge.Tests/AgentBridge.Tests.csproj | 557 | 0 | 0 |
+| tests/AgentBridge.Sub2Api.Tests/AgentBridge.Sub2Api.Tests.csproj | 161 | 0 | 0 |
+| tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj | 414 | 0 | 0 |
+| Всего | **1132** | **0** | **0** |
+
+Новые10 cases используют actual runner/compactor/Sub2Api/HttpClientLibrary, fake handler и in-memory storage: выше threshold уходит полный canonical input с encrypted reasoning/closed tool pair/instructions/effort; known/unknown budgets, JSON/non-stream и streaming callbacks, server rejection без retry, known overflow до factory, Disabled против force Unsupported, сохранённое окно/prefix/непокрытый хвост. Core/CodexLb regression сохраняет default automatic compact, Completed-only/save-before-activation и прежние error/continuation paths. Предварительные9 targeted cases и160 полный Sub2Api прогон перекрываются финальным161; не складываются с ним или с прежними565/1151 как уникальные tests.
+
+### Evidence и ограничения
+
+Исторические source01/02 и baseline не переписывались. При текущей сверке sub2api уже local0.2.20:38 из48 прежних source03 совпали,10 изменились; source01 имеет8 отличий из28 sub2api entries. [contract-source-evidence.json](contract-source-evidence.json) сохраняет прежний массив48 и отдельно current compactReview с новыми hashes/различиями и тремя дополнительными source files. Current recovery/sanitizer/mapping перечитаны; ключевой сценарий удаления compact сохранился. Версия локального source не объявляется версией deployment, исторический PE/baseline не выдаётся за новую поставку.
+
+Статическая сверка:181 относительная ссылка изменённых документов/инструкций без missing targets; все28 Markdown плана присутствуют в existing solution items, XML решения113 entries корректен, SHA256 решения совпал с исходным (CRLF сохранён). Новых документов плана не добавлялось; новый test входит через existing compile glob. Strict UTF-8/отсутствие U+FFFD, четырёх question marks, проверенных mojibake-последовательностей и mixed EOL подтверждены для30 изменённых/новых файлов; русский текст просмотрен. Пять новых/изменённых C# файлов меньше20000 байт, максимум18630; новые самостоятельные tests выделены отдельно, большой AgentRunnerTests не переписывался.13 hashes исторических файлов01–02 совпали. Effective current inventory51 source files (прежние48 с overlay10 изменений и3 additions) совпал с локальным sub2api. Навигаторы/локальные AGENTS/OpenSpec delta/design/tasks синхронизированы; strict CLI validation не выполнялась.
+
+T01–T05 открыты,03.03/03 blocked,03.01/03.02 verification. Полный compact transport/его активация, совместимость целевого маршрута/pool и live OAuth не подтверждены. Для включения нужно установить пригодность existing compact для следующей generation, включая recovery; одного model echo/успешной fixture недостаточно. Не вводились provenance/persistence/restart04, новый server API или изменение sub2api. Main spec не синхронизирована, change не архивирован. Git/CLI OpenSpec/проектные scripts/приложение/host/live HTTP/OAuth/БД/Docker/deployment не запускались. Обычные tests не используют AppData, external kit или frozen consumer; baseline kit/DLL не перезаписывались. Работа остановлена после разрешённой части03.
+
+## Предшествующее продолжение: generation по принятому плану Б
+
+Ниже сохранены результаты предыдущего продолжения. Его совпадение48 hashes и прежнее объяснение compact относятся к тому снимку; актуальные source drift/режим отключения описаны выше.
 
 Принята canonical гарантия на входе sub2api и в истории AgentBridge с допуском existing reasoning normalization/recovery внутри сервера. Успешный ответ не доказывает неизменную upstream передачу или actual model identity. Решение о клиентской границе больше не открыто; sub2api не дорабатывается. Бюджетный ServerValidationWithUnknownWindow и v1/v2 snapshots сохранены без дополнительных изменений.
 

@@ -47,6 +47,12 @@
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.01-catalog-and-access.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.02-generation-and-tools.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03-compaction.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.01-full-context-mode.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.02-window-compatibility.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.03-compact-request.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.04-compact-response.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.05-window-activation.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.06-compact-verification.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md" />

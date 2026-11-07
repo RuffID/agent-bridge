@@ -6,6 +6,90 @@
   "repositoryRoot": "D:/Media/User/source/repos/sub2api",
   "declaredVersion": "0.2.19",
   "gitRevision": null,
+  "snapshotScope": "The original files array and declaredVersion describe the preceding generation review. Current compact review and observed source drift are recorded separately below.",
+  "compactReview": {
+    "date": "2026-11-07",
+    "declaredVersion": "0.2.20",
+    "kind": "static-source-review-no-server-tests",
+    "previousFilesCompared": 48,
+    "previousFilesUnchanged": 38,
+    "stage01Sub2ApiFilesCompared": 28,
+    "stage01Sub2ApiFilesChanged": 8,
+    "mappingProvesIncompatibility": false,
+    "compactGenerationCompatibilityEstablished": false,
+    "independentlyVerifiedActualIdentityRequired": false,
+    "finding": "HTTP invalid_encrypted_content recovery can drop the whole encrypted compaction or compaction_summary item and succeed with the remaining input. After compact activation, covered original turns are absent from that input. Mapping alone does not establish an incompatible model pair.",
+    "clientBehavior": "Sub2Api automatic compact disabled before dispatch; full prepared context still requires the separate generation budget guard. Explicit or forced compact remains Unsupported before HTTP. No retry or text-summary substitution.",
+    "currentObservedChanges": [
+      {
+        "path": "backend/cmd/server/VERSION",
+        "size": 8,
+        "sha256": "64d6a4da13a3928a49ee2f87fc35bdcfea54f0f2a0f704a82d347e5efb3510a5"
+      },
+      {
+        "path": "backend/internal/handler/gateway_handler.go",
+        "size": 102630,
+        "sha256": "41cbb815fdaf31c4f14409cb95ab0a6829daa994f1471e5bf09097804314d1ce"
+      },
+      {
+        "path": "backend/internal/handler/openai_gateway_handler.go",
+        "size": 182033,
+        "sha256": "115c15b51d49cc6cc9a9bdfce8dc3bbd1ff637a08f6a391ef85c98e0cfdc57b9"
+      },
+      {
+        "path": "backend/internal/pkg/openai/constants.go",
+        "size": 12067,
+        "sha256": "3ea34045c767e672857b1b05502472e516e20a8c1d6154c17ec13d8a5373a8e6"
+      },
+      {
+        "path": "backend/internal/server/middleware/api_key_auth.go",
+        "size": 17365,
+        "sha256": "c536dc42d000077de33db4f25635b9ed5626851327fb2264d3a44648e4b8271e"
+      },
+      {
+        "path": "backend/internal/server/routes/gateway.go",
+        "size": 31236,
+        "sha256": "95a6f2d910a6bf2b27e121c1874781d62354b51fdadf4586b5855c84dd77008a"
+      },
+      {
+        "path": "backend/internal/service/openai_codex_model_metadata.go",
+        "size": 17119,
+        "sha256": "0579466a57167bd02953244fa2fbd6054fbd3aadb3e7404f1e98a832e71e3764"
+      },
+      {
+        "path": "backend/internal/service/openai_codex_models_service.go",
+        "size": 94386,
+        "sha256": "5e965838e3f72f8d3fcdc2ac3f464063986577fcb92cedd3058360c80501caf8"
+      },
+      {
+        "path": "backend/internal/service/openai_gateway_request_body.go",
+        "size": 88863,
+        "sha256": "fd15ea80f135c0d9bb5bafc7bbb46b3310e084378d4482aa5c33b96dcfbe1f16"
+      },
+      {
+        "path": "backend/internal/service/openai_gateway_usage.go",
+        "size": 47713,
+        "sha256": "7b15397df7cdd796f89df1f381871f13c2be5fdf9479630792f33dbc00cd5231"
+      }
+    ],
+    "additionalReviewedFiles": [
+      {
+        "path": "backend/internal/service/openai_model_mapping.go",
+        "size": 5364,
+        "sha256": "e6fab13f0e7726052f918d60c21aa9247b399f9d8f508522840dc27bcd411834"
+      },
+      {
+        "path": "backend/internal/service/openai_gateway_request_body_reasoning_test.go",
+        "size": 17729,
+        "sha256": "b600a89ce7207c59b25882bba258f8298b479c7dbcf9c3ad86e30e138b3746cd"
+      },
+      {
+        "path": "backend/internal/service/openai_gateway_service_hotpath_test.go",
+        "size": 44832,
+        "sha256": "b70b6b1bd4049f934c02af1a5a98e086eb6562eaccb2bbf34b97f5582366e847"
+      }
+    ]
+  },
   "limitations": [
     "No Git operations, server execution, Go tests or live gateway/OAuth calls.",
     "Hashes identify local source files, not the deployed server or public tag equivalence.",

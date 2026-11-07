@@ -28,11 +28,15 @@
 | --- | --- | --- | --- |
 | [01. Контракты и совместимость](01-contracts/main.md) | completed | Нет | Матрица с источниками/образцами и сохранённый source/PE baseline; два compile-check green |
 | [02. DI и общая обработка Responses](02-composition/main.md) | completed | 01 | Выбор bundle, собственные Sub2Api options, shared source и проверенная legacy поверхность |
-| [03. Коннектор sub2api](03-sub2api/main.md) | blocked | 02 | Доступ/каталог, unknown-window settings и JSON/SSE generation реализованы; compact блокирует T05, T01/T02 открыты |
+| [03. Коннектор sub2api](03-sub2api/main.md) | blocked | 02 | Доступ/каталог/settings/generation и режим без automatic compact проверены; compact compatibility T05 и T01/T02 открыты |
 | [04. История и продолжение](04-dialog-state/main.md) | not-started | 03 | Безопасные границы контекста, restart и смены шлюза |
 | [05. Проверки и поставка](05-acceptance/main.md) | not-started | 04 | Регрессия, DLL consumer и отдельная live-приёмка |
 
 Зависимости в таблицах этапов обязательны. Независимые подэтапы не требуют делегирования. Запуск каждого этапа — только после отдельного поручения реализации.
+
+### Детализация оставшейся работы03
+
+В [навигаторе03](03-sub2api/main.md) сохранены03.01/03.02, а03.03 разбит на шесть небольших подэтапов: [03.03.01 — безопасный полный контекст](03-sub2api/03.03.01-full-context-mode.md) (completed в изолированных границах), [03.03.02 — пригодность compact-окна](03-sub2api/03.03.02-window-compatibility.md) (blocked T05), затем запрос, canonical ответ, сохранение/активация и регрессия (03.03.03–03.03.06, not-started). Следующий шаг —03.03.02; без достаточного основания transport не начинается. Декомпозиция2026-11-07 меняет только план и не означает новую реализацию/проверки. T01 не блокирует unknown-window режим; live T02 остаётся05.03, этап04 не начат.
 
 ## Итоговая приёмка
 
@@ -70,6 +74,6 @@ Isolated green, бинарная компиляция, Windows runtime и live O
 
 Пользователь разрешил отдельный ServerValidationWithUnknownWindow и budget snapshot v1/v2 со чтением прежнего формата. Реализованы declared manifest settings, validator/guard/status/compactor без числовой подстановки и без ослабления старых политик. T01 открыт как вопрос доказанного бюджета, но не блокирует явный новый settings режим.
 
-[Клиентская адаптация](03-sub2api/client-adaptation.md) использует принятую canonical гарантию на входе sub2api и в истории AgentBridge. Existing forwarding способен удалить reasoning внутри сервера; это допустимо без обещания неизменной upstream передачи. Generation выполняет один POST через HttpClientLibrary, передаёт полный prepared context, читает JSON/SSE без anchors, сохраняет awaited callbacks/partial/terminal/caller/deadline/cleanup. Compact может заменить модель до первого send и остаётся Unsupported. sub2api не дорабатывается.
+[Клиентская адаптация](03-sub2api/client-adaptation.md) использует принятую canonical гарантию на входе sub2api и в истории AgentBridge. Existing forwarding способен удалить reasoning внутри сервера; это допустимо без обещания неизменной upstream передачи. Generation выполняет один POST через HttpClientLibrary, передаёт полный prepared context, читает JSON/SSE без anchors, сохраняет awaited callbacks/partial/terminal/caller/deadline/cleanup. Automatic compact явно отключён: threshold не препятствует полному generation request после separate budget guard; ручной/force compact Unsupported до HTTP. Mapping сам по себе не доказывает несовместимость. Ограничение T05 — возможность удаления opaque compact при recovery, когда покрытая история уже отсутствует в рабочем input. sub2api не дорабатывается.
 
-[Результаты03](03-sub2api/results.md): бюджетное продолжение —1151 passed/8 builds; последующая generation по плану Б —151 Sub2Api +414 CodexLb =565 passed,5 адресных compile-check без warnings/errors. Failed/skipped0. Это actual library с fake handlers/local streams, не live OAuth или новый delivery closure. Source evidence48 файлов, T01–T05 открыты;03 blocked compact T05,03.01/03.02 verification,04 не начат. Исторические01–02/main spec и frozen kit не переписывались; CLI OpenSpec/host/HTTP сеть/БД/Docker/deployment не запускались.
+[Результаты03](03-sub2api/results.md): текущее продолжение —557 Core +161 Sub2Api +414 CodexLb =1132 passed, failed/skipped0; семь конкретных проектов compile-check без warnings/errors. Прежние1151 budget и565 generation относятся к пересекающимся прогонам и не складываются как уникальные tests. Текущий source sub2api0.2.20 отличается от исторической описи в10 из48 files; current compactReview сохранён отдельно. Actual library с fake handlers/in-memory storage не подтверждает live OAuth/compact или новый delivery closure. T01–T05 открыты;03 blocked compact T05,03.01/03.02 verification,04 не начат. Исторические01–02/main spec и frozen kit не переписывались; CLI OpenSpec/host/HTTP сеть/БД/Docker/deployment не запускались.

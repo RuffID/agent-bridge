@@ -18,7 +18,22 @@
 | --- | --- | --- | --- |
 | [03.01. Настройки, ключ и каталог моделей](03.01-catalog-and-access.md) | verification | 02.02 | Доступ/ordinary и manifest settings с явным unknown window проверены; T01 не закрыт |
 | [03.02. JSON/SSE генерация и инструменты](03.02-generation-and-tools.md) | verification | 03.01 | Actual JSON/SSE через HttpClientLibrary, canonical на границе AgentBridge; live T02 открыт |
-| [03.03. Сжатие рабочего контекста](03.03-compaction.md) | blocked | 03.02 | Уточнён initial model override; existing compact требует совместимости, Unsupported до T05 |
+| [03.03. Сжатие рабочего контекста](03.03-compaction.md) | blocked | 03.02 | Automatic compact отключён, full request выше threshold через guard проверен; ручной/force Unsupported, T05 открыт |
+
+### Детализация03.03
+
+Существующие03.01/03.02 и их результаты сохранены. Оставшаяся работа compact разделена на последовательные единицы; каждый файл содержит границы, проверки и критерии готовности.
+
+| Подэтап | Статус | Зависимости | Результат |
+| --- | --- | --- | --- |
+| [03.03.01. Безопасный полный контекст](03.03.01-full-context-mode.md) | completed в изолированных границах | Реализованный путь03.02 | Отключённый automatic compact не мешает generation через guard |
+| [03.03.02. Пригодность compact-окна](03.03.02-window-compatibility.md) | blocked T05 | 03.03.01, wire-контракт01.01 | Подтверждение использования окна с учётом recovery |
+| [03.03.03. Запрос compact](03.03.03-compact-request.md) | not-started | Положительный результат03.03.02 | Existing endpoint/body и HttpClientLibrary transport |
+| [03.03.04. Чтение compact](03.03.04-compact-response.md) | not-started | 03.03.03 | Canonical output/envelope и завершение операции |
+| [03.03.05. Принятие окна](03.03.05-window-activation.md) | not-started | 03.03.04, действующее основание03.03.02 | Completed-only, сохранение до активации, prefix/хвост/история |
+| [03.03.06. Проверки compact](03.03.06-compact-verification.md) | not-started | 03.03.05 | Регрессия и сведение evidence/статусов |
+
+Следующий предметный шаг —03.03.02. Без положительного основания следующие изменения compact не начинаются;03.03.01 остаётся рабочим режимом. T01 относится к03.01 и не блокирует разрешённый unknown-window режим; live T02 остаётся05.03. Ни один новый подэтап не включает provenance/restart04, новую поставку05 или live-приёмку. Декомпозиция не меняет blocked статус03 и не возобновляет реализацию.
 
 ## Общий результат и приёмка
 
@@ -30,6 +45,6 @@ Sub2Api options, access resolver, ModelCatalog и ModelSettingsReader. Sub2Api I
 
 Доступ/ordinary каталог/manifest и generation используют existing composition/HttpClientLibrary. Один POST передаёт полный рабочий контекст без previous_response_id и legacy turn-state; actual JSON/SSE response сохраняет output/envelope, awaited callbacks, partial/terminal и caller/deadline/cleanup. Incoming continuation отклоняется до factory; returned response id не создаёт anchor. Compact отдельно остаётся Unsupported.
 
-[Результаты, команды и проверки](results.md) · [Ограничения](contract-blockers.md). В продолжении по плану Б пять адресных compile-check без warnings/errors,151 Sub2Api +414 CodexLb =565 isolated tests passed. Прежние1151 относятся к предыдущему бюджетному продолжению. Этап не completed; T01–T05 открыты. ContextCompactor/IDialogContextWriter, codex-lb continuation и история сохраняют прежнюю семантику. Этап04 не начинался.
+[Результаты, команды и проверки](results.md) · [Ограничения](contract-blockers.md). Текущее продолжение: семь конкретных compile-check без warnings/errors,557 Core +161 Sub2Api +414 CodexLb =1132 isolated tests passed, failed/skipped0. Прежние565/1151 не складываются с ними как уникальные tests. AutomaticCompactionEnabled=false даёт Disabled без compact/save; full request продолжает отдельный budget guard. Ручной/force compact Unsupported; ошибки executed compact прежних путей не маскируются. Этап не completed; T01–T05 открыты. Completed-only/save-before-activation, codex-lb continuation и история сохранены. Этап04 не начинался.
 
-Подготовленное ранее [серверное предложение](server-contract-proposal.md) отклонено: sub2api не дорабатывается. [Опись48 источников](contract-source-evidence.json) сохраняет evidence; новые headers/profile/revision не являются зависимостью. Принятая клиентская граница canonical не разрешает client retry, смену ключа/модели/коннектора или повтор business tool. Ответ пользователя больше не требуется для generation03.02; compact остаётся технической проверкой.
+Подготовленное ранее [серверное предложение](server-contract-proposal.md) отклонено: sub2api не дорабатывается. [Опись](contract-source-evidence.json) сохраняет historical48 и отдельный current compactReview0.2.20 с10 отличиями; новые headers/profile/revision не являются зависимостью. Mapping не доказывает несовместимость; T05 требует подтвердить пригодность compact-окна для generation, включая удаление при recovery. Принятая клиентская граница canonical не разрешает client retry, смену ключа/модели/коннектора или повтор business tool. Открытых клиентских решений нет.

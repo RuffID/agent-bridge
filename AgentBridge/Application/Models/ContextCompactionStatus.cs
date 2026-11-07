@@ -16,5 +16,7 @@ public enum ContextCompactionStatus
     /// <summary>Сохраняемая история пуста; transient вклад не сжимается.</summary>
     NoPersistableHistory,
     /// <summary>Ожидаемый отказ; последнее успешно принятое окно сохранено.</summary>
-    Failed
+    Failed,
+    /// <summary>Коннектор отключил автоматическое сжатие; полный запрос требует отдельного budget guard.</summary>
+    Disabled
 }
