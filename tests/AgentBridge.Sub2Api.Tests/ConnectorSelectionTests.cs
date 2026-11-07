@@ -51,7 +51,7 @@ public class ConnectorSelectionTests
         Assert.Equal(2, factoryCalls);
     }
 
-    /// <summary>Sub2Api не читает CodexLb, не создаёт HTTP и не выдаёт успеха отсутствующих возможностей.</summary>
+    /// <summary>Sub2Api не читает CodexLb; заблокированный gateway не создаёт HTTP, доступ работает отдельно.</summary>
     [Fact]
     public async Task Sub2ApiBundleIsScopedAndExplicitlyUnsupportedWithoutCodexLb()
     {
@@ -77,16 +77,15 @@ public class ConnectorSelectionTests
         // Assert
         Assert.False(config.GetSection("CodexLb").Exists());
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IConfigureOptions<CodexLbOptions>));
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(HttpApiClient));
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(HttpApiClient));
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IModelSettingsReader>());
         Assert.Same(gateway, scope.ServiceProvider.GetRequiredService<IModelGateway>());
         AssertUnsupported(generation);
         AssertUnsupported(await gateway.CompactAsync(call, request, access, TestContext.Current.CancellationToken));
-        AssertUnsupported(await scope.ServiceProvider.GetRequiredService<IModelCatalog>().ReadAsync(access, TestContext.Current.CancellationToken));
-        AssertUnsupported(await scope.ServiceProvider.GetRequiredService<IModelAccessResolver>().ResolveAsync(owner, TestContext.Current.CancellationToken));
-        IModelSettingsReader settings = scope.ServiceProvider.GetRequiredService<IModelSettingsReader>();
-        AssertUnsupported(await settings.ReadAsync(owner, ct: TestContext.Current.CancellationToken));
-        AssertUnsupported(await settings.ReadWithAccessAsync(owner, access, ct: TestContext.Current.CancellationToken));
+        ServiceResult<ModelAccess> resolved = await scope.ServiceProvider.GetRequiredService<IModelAccessResolver>()
+            .ResolveAsync(owner, TestContext.Current.CancellationToken);
+        Assert.True(resolved.Success);
+        Assert.Equal("synthetic-key", resolved.Data!.RevealApiKey());
         Assert.Equal(0, callbacks);
         using IServiceScope another = provider.CreateScope();
         Assert.NotSame(gateway, another.ServiceProvider.GetRequiredService<IModelGateway>());

@@ -1,12 +1,16 @@
 using AgentBridge.Application.Ports;
 using AgentBridge.Configuration;
+using AgentBridge.Sub2Api.Models;
+using HttpClientLibrary.Clients;
+using HttpClientLibrary.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace AgentBridge.Sub2Api.Configuration;
 
-/// <summary>Подготовка composition этапа02; не реализует каталог, доступ и HTTP этапа03.</summary>
+/// <summary>Собирает существующий bundle с доступом и каталогом; generation/compact ограждены до T05.</summary>
 internal static class Sub2ApiComposition
 {
     private const double MAX_TIMEOUT_MILLISECONDS = uint.MaxValue - 1d;
@@ -30,8 +34,8 @@ internal static class Sub2ApiComposition
                 "Sub2Api.KeySource: Individual требует IIndividualModelKeySource приложения до AddAgentBridge.")
             .Validate(options => options.KeySource != Sub2ApiKeySourceMode.Shared || !string.IsNullOrWhiteSpace(options.SharedApiKey),
                 "Sub2Api.SharedApiKey: required.")
-            .Validate(options => options.SharedApiKey is null || ValidKey(options.SharedApiKey), "Sub2Api.SharedApiKey: invalid_key.")
-            .Validate(options => ValidAddress(options.BaseAddress), "Sub2Api.BaseAddress: required_or_invalid.")
+            .Validate(options => options.SharedApiKey is null || Sub2ApiCredential.IsValid(options.SharedApiKey), "Sub2Api.SharedApiKey: invalid_key.")
+            .Validate(options => Sub2ApiEndpoints.TryGetModelsUrl(options.BaseAddress, out _), "Sub2Api.BaseAddress: required_or_invalid.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.Model), "Sub2Api.Model: required.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.ReasoningEffort), "Sub2Api.ReasoningEffort: required.")
             .Validate(options => ValidTimeout(options.GenerationTimeout), "Sub2Api.GenerationTimeout: required_or_invalid.")
@@ -39,32 +43,17 @@ internal static class Sub2ApiComposition
             .ValidateOnStart();
     }
 
-    /// <summary>Все четыре порта относятся к одному staged connector и возвращают явный Unsupported.</summary>
-    internal static void AddPorts(IServiceCollection services)
+    /// <summary>Использует borrowed HTTP приложения без создания клиента при регистрации.</summary>
+    internal static void AddPorts(IServiceCollection services, Func<IServiceProvider, HttpClient> httpClientFactory)
     {
-        services.AddScoped<IModelGateway, Sub2ApiPendingConnector>();
-        services.AddScoped<IModelCatalog, Sub2ApiPendingConnector>();
-        services.AddScoped<IModelAccessResolver, Sub2ApiPendingConnector>();
-        services.AddScoped<IModelSettingsReader, Sub2ApiPendingConnector>();
-    }
-
-    /// <summary>Проверяет только пригодность локального значения Bearer.</summary>
-    private static bool ValidKey(string key)
-    {
-        return !string.IsNullOrWhiteSpace(key) && !key.Any(char.IsWhiteSpace) && !key.Any(char.IsControl);
-    }
-
-    /// <summary>Проверяет адрес без выполнения нормализации маршрутов этапа03.</summary>
-    private static bool ValidAddress(string? address)
-    {
-        if (!Uri.TryCreate(address, UriKind.Absolute, out Uri? uri))
-        {
-            return false;
-        }
-
-        return (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
-            && !string.IsNullOrEmpty(uri.Host) && string.IsNullOrEmpty(uri.UserInfo)
-            && string.IsNullOrEmpty(uri.Query) && string.IsNullOrEmpty(uri.Fragment);
+        services.AddScoped(provider => new HttpApiClient(httpClientFactory(provider),
+            provider.GetRequiredService<ILogger<HttpApiClient>>(), null,
+            new HttpClientLoggingOptions { ErrorContentMode = HttpErrorContentLogMode.None },
+            new HttpErrorResponseOptions { MaxBodyBytes = 65_536 }));
+        services.AddScoped<IModelGateway, Sub2ApiModelGateway>();
+        services.AddScoped<IModelCatalog, Sub2ApiModelCatalog>();
+        services.AddScoped<IModelAccessResolver, Sub2ApiModelAccessResolver>();
+        services.AddScoped<IModelSettingsReader, Sub2ApiModelSettingsReader>();
     }
 
     /// <summary>Проверяет диапазон локального deadline .NET.</summary>

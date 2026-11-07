@@ -58,4 +58,4 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 [Plans](Plans/README.md) — планы реализации и проверок на русском языке с английскими именами файлов и папок.
 
-[Коннектор sub2api](<Plans/sub2api-connector-2026-11-06-(in-progress)/main.md>) — этапы01–02 готовы: baseline, выбор одного bundle в DI и shared Responses; sub2api пока явно Unsupported. Транспорт03, provenance04 и поставка/live05 не реализованы.
+[Коннектор sub2api](<Plans/sub2api-connector-2026-11-06-(in-progress)/main.md>) — этапы01–02 готовы; на03 реализованы доступ и каталог ID. Settings безопасно отклоняет неизвестный бюджет T01; generation/compact заблокированы T05. [Результаты03](<Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md>); provenance04 и поставка/live05 не начаты.

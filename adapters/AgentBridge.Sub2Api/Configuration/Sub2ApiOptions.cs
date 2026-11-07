@@ -3,7 +3,7 @@ namespace AgentBridge.Sub2Api.Configuration;
 /// <summary>Собственные настройки sub2api; содержат секрет и не являются безопасным DTO.</summary>
 public class Sub2ApiOptions
 {
-    /// <summary>Абсолютный адрес сервера; нормализация маршрутов относится к реализации транспорта.</summary>
+    /// <summary>Абсолютный server root/prefix, возможно с единственным завершающим /v1.</summary>
     public string? BaseAddress { get; set; }
 
     /// <summary>Точное имя выбранной модели; доступность ещё требует серверного каталога.</summary>
@@ -18,7 +18,7 @@ public class Sub2ApiOptions
     /// <summary>Общий gateway-ключ; не OpenAI upstream credential.</summary>
     public string? SharedApiKey { get; set; }
 
-    /// <summary>Конечный срок генерации.</summary>
+    /// <summary>Конечный срок HTTP-операции; используется также для чтения каталога.</summary>
     public TimeSpan GenerationTimeout { get; set; }
 
     /// <summary>Конечный срок compact.</summary>

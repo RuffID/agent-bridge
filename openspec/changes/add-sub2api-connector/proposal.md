@@ -1,6 +1,6 @@
 # Отдельный коннектор sub2api
 
-Статус: in-progress; этапы01–02 выполнены, транспорт sub2api03–05 не реализован. Создано 2026-11-06.
+Статус: in-progress; этапы01–02 выполнены,03 частично реализован и blocked T01/T05;04–05 не начаты. Создано 2026-11-06.
 
 ## Why
 
@@ -21,7 +21,7 @@ AgentBridge использует ключ, выпущенный в sub2api. Ти
 
 Изменяются Integration и транспортные адаптеры; общие application ports и business tools не получают обязательного нового аргумента. Схема БД и соседние библиотеки заранее не меняются. Если для безопасной provenance потребуется schema/public contract change, это отдельное адресное согласование.
 
-OpenSpec main пока не синхронизируется: полная возможность delta ещё не реализована. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md) содержит этапы и приёмку; [design](design.md) — решения и ограничения. Этап02 подготовил выбор bundle и общий protocol source; sub2api операции явно Unsupported, без имитации успешного подключения.
+OpenSpec main пока не синхронизируется: полная возможность delta ещё не реализована. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md) содержит этапы и приёмку; [design](design.md) — решения и ограничения. На03 existing bundle получил доступ/каталог ID/settings; запуск Unsupported по неизвестному бюджету T01, generation/compact Unsupported до доказанного T05. [Фактические результаты03](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md).
 
 ## Out of Scope
 

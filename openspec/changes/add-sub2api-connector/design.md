@@ -1,6 +1,6 @@
 # Устройство планируемого подключения
 
-Реализована только композиция/shared protocol этапа02; операции sub2api03 и приёмка04–05 отсутствуют. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md), [технические вопросы](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/open-questions.md), [evidence02](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/results.md).
+Композиция/shared protocol02 выполнены. На03 реализованы доступ/ordinary каталог ID/fail-closed settings; generation/compact blocked T01/T05.04–05 не начаты. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md), [технические вопросы](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/open-questions.md), [evidence03](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md).
 
 ## Подтверждённая текущая граница
 
@@ -14,7 +14,7 @@
 
 AgentBridge.Sub2Api размещён отдельным csproj в adapters, зависит от ядра и HttpClientLibrary. CodexLb остаётся самостоятельным адаптером. AgentBridge.Responses — папка единых internal исходников writers/controls/output/SSE framing, подключённых Compile/Link в оба адаптера; отдельная protocol DLL/public framework не требуется. Gateway/lifecycle/typed errors/continuation не переносились. Старые public CodexLb types/constructors и assembly identity сохраняются в прежней сборке.
 
-Integration собирает один connector bundle. Существующий AddAgentBridge(configuration, httpClientFactory) и отсутствие нового выбора сохраняют codex-lb. AddAgentBridgeSub2ApiConnector либо AddAgentBridgeCodexLbConnector вызывается до facade; повтор того же выбора идемпотентен. Новый раздел Sub2Api не требует фиктивного CodexLb. Смена выбора после facade и неоднозначность отклоняются; custom service overrides сохраняются. Пример: приложение вызывает AddAgentBridgeSub2ApiConnector(), затем прежний facade с AgentBridge/Database/Sub2Api; startup options и DI scopes работают, но transport-порты возвращают явный Unsupported до реализации03.
+Integration собирает один connector bundle. Существующий AddAgentBridge(configuration, httpClientFactory) и отсутствие нового выбора сохраняют codex-lb. AddAgentBridgeSub2ApiConnector либо AddAgentBridgeCodexLbConnector вызывается до facade; повтор того же выбора идемпотентен. Новый раздел Sub2Api не требует фиктивного CodexLb. Смена выбора после facade и неоднозначность отклоняются; custom service overrides сохраняются. Пример: приложение вызывает AddAgentBridgeSub2ApiConnector(), затем прежний facade с AgentBridge/Database/Sub2Api; startup options/scopes и чтение доступных ID работают. Settings отвергает неизвестный бюджет T01; generation/compact явно Unsupported до доказанного server profile T05.
 
 Legacy facade может сохранять статическую ссылку на CodexLb. Поэтому отдельные csproj не объявляются доказательством DLL-поставки только одного коннектора. Сначала проверяется совместимость старого приложения, затем фиксируется реальный closure.
 
@@ -31,6 +31,8 @@ IConfiguration используется для Options binding в регистр
 В проверенном sub2api HTTP previous_response_id исключает OpenAI OAuth upstream accounts. Полная история без anchor — выбранное направление, которое ещё надо подтвердить для reasoning/encrypted_content, tools и compact. Если матрица или live-проверка обнаружит несовместимость, реализация не подменяет стратегию скрытым retry или WebSocket.
 
 Обычный /v1/models может не подтверждать нужные metadata. Codex manifest имеет другой envelope/поля; преобразование бюджета и effort должно опираться на проверенный контракт. context_window и input_context_window не приравниваются автоматически. Неподтверждённые возможности дают Unsupported.
+
+Текущая реализация03 читает только ordinary ID без client_version/выдуманных capabilities и использует прежний validator. [Необходимый versioned server contract](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md) описывает бюджет, processing profile/pool, opaque/model guarantees и наблюдаемую actual модель. До доказательств gateway блокирует любой direct/custom-settings вызов до HTTP; это безопасная граница, а не JSON/SSE/compact implementation. Этап04 здесь не реализуется.
 
 ## Сохранённые диалоги
 

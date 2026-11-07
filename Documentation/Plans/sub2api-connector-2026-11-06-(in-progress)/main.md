@@ -1,19 +1,19 @@
 # Подключение sub2api к AgentBridge
 
-Дата создания: 2026-11-06. Статус плана: **in-progress**. Этапы01–02 завершены в своих границах; транспорт этапа03 не реализован.
+Дата создания: 2026-11-06. Статус плана: **in-progress**. Этапы01–02 завершены в своих границах; этап03 частично реализован и заблокирован T01/T05.
 
 ## Цель и основание
 
 Добавить рядом с codex-lb отдельный коннектор sub2api. Приложение выбирает технологию в DI; его существующие вызовы AgentBridge для диалогов, агента, инструментов и настроек сохраняются. AgentBridge авторизуется API-ключом, выпущенным в sub2api; отдельный OpenAI API key приложению не требуется.
 
-Выполнены контракты/baseline01 и композиция/shared Responses02. Созданы Sub2Api проект, options и выбор bundle; его транспортные порты пока возвращают Unsupported. Новая проверенная DLL-поставка не подготовлена. Анализ исходников и isolated tests не подтверждают работу с развёрнутым sub2api.
+Выполнены контракты/baseline01 и композиция/shared Responses02. На03 existing Sub2Api bundle получил access resolver, ordinary каталог ID и settings reader через HttpClientLibrary. Входной бюджет не подтверждён: settings даёт Unsupported. Generation/compact блокируются до HTTP по T05. Новая проверенная DLL-поставка не подготовлена. Анализ исходников и isolated tests не подтверждают работу с развёрнутым sub2api.
 
 Предлагаемые проверяемые требования находятся в [OpenSpec change](../../../openspec/changes/add-sub2api-connector/proposal.md), пояснения — в [design](../../../openspec/changes/add-sub2api-connector/design.md). [Действующий контракт](../../../openspec/specs/agent-runtime/spec.md) пока не изменяется. [Вопросы](open-questions.md) содержат только оставшиеся технические проверки.
 
 ## Границы первой версии
 
 - Основная работа принадлежит agent-bridge. Репозиторий sub2api используется для чтения и проверки wire-контрактов; его изменение не входит в план. HttpClientLibrary остаётся единственной HTTP-границей.
-- Подготовленный на02 адаптер: отдельная физическая папка `adapters/AgentBridge.Sub2Api/`, собственный csproj net10.0, DLL и локальный AGENTS.md. Тесты — в `tests/AgentBridge.Sub2Api.Tests/`; реализация операций — этап03.
+- Адаптер: отдельная физическая папка `adapters/AgentBridge.Sub2Api/`, собственный csproj net10.0, DLL и локальный AGENTS.md. Тесты — в `tests/AgentBridge.Sub2Api.Tests/`; фактическая частичная реализация03 и условия продолжения — в [результатах03](03-sub2api/results.md).
 - Первый транспорт — HTTP JSON/SSE Responses с полным рабочим контекстом без исходящего previous_response_id. Рабочий контекст включает принятое compact-окно, непокрытую историю и текущий input; это не обязательно вся история БД.
 - Проверяется OpenAI-направление sub2api, включая аккаунты подписки через OAuth. Подключение Anthropic/Gemini/Grok, WebSocket, административных API, автоматический failover между коннекторами и одновременный выбор коннектора на каждый запрос не входят.
 - Existing optional auxiliary API usage/files/images сохраняется у codex-lb. Его реализация для sub2api отдельно не обещается; неподдержанные операции не направляются на другой шлюз.
@@ -27,7 +27,7 @@
 | --- | --- | --- | --- |
 | [01. Контракты и совместимость](01-contracts/main.md) | completed | Нет | Матрица с источниками/образцами и сохранённый source/PE baseline; два compile-check green |
 | [02. DI и общая обработка Responses](02-composition/main.md) | completed | 01 | Выбор bundle, собственные Sub2Api options, shared source и проверенная legacy поверхность |
-| [03. Коннектор sub2api](03-sub2api/main.md) | not-started | 02 | Каталог, JSON/SSE, инструменты и compact |
+| [03. Коннектор sub2api](03-sub2api/main.md) | blocked | 02 | Доступ/каталог ID реализованы; settings требует T01, generation/compact требуют T05 |
 | [04. История и продолжение](04-dialog-state/main.md) | not-started | 03 | Безопасные границы контекста, restart и смены шлюза |
 | [05. Проверки и поставка](05-acceptance/main.md) | not-started | 04 | Регрессия, DLL consumer и отдельная live-приёмка |
 
@@ -64,3 +64,9 @@ Isolated green, бинарная компиляция, Windows runtime и live O
 Добавлены AddAgentBridgeSub2ApiConnector/AddAgentBridgeCodexLbConnector перед прежним facade, собственные options и единые internal JSON/SSE исходники обоих адаптеров. Default codex-lb/direct registrations/overrides и legacy continuation сохранены. Sub2Api пока явно Unsupported; каталог/access/generation/compact не подменяются заглушками успеха.
 
 [Результаты02](02-composition/results.md): сохранность baseline127/112 и frozen hashes, compile-check0 warnings/errors, 497 isolated cases passed (27 новый набор + 414 codex-lb + 56 facade), semantic PE/API comparison и source-linked legacy probe. External consumer/new kit, полный old→new ABI, другие RID, БД и live OAuth не подтверждены; T01–T05 открыты. Strict CLI не выполнялся, main spec не синхронизировалась. Работа остановлена после02; этап03 не начат.
+
+## Текущий результат этапа03
+
+На 2026-11-07 реализована независимая часть03.01: доступ, каталог и fail-closed settings. URI нормализуется только для sub2api; individual key приоритетен и фиксируется для последующего чтения. Ordinary каталог не превращает context_window/95%/произвольные metadata в доказанный budget/effort. Gateway отдельно запрещает generation/compact до HTTP: отсутствует подтверждённый профиль T05, а безопасная provenance остаётся этапу04.
+
+[Результаты03](03-sub2api/results.md): финальные compile-check0 warnings/errors; 98 Sub2Api, 414 codex-lb и 56 facade cases passed, без skipped. Зафиксированы также исходные неуспешные проверки. [Блокеры и необходимый серверный контракт](03-sub2api/contract-blockers.md) конкретизируют T01/T05. Все T01–T05 открыты; нет live OAuth, новой поставки, old→new ABI, CLI OpenSpec. Исторические документы01–02 не переписаны; этап04 не начинался.

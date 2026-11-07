@@ -75,7 +75,7 @@ public static class AgentBridgeIntegrationExtensions
         }
         else
         {
-            Sub2ApiComposition.AddPorts(modules);
+            Sub2ApiComposition.AddPorts(modules, httpClientFactory);
         }
 
         foreach (ServiceDescriptor descriptor in modules)
