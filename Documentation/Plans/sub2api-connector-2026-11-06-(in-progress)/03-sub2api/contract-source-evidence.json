@@ -90,6 +90,60 @@
       }
     ]
   },
+  "windowCompatibilityReview": {
+    "date": "2026-11-07",
+    "substage": "03.03.02",
+    "kind": "static-source-contract-analysis-no-execution",
+    "declaredLocalVersion": "0.2.20",
+    "analysisCompleted": true,
+    "positiveGateStatus": "blocked T05",
+    "compactGenerationCompatibilityEstablished": false,
+    "deploymentIncompatibilityEstablished": false,
+    "recheckedEffectiveSourceEntries": 51,
+    "matchedEffectiveSourceEntries": 51,
+    "historicalEvidencePreserved": "Original files array and compactReview retained; stage01/02 reports and evidence not rewritten.",
+    "finding": "The existing HTTP OpenAI contract does not exclude removal of an encrypted compact window followed by successful generation from the remaining tail. Ordinary recovery performs this within the same account; a model or account switch is not necessary.",
+    "violatedExistingRequirement": "A compact window must be usable by subsequent generation as the replacement for its covered terminal prefix. Keeping the original history in AgentBridge does not supply that prefix to the recovered upstream request.",
+    "routingAndRecovery": [
+      {
+        "source": "backend/internal/server/routes/gateway.go; backend/internal/handler/openai_gateway_handler.go; backend/internal/service/openai_gateway_scheduling.go; backend/internal/service/openai_account_scheduler.go",
+        "finding": "Compact and generation use the Responses handler with independent selection. requireCompact filters legacy compact capability, not compatibility of its output with all subsequent generation accounts. Sticky lookup can miss, recheck or escape."
+      },
+      {
+        "source": "backend/internal/service/openai_client_transport.go; backend/internal/service/openai_gateway_forward.go",
+        "finding": "HTTP ingress forces http_sse regardless of the configured upstream WS decision; WS configuration does not exclude this HTTP recovery path."
+      },
+      {
+        "source": "backend/internal/service/openai_model_mapping.go; backend/internal/service/openai_compact_fallback.go; backend/internal/service/openai_gateway_scheduling.go",
+        "finding": "Compact and generation mapping can differ. Mapping alone proves neither incompatibility nor compatibility; equal models or absent mapping do not disable encrypted-error recovery."
+      },
+      {
+        "source": "backend/internal/service/openai_gateway_forward.go; backend/internal/service/openai_gateway_request_body.go",
+        "finding": "Ordinary HTTP400 invalid_encrypted_content recovery drops the whole encrypted compaction/compaction_summary item and retries once. The condition has no API-key-only or compact-window exclusion; subsequent success follows the ordinary JSON/SSE response path."
+      },
+      {
+        "source": "backend/internal/service/openai_gateway_passthrough.go; backend/internal/handler/openai_gateway_handler.go; backend/internal/handler/openai_gateway_reasoning_failover.go; backend/internal/service/openai_gateway_request_body.go",
+        "finding": "Passthrough lacks this particular invalid-encrypted removal, but exclusive passthrough for the deployment/pool is not established and the handler allows failover into ordinary forwarding. Cross-mode sanitization drops reasoning only; compaction can be removed by subsequent ordinary recovery."
+      },
+      {
+        "source": "backend/internal/service/openai_gateway_service_hotpath_test.go; backend/internal/service/openai_gateway_request_body_reasoning_test.go",
+        "finding": "Read-only regression sources cover whole-item removal. The HTTP fixture uses one API-key account and a synthetic usage-only success; it is not an actual AgentBridge compact-to-generation or deployed OAuth acceptance test. Tests were not run."
+      }
+    ],
+    "minimumClientMeasure": "Keep new Sub2Api automatic compact disabled before dispatch/save and explicit/force compact Unsupported before factory/HTTP; continue the full PreparedRequest through the separate generation budget guard.",
+    "minimumClientMeasureAlreadyImplementedIn": "03.03.01",
+    "newClientDecisionRequired": false,
+    "independentlyVerifiedActualIdentityRequired": false,
+    "nextSubstagesStarted": false,
+    "limitations": "No deployment or live pool evidence; no claim that invalid_encrypted_content occurs for a particular valid compact output. A single successful fixture, requested model echo or plan B does not establish pool compatibility. No server changes or new API/headers/metadata requirements.",
+    "additionalReviewedFiles": [
+      {
+        "path": "backend/internal/service/openai_client_transport.go",
+        "size": 2003,
+        "sha256": "ba2bcad9eafb7b10b124a10860e0eae4b3035a0151240a287d069e6d4cc287f2"
+      }
+    ]
+  },
   "limitations": [
     "No Git operations, server execution, Go tests or live gateway/OAuth calls.",
     "Hashes identify local source files, not the deployed server or public tag equivalence.",
