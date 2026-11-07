@@ -1,6 +1,6 @@
 # Задачи реализации
 
-Этапы01–02 завершены в объёме baseline, DI и общих механизмов. Этап03 частично реализован: budget/manifest settings03.01 и actual JSON/SSE generation03.02 verification; compact blocked T05. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md), [результаты03](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md) и [клиентская адаптация](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md) описывают принятую canonical границу AgentBridge без обещания upstream сохранности. T01–T05 открыты; isolated green не является OAuth/old→new ABI приёмкой.
+Этапы01–02 завершены в объёме baseline, DI и общих механизмов. Этап03 и budget/manifest settings03.01/actual JSON/SSE generation03.02 — verification в объёме первой версии без compact;03.03 завершён в изолированных границах03.03.01. Отложенный compact blocked T05 и не блокирует приёмку первой версии. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md), [результаты03](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md) и [клиентская адаптация](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md) описывают принятую canonical границу AgentBridge без обещания upstream сохранности. T01–T05 открыты; isolated green не является OAuth/old→new ABI приёмкой.
 
 - [x] 01.01 Зафиксировать wire-матрицу sub2api и происхождение возможностей моделей.
 - [x] 01.02 Зафиксировать legacy API/ABI и контрольные consumers.
@@ -18,7 +18,7 @@
   - [x] Применить принятую canonical границу AgentBridge с допуском existing server transformations, сохранив no-client-retry и отсутствие обещания upstream identity.
   - [x] Реализовать actual JSON/SSE lifecycle/tools через existing bundle/HttpClientLibrary: полный request без continuation, non-stream SSE, awaited callbacks, partial/terminal/caller/deadline/cleanup и safe outcome logs; проверить public facade и gateway.
   - [ ] Подтвердить live OAuth/tools chain отдельно в05.03 (T02; не заменяется isolated fixtures).
-- [ ] 03.03 Реализовать и проверить compact через existing application path.
+- [x] 03.03 Реализовать и проверить безопасный полный контекст без compact в изолированных границах первой версии.
   - [x] Зафиксировать compact endpoint/body/mapping/fallback и безопасный Unsupported до HTTP.
   - [x] Зафиксировать initial compact model override до первого send; новые server metadata/versioned API не требуются.
   - [x] Проверить новый budget режим через existing core compactor: Completed-only/save-before-activation/хвост/history и Unsupported без generation fallback (не Sub2Api transport).
@@ -26,19 +26,27 @@
   - [x] Реализовать выбранный безопасный режим: automatic compact sub2api отключён до dispatch/save, полный PreparedRequest выше threshold проходит separate guard; explicit/force compact Unsupported. Сохранить default automatic прежних gateways.
   - [x] Проверить actual AgentRunner/ContextCompactor/Sub2Api/HttpClientLibrary через in-memory storage/fake handler: полный canonical input/tool pair, known/unknown budget, server rejection без retry, force и прежнее окно/хвост; сохранить core/CodexLb regression.
   - [x] [03.03.01. Безопасный полный контекст](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.01-full-context-mode.md): реализован и проверен изолированно; результаты двух предыдущих отметок, без нового прогона.
-  - [x] Завершить статический анализ03.03.02: routing/capability/mapping/sticky/forwarding не исключают same-account HTTP recovery с удалением окна и успехом по хвосту; отделить это от неподтверждённой несовместимости deployment/pool. Минимальная клиентская мера уже выполнена в03.03.01, нового решения нет; source hashes сверены без запуска tests/CLI/live.
-  - [ ] [03.03.02. Пригодность compact-окна](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.02-window-compatibility.md): положительный gate использования окна следующей generation с учётом recovery (blocked T05; анализ завершён без основания допуска). Passthrough сам не имеет этого recovery, но исключительный passthrough для deployment/pool не установлен.
-  - [ ] [03.03.03. Compact request](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.03-compact-request.md): existing endpoint/body через HttpClientLibrary без активации (not-started; после положительного03.03.02).
-  - [ ] [03.03.04. Canonical response](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.04-compact-response.md): output/envelope и подтверждённый исход (not-started; после03.03.03).
-  - [ ] [03.03.05. Сохранение и активация](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.05-window-activation.md): existing Completed-only writer path, prefix/хвост/история (not-started; после03.03.04 и при действующем основании03.03.02).
-  - [ ] [03.03.06. Регрессия и результаты](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.06-compact-verification.md): адресные проверки и синхронизация evidence/статусов (not-started; после03.03.05, без04/live/поставки).
-- [ ] 04.01 Проверить connector provenance и safe handling legacy/cross-connector opaque state.
+  - [x] Завершить статический анализ03.03.02: routing/capability/mapping/sticky/forwarding не исключают same-account HTTP recovery с удалением окна и успехом по хвосту; отделить это от неподтверждённой несовместимости deployment/pool. Минимальная клиентская мера уже выполнена в03.03.01; source hashes сверены без запуска tests/CLI/live. Отрицательный результат сохранён для отложенного compact.
+
+## Отложенный compact — за обязательным объёмом первой версии
+
+T05 остаётся открытым. Следующие задачи не начаты и не являются gate приёмки первой версии; возобновление требует нового достаточного основания и отдельного поручения.
+
+- [ ] [03.03.02. Пригодность compact-окна](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.02-window-compatibility.md): положительный gate использования окна следующей generation с учётом recovery (blocked T05; анализ завершён без основания допуска). Passthrough сам не имеет этого recovery, но исключительный passthrough для deployment/pool не установлен.
+- [ ] [03.03.03. Compact request](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.03-compact-request.md): existing endpoint/body через HttpClientLibrary без активации (not-started; после положительного03.03.02).
+- [ ] [03.03.04. Canonical response](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.04-compact-response.md): output/envelope и подтверждённый исход (not-started; после03.03.03).
+- [ ] [03.03.05. Сохранение и активация](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.05-window-activation.md): existing Completed-only writer path, prefix/хвост/история (not-started; после03.03.04 и при действующем основании03.03.02).
+- [ ] [03.03.06. Регрессия и результаты](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03.06-compact-verification.md): адресные проверки и синхронизация evidence/статусов (not-started; после03.03.05, без04/live/поставки).
+
+## Оставшиеся обязательные работы первой версии
+
+- [ ] 04.01 Проверить connector provenance и safe handling legacy/cross-connector opaque state после обязательного объёма03 без зависимости от T05.
 - [ ] 04.02 Проверить public AgentRunner path, restart, pinned settings/access и no-replay.
 - [ ] 05.01 Выполнить разрешённые compile-check, isolated regression и strict validation.
 - [ ] 05.02 Подготовить и проверить DLL-поставку, прежний и новый external consumer.
-- [ ] 05.03 Выполнить отдельно разрешённую live OAuth-приёмку и зафиксировать границы результата.
+- [ ] 05.03 Выполнить отдельно разрешённую live OAuth-приёмку первой версии без нового compact и зафиксировать границы результата.
 
-Отметки01–02 и частичные03 подтверждают только фактическую реализацию/проверки в своих границах.03.01/03.02 остаются verification по открытым техническим проверкам, compact03.03 blocked. Новая поставка/ABI, strict CLI и live-приёмка не завершены. Main spec не синхронизирована; список задач не разрешает запуск команд. Работа04 не начиналась.
+Отметки01–02 и частичные03 подтверждают только фактическую реализацию/проверки в своих границах.03 и03.01/03.02 остаются verification по открытым техническим проверкам; обязательный03.03 завершён по03.03.01, отложенный compact03.03.02 blocked T05. Новая поставка/ABI, strict CLI и live-приёмка не завершены. Main spec не синхронизирована; список задач не разрешает запуск команд. Работа04 и реализация отложенного compact не начинались.
 
 [Серверное предложение](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md) отклонено; его headers/revision/enforcement не требуются. [Опись](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-source-evidence.json) сохраняет historical48 и отдельный current compactReview0.2.20:10 hashes отличаются. Текущее продолжение проверило557 Core +161 Sub2Api +414 CodexLb =1132 cases,0 failed/skipped; семь конкретных compile-check без warnings/errors. Прежние1151 budget и565 generation — пересекающиеся прогоны, не суммарные уникальные tests. Это не live или Sub2Api compact acceptance. T01/T05 открыты,04 не начат.
 

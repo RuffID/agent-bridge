@@ -6,7 +6,7 @@
 
 ## Технические вопросы разработчику — внутренний раздел
 
-T01–T05 открыты. [Результаты03](03-sub2api/results.md), [разбор границ](03-sub2api/contract-blockers.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованные budget/settings/JSON/SSE generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge и его истории; existing server transformations допустимы без обещания upstream сохранности. Это не разрешает provenance/restart04.
+T01–T05 открыты. Первая версия согласована без обязательного compact: T05 относится к отдельной отложенной работе и не блокирует её приёмку. Полный контекст и явный отказ при превышении бюджета сохраняются; остальные проверки не закрыты этим изменением объёма. [Результаты03](03-sub2api/results.md), [разбор границ](03-sub2api/contract-blockers.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованные budget/settings/JSON/SSE generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge и его истории; existing server transformations допустимы без обещания upstream сохранности. Это не разрешает provenance/restart04.
 
 ### T01. Доказанный входной бюджет и происхождение metadata
 
@@ -30,7 +30,7 @@ OAuth stream/store и SSE→JSON не объявляются потерями с
 
 Новый unknown-window режим использует nullable DeclaredInputContextWindow; legacy int getter fail-fast при null. Snapshot v2 читает обновлённый AgentBridge; старый reader v1 его не принимает. Это ограничение согласованного бюджетного режима, не доказательство полной old→new ABI.
 
-### T05. Совместимость canonical generation и compact
+### T05. Совместимость compact — отдельная отложенная работа
 
 Shared reasoning.content normalization, ordinary invalid-encrypted recovery и cross-mode encrypted stripping описаны в [клиентской адаптации](03-sub2api/client-adaptation.md). Они допустимы внутри sub2api по принятой границе canonical: полный клиентский request/ответ и локальная история сохраняются; неизменная передача upstream не обещается. Это больше не блокер generation. Internal server retries сами по себе не запрещены.
 
@@ -42,4 +42,4 @@ Compact может изменить модель уже до первого send
 
 Статический анализ [03.03.02](03-sub2api/03.03.02-window-compatibility.md) завершён: достаточного основания исключить потерю compact-окна существующий контракт не даёт, gate остаётся blocked T05. Compact capability фильтрует отдельный запрос, следующая generation выбирается отдельно; sticky допускает смену аккаунта. Более того, ordinary HTTP recovery удаляет окно в том же аккаунте: одинаковая модель, отсутствие mapping и account switches не отключают его. Handler закрепляет HTTP ingress, поэтому серверный WS не исключает эту ветку. В passthrough именно этого recovery нет, но обязательное пребывание всего deployment/pool в passthrough не подтверждено; failover может привести в ordinary. Cross-mode sanitizer сам удаляет reasoning, а не compaction; compaction затем может удалить ordinary recovery. Source доказывает условное поведение, не фактическую несовместимость OAuth deployment.
 
-Нарушается существующая пригодность окна как замены покрытого terminal prefix для следующей generation, даже если ответ успешно завершён. Минимальная мера уже реализована в [03.03.01](03-sub2api/03.03.01-full-context-mode.md): не создавать/активировать новое окно и продолжать полный PreparedRequest через guard; explicit/force Unsupported. Нового клиентского решения нет.03.03.03–03.03.06 и04 не начаты; дальнейший compact зависит от нового достаточного основания, а не нового server API или неявного запуска live05. Повторно согласовывать принятые правила не требуется.
+Нарушается пригодность окна как замены покрытого terminal prefix для следующей generation, даже если ответ успешно завершён. Минимальная мера уже реализована в [03.03.01](03-sub2api/03.03.01-full-context-mode.md): не создавать/активировать новое окно и продолжать полный PreparedRequest через guard; explicit/force Unsupported. Первая версия использует этот режим без обязательного compact. T05 остаётся blocked для отложенного compact; его закрытие не является условием этапов04–05 первой версии.03.03.03–03.03.06 и04 не начаты; дальнейший compact зависит от нового достаточного основания и отдельного поручения, а не нового server API или неявного запуска live05. Открытого решения об объёме compact нет.

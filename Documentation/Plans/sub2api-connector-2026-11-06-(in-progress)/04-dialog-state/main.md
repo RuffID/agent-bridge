@@ -1,6 +1,6 @@
 # 04. История и продолжение
 
-Статус: **not-started**. Зависимости: Этап03.
+Статус: **not-started**. Зависимости: обязательный объём первой версии этапа03 без compact.
 
 ## Цель
 
@@ -10,13 +10,15 @@
 
 Existing guard/context/run/recovery boundaries и адаптер. Автоматическая миграция старых диалогов между шлюзами не входит.
 
+T05 и отложенные03.03.02–03.03.06 не являются зависимостью первой версии. Сохраняются проверки чужого/legacy opaque-состояния и прежнего codex-lb compact; новый Sub2Api compact не создаётся. Изменение плана не начинает реализацию этапа.
+
 Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md).
 
 ## Подэтапы
 
 | Подэтап | Статус | Зависимости | Результат |
 | --- | --- | --- | --- |
-| [04.01. Provenance и граница смены коннектора](04.01-connector-provenance.md) | not-started | 03.03 | До отправки различаются родной, legacy-неизвестный и чужой opaque-контекст. |
+| [04.01. Provenance и граница смены коннектора](04.01-connector-provenance.md) | not-started | 03.03.01 в обязательном объёме03 | До отправки различаются родной, legacy-неизвестный и чужой opaque-контекст. |
 | [04.02. Полный ход, restart и отсутствие повторов](04.02-restart-and-recovery.md) | not-started | 04.01 | Existing AgentRunner проходит sub2api end-to-end path с durable ordering и pinned access/settings. |
 
 ## Общий результат и приёмка

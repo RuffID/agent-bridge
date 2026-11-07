@@ -4,8 +4,8 @@
 
 | План | Статус | Содержание |
 | --- | --- | --- |
-| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | Этапы01–02 готовы;03.01/03.02 verification: [settings/generation и режим без automatic compact](<sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md>) проверены;03 blocked compact compatibility T05, T01/T02 открыты; sub2api не дорабатывается,04–05 не начаты |
+| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | Этапы01–02 готовы;03 и03.01/03.02 verification: [первая версия без обязательного compact](<sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md>), полный контекст проверен изолированно; отложенный compact blocked T05 и не блокирует первую версию, T01/T02 открыты; sub2api не дорабатывается,04–05 не начаты |
 
 Создание плана само по себе не разрешает реализацию. Завершённые планы удалены; их материалы доступны в истории Git.
 
-Оставшаяся работа03 разделена в [навигаторе compact03.03](<sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03-compaction.md>) на03.03.01–03.03.06: безопасный режим выполнен, пригодность окна blocked T05, transport/response/активация/регрессия не начаты.
+В [навигаторе03.03](<sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03-compaction.md>) безопасный режим03.03.01 закрывает обязательный объём первой версии в изолированных границах. Пригодность окна03.03.02 blocked T05, transport/response/активация/регрессия03.03.03–03.03.06 не начаты и вынесены отдельной отложенной работой.
