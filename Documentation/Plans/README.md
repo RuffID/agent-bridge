@@ -4,6 +4,6 @@
 
 | План | Статус | Содержание |
 | --- | --- | --- |
-| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | Этапы01–02 готовы; доступ/каталог03 реализованы; [адаптация только AgentBridge](<sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md>), доработка sub2api исключена; T01/T05 открыты; 04–05 не начаты |
+| [Коннектор sub2api](<sub2api-connector-2026-11-06-(in-progress)/main.md>) | in-progress | Этапы01–02 готовы;03.01/03.02 verification: [unknown-window settings и JSON/SSE generation](<sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md>);03 blocked compact T05, T01/T02 открыты; sub2api не дорабатывается,04–05 не начаты |
 
 Создание плана само по себе не разрешает реализацию. Завершённые планы удалены; их материалы доступны в истории Git.

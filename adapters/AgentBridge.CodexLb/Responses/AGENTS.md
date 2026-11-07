@@ -1,6 +1,6 @@
 # JSON/SSE Responses
 
-- Внутренние writers, NestedControlsValidator, CanonicalOutputReader и SseEventReader находятся в adapters/AgentBridge.Responses (source link обоих адаптеров). Gateway, lifecycle readers, SSE state, safe typed errors и bound continuation остаются здесь. Public types/constructors остаются в AgentBridge.CodexLb.dll. Извлечение не меняет allowlists, canonical payload, literal URL append или legacy continuation.
+- Внутренние writers, NestedControlsValidator, CanonicalOutputReader, SseEventReader и SSE accumulator находятся в adapters/AgentBridge.Responses (source link обоих адаптеров). Gateway, JSON readers, ResponseSseState wrapper, safe typed errors и bound continuation остаются здесь. Wrapper передаёт прежние continuation/error factories общему accumulator. Public types/constructors остаются в AgentBridge.CodexLb.dll; allowlists, canonical payload, literal URL append и legacy continuation сохраняются.
 
 ## Compact этапа18
 

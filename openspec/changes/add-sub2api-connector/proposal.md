@@ -1,6 +1,6 @@
 # Отдельный коннектор sub2api
 
-Статус: in-progress; этапы01–02 выполнены,03 частично реализован и blocked T01/T05;04–05 не начаты. Создано 2026-11-06.
+Статус: in-progress; этапы01–02 выполнены,03.01/03.02 verification,03 blocked compact T05; T01 открыт,04–05 не начаты. Создано 2026-11-06.
 
 ## Why
 
@@ -19,11 +19,13 @@ AgentBridge использует ключ, выпущенный в sub2api. Ти
 
 ## Impact
 
+Разрешённое клиентское продолжение03 добавляет явный ServerValidationWithUnknownWindow, nullable budget assessment/snapshot и совместимое чтение budget JSON v1/v2 без изменения DB schema. Прежние API signatures и strict/ServerValidation сохраняются. [Клиентская адаптация](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md) реализована и проверена вместе с actual JSON/SSE generation. Принята canonical гарантия на входе sub2api и в истории AgentBridge с допуском existing server transformations, без обещания upstream сохранности. Compact Unsupported,04 не начат.
+
 Изменяются Integration и транспортные адаптеры; общие application ports и business tools не получают обязательного нового аргумента. Схема БД и соседние библиотеки заранее не меняются. Если для безопасной provenance потребуется schema/public contract change, это отдельное адресное согласование.
 
-OpenSpec main пока не синхронизируется: полная возможность delta ещё не реализована. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md) содержит этапы и приёмку; [design](design.md) — решения и ограничения. На03 existing bundle получил доступ/каталог ID/settings; запуск Unsupported по неизвестному бюджету T01, generation/compact Unsupported до доказанного T05. [Фактические результаты03](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md).
+OpenSpec main пока не синхронизируется: полная возможность delta ещё не реализована. [План](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/main.md) содержит этапы и приёмку; [design](design.md) — решения и ограничения. На03 existing bundle получил доступ/ordinary каталог и declared manifest settings при явном неизвестном бюджете. T01 не закрыт доказательством input budget, но не блокирует этот settings mode. JSON/SSE generation реализована через existing bundle/HttpClientLibrary; compact Unsupported из-за ограничений T05. [Фактические результаты03](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md).
 
-Продолжение03 подготовило [серверное предложение](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md), которое пользователь **отклонил**. Доработка sub2api исключена; требуется [адаптация только AgentBridge к существующему серверу](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md). Новые server fields/enforcement не являются зависимостью. Runtime код не расширялся, T01/T05 остаются открытыми, этап04 не начат.
+Продолжение03 подготовило [серверное предложение](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md), которое пользователь **отклонил**. Доработка sub2api исключена; выполнена [адаптация бюджета/settings AgentBridge к существующему серверу](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md). Новые server fields/enforcement не являются зависимостью. T01/T05 остаются открытыми, этап04 не начат.
 
 ## Out of Scope
 

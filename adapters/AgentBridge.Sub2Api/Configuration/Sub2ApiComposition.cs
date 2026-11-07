@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AgentBridge.Sub2Api.Configuration;
 
-/// <summary>Собирает существующий bundle с доступом и каталогом; generation/compact ограждены до T05.</summary>
+/// <summary>Собирает existing bundle; HTTP создаётся только после локальной проверки запроса.</summary>
 internal static class Sub2ApiComposition
 {
     private const double MAX_TIMEOUT_MILLISECONDS = uint.MaxValue - 1d;
@@ -50,7 +50,9 @@ internal static class Sub2ApiComposition
             provider.GetRequiredService<ILogger<HttpApiClient>>(), null,
             new HttpClientLoggingOptions { ErrorContentMode = HttpErrorContentLogMode.None },
             new HttpErrorResponseOptions { MaxBodyBytes = 65_536 }));
-        services.AddScoped<IModelGateway, Sub2ApiModelGateway>();
+        services.AddScoped<IModelGateway>(provider => new Sub2ApiModelGateway(
+            () => provider.GetRequiredService<HttpApiClient>(), provider.GetRequiredService<IOptionsSnapshot<Sub2ApiOptions>>(),
+            provider.GetRequiredService<ILogger<Sub2ApiModelGateway>>()));
         services.AddScoped<IModelCatalog, Sub2ApiModelCatalog>();
         services.AddScoped<IModelAccessResolver, Sub2ApiModelAccessResolver>();
         services.AddScoped<IModelSettingsReader, Sub2ApiModelSettingsReader>();

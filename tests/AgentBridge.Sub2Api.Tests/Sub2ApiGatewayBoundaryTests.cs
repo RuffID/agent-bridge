@@ -2,23 +2,33 @@ using System.Text.Json;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
+using AgentBridge.Configuration;
 using AgentBridge.Domain.Dialogs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace AgentBridge.Sub2Api.Tests;
 
-/// <summary>Нет обхода обязательных T05 guards через прямой gateway или выданные приложением settings.</summary>
+/// <summary>Legacy continuation и неподтверждённый compact отклоняются до HTTP независимо от budget policy.</summary>
 public class Sub2ApiGatewayBoundaryTests
 {
-    /// <summary>JSON/SSE и compact отклоняются без HTTP/callback даже с opaque input и legacy continuation.</summary>
+    /// <summary>Continuation не удаляется молча ради generation; compact остаётся Unsupported.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task BlockedGatewayCannotDispatchOrMutateCanonicalInput(bool streaming)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ContinuationCannotDispatchOrMutateCanonicalInput(bool streaming, bool unknownWindow)
     {
         // Arrange
         using Sub2ApiCatalogFixture fixture = new();
+        if (unknownWindow)
+        {
+            fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ContextCompactionOptions>>().Value.BudgetPolicy =
+                ContextBudgetPolicy.ServerValidationWithUnknownWindow;
+        }
+
         using JsonDocument opaque = JsonDocument.Parse("""{"type":"reasoning","encrypted_content":"secret-opaque","future":true}""");
         using JsonDocument legacy = JsonDocument.Parse("""{"previous_response_id":"resp_legacy","turn_state":"secret-turn-state"}""");
         ModelRequest request = new("public-model", "medium", "instructions", [new(opaque.RootElement)], [], new(legacy.RootElement));

@@ -10,7 +10,8 @@
     "No Git operations, server execution, Go tests or live gateway/OAuth calls.",
     "Hashes identify local source files, not the deployed server or public tag equivalence.",
     "The 28 sub2api files from stage01 source-evidence.json matched before this continuation.",
-    "Source inventory includes previous evidence plus the additional owning files reviewed for T01/T05."
+    "Source inventory includes previous evidence plus the additional owning files reviewed for T01/T05.",
+    "Client adaptation continuation matched all 46 preceding hashes; two additional files establish no-op text truncation and item-ID sanitization. No server files were changed."
   ],
   "publicDocumentation": [
     {
@@ -27,6 +28,16 @@
     }
   ],
   "files": [
+    {
+      "path": "backend/internal/service/openai_responses_input_compat.go",
+      "size": 2905,
+      "sha256": "1bde7e0f1d998457fc8cc93bfcda7e0aab96fdbff97de6e6fcd0e05eba294359"
+    },
+    {
+      "path": "backend/internal/service/openai_responses_item_id.go",
+      "size": 3414,
+      "sha256": "1acf2e024ee351ec925c89b4259860ebfbb101872b0676770a0d57c2e3cbb065"
+    },
     {
       "path": "backend/cmd/server/VERSION",
       "size": 8,

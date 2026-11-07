@@ -1,8 +1,97 @@
 # Результаты этапа03
 
-Дата: 2026-11-07. Статус: **blocked**, частичная реализация03.01. [Этап](main.md) · [Блокеры и расширение контракта](contract-blockers.md).
+Дата: 2026-11-07. Статус: **blocked compact T05**;03.01/03.02 verification, generation реализована. [Этап](main.md) · [Ограничения](contract-blockers.md) · [Клиентская адаптация](client-adaptation.md).
 
-## Актуальное решение: sub2api не дорабатывается
+## Актуальный результат: generation по принятому плану Б
+
+Принята canonical гарантия на входе sub2api и в истории AgentBridge с допуском existing reasoning normalization/recovery внутри сервера. Успешный ответ не доказывает неизменную upstream передачу или actual model identity. Решение о клиентской границе больше не открыто; sub2api не дорабатывается. Бюджетный ServerValidationWithUnknownWindow и v1/v2 snapshots сохранены без дополнительных изменений.
+
+### Реализовано03.02
+
+- Existing Sub2ApiModelGateway выполняет один POST /v1/responses через scoped HttpClientLibrary. Отложенное разрешение HttpApiClient сохраняет preflight до factory: incoming continuation, invalid key/endpoint и unsupported controls не отправляются.
+- Shared writer передаёт полный prepared context, включая принятое compact-окно, хвост/current input, instructions/effort/tools/controls, encrypted reasoning и полные call/output пары. Нет previous_response_id, codex-lb turn-state, клиентского retry, смены ключа/модели/коннектора или выполнения бизнес-инструментов. Returned response id не создаёт continuation.
+- Один ответ читается как JSON/SSE по Content-Type, включая non-stream SSE fallback. ResponseSseAccumulator выделен в linked shared sources; codex-lb wrapper сохраняет прежние factories continuation/errors, sub2api использует null continuation. Canonical output/envelope сохраняются полностью; requested model echo не становится verified identity.
+- Callbacks последовательны и awaited, включая полные items при JSON вместо SSE. Partial text/arguments/opaque и ordering переживают EOF/отказ/отмену; Completed требует terminal confirmation, HTTP200/[DONE] недостаточны. Общий deadline охватывает headers/body/callbacks; caller имеет приоритет. Primary callback/read/cleanup и secondary cleanup не скрываются. Borrowed HttpClient/handlers остаются у приложения.
+- Safe HTTP pipeline дополнен Sub2ApiGenerationFinished: TurnId/lifecycle/закрытый error type без key/payload/raw error. Completed фиксируется после terminal и cleanup; incomplete/failed/exception не объявляются успешной генерацией.
+
+Compact остаётся Unsupported до factory/HTTP, без подмены генерацией: existing initial compact/global mapping может изменить модель, response.model бывает requested echo, совместимость не подтверждена. Existing Completed-only/save-before-activation/history path не менялся. Provenance, persistence/restart04, main spec, baseline kit/frozen consumer DLL не изменялись.
+
+### Фактические проверки плана Б
+
+Перед сборками прочитан graph двух test csproj:12 проектов и15 build inputs (включая ancestor props/global.json; NuGet.config/locks в этом graph не найдены). Custom Exec/targets/import hooks не обнаружены; HttpClientLibrary Directory.Build.props действует только на его собственные tests. Restore не требовался, сеть не использовалась. BuildProjectReferences=false исключил пересборку read-only соседних библиотек; использованы existing compile-check dependencies. Это не новая поставка.
+
+Пять конкретных compile-check: Sub2Api, CodexLb, Integration и их два test projects; все финальные0 warnings/errors. Первоначальная сборка нового test имела один CS8602; nullable assertion исправлен без suppression. После добавления регрессий full Sub2Api прогон вырос143→149→151, все прогоны без failed/skipped. Первые143 уже включали generation; финальный151 подтверждает также полную сохранность JSON output при отмене из callback, invalid UTF-8 unknown поля, unexpected read/cleanup identity, deadline до headers и partial tool arguments/ordering.
+
+```powershell
+dotnet build <конкретный.csproj> -c Debug --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false -v:q
+dotnet test --project tests/AgentBridge.Sub2Api.Tests/AgentBridge.Sub2Api.Tests.csproj --no-build --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false --no-progress
+dotnet test --project tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj --no-build --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false --no-progress
+```
+
+| Финальный набор этого продолжения | Passed | Failed | Skipped |
+| --- | --- | --- | --- |
+| Sub2Api, весь isolated набор | 151 | 0 | 0 |
+| CodexLb, весь isolated набор | 414 | 0 | 0 |
+| Всего | **565** | **0** | **0** |
+
+Sub2Api включает public facade dispatch, полный повторный request с tool pair, JSON/SSE/non-stream fallback, terminal/partial/ordering/arguments, sequential awaited callbacks и callback failure identity, HTTP status/envelopes без retry, caller/deadline, UTF-8/JSON, cleanup/ownership и safe logs. CodexLb regression подтверждает сохранение прежнего JSON/SSE/compact/continuation и публичной поверхности после извлечения accumulator. Общий runtime565 не складывается с прежними1151 как число уникальных тестов. Core/persistence/budget tests в этом продолжении не повторялись: их код не менялся.
+
+T01/T02/T03/T04/T05 открыты: доказанный budget, live OAuth/tool chain, provenance04, новая поставка/ABI и compact compatibility не заменяются fake fixtures. Этап03 не completed,04 не начат. AppData, готовый kit и внешние artifacts не требуются обычному набору. CLI OpenSpec, Git, проектные скрипты, приложение/host, live HTTP/OAuth, БД, Docker и deployment не выполнялись.
+
+Статическая сверка:19 документов,185 относительных ссылок без missing targets (включая ссылки изменённых инструкций), XML решения и JSON evidence корректны, все9 файлов03 присутствуют в solution. SHA256/size всех48 источников sub2api совпали. Проверены40 документов/инструкций/исходников/solution строгим UTF-8 decoder: повреждений, U+FFFD/четырёх question marks, проверенных mojibake-последовательностей и mixed EOL нет; русский текст просмотрен. LF исходников/Markdown/JSON и CRLF решения сохранены. Все11 изменённых/новых C# файлов меньше20000 байт, максимум ConnectorSelectionTests18569. Новый generation transport отделён от gateway, SSE accumulator общий; массового переноса исходников нет. Навигаторы/main/open-questions/подэтапы/локальные AGENTS/OpenSpec синхронизированы, C01 больше не открытый вопрос, T05 блокирует только неподтверждённый compact. Main spec и исторические01–02 не переписывались.
+
+## Предшествующее продолжение03: неизвестный бюджет
+
+Следующие записи описывают состояние до принятия плана Б. Указанный в них запрет generation по upstream canonical гарантии больше не является актуальным блокером; исторические проверки сохранены.
+
+sub2api не дорабатывается. Пользователь отдельно разрешил явный режим неизвестного входного окна с изменением validator/guard и budget snapshot, сохранив чтение старого формата. Реализован **ServerValidationWithUnknownWindow**. Прежние strict/ServerValidation/default codex-lb не меняются; guessed budget/95%/threshold вместо окна не используются.
+
+Existing bundle/HttpClientLibrary получил manifest projection только для нового режима: GET /v1/models?client_version=<настоящая assembly version AgentBridge>, exact slug/effort/API-доступность как объявления сервера, без утверждения provenance pool. Ordinary каталог сохранён. Settings фиксирует policy; guard сохраняет null окно и RequiresServerValidation даже для known text estimate. Threshold остаётся локальным, гарантированный reserve при unknown не обещается. Counter failure/exact selection/caller checks сохранены.
+
+TurnModelSettings/ContextBudgetAssessment получили nullable DeclaredInputContextWindow с сохранением старых int getters/constructors/signatures. Legacy getter при unknown явно отказывает; System.Text.Json выводит InputContextWindow=null безопасно. TurnSettingsMapping сохраняет строгий known snapshot v1 и читает literal v1; явные server policies используют v2 с null окном и обязательным BudgetPolicy. Схема/таблицы/миграции не менялись. Старый reader v1 не читает v2 — этому режиму нужны обновлённые DLL. Provenance/restart04 не добавлены.
+
+Existing status/compactor поддерживают новый бюджетный режим. Проверен core сценарий Completed-only/save-before-activation, terminal prefix + хвост, неизменная история и Unsupported без generation fallback. Это in-memory gateway/writer, **не реализация Sub2Api compact**.
+
+Разбор [existing forwarding paths](client-adaptation.md) установил конкретное противоречие: shared normalizer удаляет непустой reasoning.content; ordinary invalid-encrypted recovery и cross-mode failover могут удалить encrypted reasoning и вернуть успех. Transport normalization OAuth stream/store/SSE→JSON и обратимые tool/ID формы не объявляются потерями сами по себе. Вызовы text truncation в текущем source являются no-op; прежняя оценка уточнена. Response.model остаётся объявлением/возможным requested echo. Compact может сменить модель до первого send.
+
+**Generation/compact остаются Unsupported до factory/HTTP/callback**, включая новый budget mode. Actual JSON/SSE transport не добавлен; нет dormant реализации или guessed enable flag. Минимальное оставшееся изменение клиентского требования выделено как [C01](../open-questions.md): разрешить перечисленные server transformations, гарантируя canonical только до входа sub2api и в истории AgentBridge. Это не согласовано решением про бюджет. T01–T05 открыты; T01 больше не блокирует settings в явном режиме, T05 блокирует transport. После03 работа остановлена,04 не начат.
+
+### Фактические проверки этого продолжения
+
+Перед сборками прочитаны4 test csproj и весь ProjectReference graph21 проекта, ancestor build props/targets/NuGet/lock inputs и global.json; executable hooks/Exec не обнаружены. Restore не требовался. BuildProjectReferences=false исключил пересборку read-only соседних библиотек; использованы их существующие compile-check DLL, HttpClientLibrary file version0.0.0.6. Core/Sub2Api/общий EF/Integration собраны адресно перед тестами. Это не новая DLL-поставка.
+
+```powershell
+dotnet build <конкретный.csproj> -c Debug --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false -v:q
+dotnet test --project <конкретный.test.csproj> --no-build --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false --no-progress
+```
+
+Конкретные production csproj: AgentBridge/agent-bridge.csproj, adapters/AgentBridge.Sub2Api/AgentBridge.Sub2Api.csproj, adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj, adapters/AgentBridge.Integration/AgentBridge.Integration.csproj. Test projects: tests/AgentBridge.Tests/AgentBridge.Tests.csproj, tests/AgentBridge.Sub2Api.Tests/AgentBridge.Sub2Api.Tests.csproj, tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj, tests/AgentBridge.Persistence.EfCore.Tests/AgentBridge.Persistence.EfCore.Tests.csproj. Для последнего использованы три отдельных --filter-class: '*UnknownWindowSnapshotTests', '*DialogSettingsMappingTests', '*IntegrationRegistrationTests', каждый с --filter-not-trait 'Dependency=Database'.
+
+Все восемь конкретных проектов собраны после финальных C# изменений: Exit0,0 warnings/errors. Финальные изолированные прогоны:
+
+| Набор | Passed | Failed | Skipped |
+| --- | --- | --- | --- |
+| AgentBridge.Tests, полный | 557 | 0 | 0 |
+| AgentBridge.Sub2Api.Tests, полный | 111 | 0 | 0 |
+| AgentBridge.CodexLb.Tests, полный | 414 | 0 | 0 |
+| EF: UnknownWindowSnapshotTests | 6 | 0 | 0 |
+| EF: DialogSettingsMappingTests | 7 | 0 | 0 |
+| EF: IntegrationRegistrationTests | 56 | 0 | 0 |
+| Всего | **1151** | **0** | **0** |
+
+Успешные первоначальные прогоны этого продолжения: core554, Sub2Api109, CodexLb414, snapshot6, existing mapping7, facade56. После добавления core scenarios и gateway boundary cases финальные core557/Sub2Api111 повторены. Два подготовительных отказа: фильтр class с символом | не выбрал тесты (Exit5,0 tests); компиляция нового test scenario использовала несуществующее имя ContextContentInspector (CS0246). Фильтры разделены, inspector заменён actual ContextTokenCounter; последующие build/run green. Это не падения production тестов. После финальных прогонов изменялась только документация, повторная сборка не требовалась.
+
+Сверены все46 прежних hashes sub2api; опись расширена двумя владеющими sources no-op text/IDs.28 sub2api entries evidence01 также совпали; остальные repositories из той смешанной описи не объявляются совпавшими. Проверка статическая, без Git/Go/live. Исторические01–02/main spec, baseline kit/frozen DLL не редактировались; AppData и внешняя поставка не требуются обычным tests. CLI OpenSpec, приложение/host, live HTTP/OAuth, БД, Docker и deployment не запускались. Статическая сверка delta/tasks не заменяет strict CLI validation05.01.
+
+### Итоговая статическая сверка
+
+Проверены19 актуальных документов:188 относительных ссылок без missing targets, корректные XML решения и JSON evidence, включение всех9 файлов03 в solution. Все48 SHA256/size записей sub2api совпали с локальными sources; это не доказательство deployment или live-совместимости. В50 затронутых документах/исходниках/инструкциях/solution строгий UTF-8 decoder не выявил ошибок, U+FFFD, четырёх question marks и проверенных mojibake-последовательностей; русский текст просмотрен. Сохранены LF исходников/Markdown/JSON и CRLF solution. Все19 изменённых C# файлов меньше20000 байт, максимум ContextCompactor13901.
+
+Актуальные навигаторы,03.01–03.03, main/open-questions, локальные AGENTS и OpenSpec proposal/design/tasks/delta согласованы:03.01 verification,03 blocked T05/C01, T01–T05 открыты,04 not-started. Устаревшие утверждения об обязательной блокировке нового settings режима бюджетом удалены из актуальных описаний; предшествующие результаты ниже сохранены как история03. Ни успешная fixture, ни разрешённая budget policy не открывают generation/compact. Доработка sub2api и отвергнутое server proposal не являются следующими шагами. Работа в этом запуске завершена в границах03; изменение canonical гарантии C01 не согласовано.
+
+## Предшествующие результаты03: отклонение серверного пути
+
+Следующие записи сохраняют прежние проверки и состояние до разрешённой клиентской адаптации выше. Они не являются актуальным описанием budget/settings и не задают новых server зависимостей.
 
 Пользователь исключил доработку sub2api: адаптируется только AgentBridge к существующему серверу. Подготовленное ниже серверное предложение **отклонено** и сохранено как запись отвергнутого варианта. Его согласование, новые headers/pool revision/metadata и single-attempt enforcement не являются следующими шагами или условиями плана. Требование отсутствия клиентских retries ошибочно расширялось до общего server single-attempt; это расширение устранено из активного OpenSpec delta и инструкций.
 

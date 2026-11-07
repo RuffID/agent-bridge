@@ -73,11 +73,7 @@ public class AgentSettingsService(IDialogReader dialogs, IDialogSettingsWriter w
                 else
                 {
                     size = counted.Data!;
-                    if (size.IsApproximateEncoding && compaction.Value.BudgetPolicy != ContextBudgetPolicy.ServerValidation)
-                        error ??= new(ServiceErrorType.Unsupported, "Оценочная кодировка модели требует явной серверной проверки бюджета.");
-                    else if (size.EstimatedInputTokens is null) error ??= new(ServiceErrorType.Unsupported, "Полный бюджет сохранённого контекста неизвестен.");
-                    else if (size.EstimatedInputTokens > (long)selected.Data.Model.InputContextWindow! - selected.Data.InputTokenReserve)
-                        error ??= new(ServiceErrorType.Rejected, "Сохранённый контекст превышает входной бюджет.");
+                    error ??= CheckStoredBudget(size, selected.Data, compaction.Value.BudgetPolicy);
                 }
             }
         }
@@ -87,6 +83,35 @@ public class AgentSettingsService(IDialogReader dialogs, IDialogSettingsWriter w
         return ServiceResult<DialogStatus>.Ok(new(dialog.Token, dialog.CreatedAtUtc, dialog.ExpiresAtUtc,
             dialog.IsExpired(time.GetUtcNow()), dialog.ContentBytes, limit, dialog.ActiveContext?.Version ?? 0, settings,
             last is null ? null : ContextModelGuard.ServerModel(last), size, error, dialog.Selection));
+    }
+
+    /// <summary>Статус не выдумывает окно; явная серверная проверка не подтверждает приём будущего запроса.</summary>
+    private static ServiceError? CheckStoredBudget(ContextTokenCount size, ModelSettingsSnapshot settings, ContextBudgetPolicy policy)
+    {
+        if (size.IsApproximateEncoding && policy == ContextBudgetPolicy.RequireLocalEstimate)
+        {
+            return new(ServiceErrorType.Unsupported, "Оценочная кодировка модели требует явной серверной проверки бюджета.");
+        }
+
+        if (settings.Model.InputContextWindow is null
+            && settings.BudgetPolicy == ContextBudgetPolicy.ServerValidationWithUnknownWindow
+            && policy == ContextBudgetPolicy.ServerValidationWithUnknownWindow
+            && (size.EstimatedInputTokens is not null || size.HasOpaqueContent))
+        {
+            return null;
+        }
+
+        if (size.EstimatedInputTokens is null || settings.Model.InputContextWindow is null)
+        {
+            return new(ServiceErrorType.Unsupported, "Полный бюджет сохранённого контекста неизвестен.");
+        }
+
+        if (size.EstimatedInputTokens > (long)settings.Model.InputContextWindow.Value - settings.InputTokenReserve)
+        {
+            return new(ServiceErrorType.Rejected, "Сохранённый контекст превышает входной бюджет.");
+        }
+
+        return null;
     }
 
     /// <summary>Проверяет принадлежность snapshot даже для пользовательского read port.</summary>

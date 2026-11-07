@@ -47,10 +47,16 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
         }
 
         ServiceResult<ModelSettingsSnapshot> selection = ModelSelectionValidator.Validate(new([settings.Model]),
-            settings.Model.Id, settings.ReasoningEffort, settings.TokenThreshold, settings.InputTokenReserve);
+            settings.Model.Id, settings.ReasoningEffort, settings.TokenThreshold, settings.InputTokenReserve, settings.BudgetPolicy);
         if (!selection.Success)
         {
             return ServiceResult<ContextCompactionResult>.Fail(selection.Error!);
+        }
+
+        if (settings.Model.InputContextWindow is null && budgetPolicy != ContextBudgetPolicy.ServerValidationWithUnknownWindow)
+        {
+            return ServiceResult<ContextCompactionResult>.Fail(new(ServiceErrorType.Unsupported,
+                "Неизвестное входное окно требует явной серверной проверки."));
         }
 
         ServiceResult<ModelRequest> built = await builder.BuildAsync(call, dialog, newRequest, time.GetUtcNow(), cancellationToken);
@@ -100,14 +106,14 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
 
         cancellationToken.ThrowIfCancellationRequested();
         count = counted.Data!;
-        if (count.IsApproximateEncoding && budgetPolicy != ContextBudgetPolicy.ServerValidation)
+        if (count.IsApproximateEncoding && budgetPolicy == ContextBudgetPolicy.RequireLocalEstimate)
         {
             return Report(ContextCompactionStatus.Failed, new(ServiceErrorType.Unsupported,
                 "Оценочная кодировка модели требует явной серверной проверки бюджета."));
         }
 
         long? estimate = count.EstimatedInputTokens;
-        if (estimate is null && (budgetPolicy != ContextBudgetPolicy.ServerValidation || !count.HasOpaqueContent))
+        if (estimate is null && (budgetPolicy == ContextBudgetPolicy.RequireLocalEstimate || !count.HasOpaqueContent))
         {
             return Report(ContextCompactionStatus.UnknownBudget);
         }
@@ -194,7 +200,7 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
 
             cancellationToken.ThrowIfCancellationRequested();
             ContextTokenCount candidateCount = counted.Data!;
-            if (candidateCount.IsApproximateEncoding && budgetPolicy != ContextBudgetPolicy.ServerValidation)
+            if (candidateCount.IsApproximateEncoding && budgetPolicy == ContextBudgetPolicy.RequireLocalEstimate)
             {
                 return Report(ContextCompactionStatus.Failed, new(ServiceErrorType.Unsupported,
                     "Оценочная кодировка модели требует явной серверной проверки бюджета."));

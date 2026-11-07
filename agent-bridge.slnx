@@ -49,6 +49,7 @@
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/03.03-compaction.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/results.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-source-evidence.json" />
   </Folder>

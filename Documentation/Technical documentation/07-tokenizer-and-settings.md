@@ -1,5 +1,9 @@
 # Tokenizer, настройки и Serilog
 
+## Явный режим неизвестного окна
+
+Клиентская адаптация03 добавляет optional `Compaction.BudgetPolicy=ServerValidationWithUnknownWindow`. Model/effort/API-доступность проверяются по объявленному каталогу; окно остаётся null, threshold — локальным ориентиром, а окончательный приём и соблюдение reserve не гарантируются клиентом. Прежние strict/ServerValidation и codex-lb settings сохраняют известное окно. Nullable DeclaredInputContextWindow и budget JSON v1/v2 описаны в [клиентском контракте03](<../Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md>); бюджетная policy сама по себе не доказывает upstream приём/identity. Sub2Api generation реализована с отдельной принятой canonical границей, compact остаётся Unsupported, provenance04 не реализован.
+
 ## Tokenizer
 
 Tokenizer разбивает текст на элементы словаря модели — токены — и позволяет посчитать их число. Токен может быть словом, частью слова, знаком пунктуации или частью числа. Количество символов и слов не определяет точное количество токенов.
@@ -100,9 +104,9 @@ Scalar shape/encoding проверяются options/startup/direct constructor 
 
 ### Public guard и подключение
 
-`AgentBridge.Application.ContextBudgetGuard(IContextTokenCounter)` предоставляет `CheckAsync(ModelRequest request, ModelSettingsSnapshot settings, CancellationToken cancellationToken = default)` → `ServiceResult<ContextBudgetAssessment>`. Exact request model/effort должен совпасть с settings; public snapshot повторно проходит ModelSelectionValidator. Guard использует только положительный InputContextWindow, настроенные TokenThreshold/InputTokenReserve. При estimate > window-reserve возвращает safe Rejected (без overflow), при estimate=null — Unsupported. Counter failure передаётся тем же ServiceError; поздняя отмена не заменяет failure, после success отмена проверяется.
+`AgentBridge.Application.ContextBudgetGuard(IContextTokenCounter)` предоставляет `CheckAsync(ModelRequest request, ModelSettingsSnapshot settings, CancellationToken cancellationToken = default)` → `ServiceResult<ContextBudgetAssessment>`. Exact request model/effort должен совпасть с settings; public snapshot повторно проходит ModelSelectionValidator с его budget policy. В прежнем default RequireLocalEstimate guard требует положительный InputContextWindow и полную оценку; при estimate > window-reserve возвращает safe Rejected (без overflow), при estimate=null — Unsupported. ServerValidation разрешает неизвестную opaque оценку с проверкой KnownTokens+reserve против известного окна. Только ServerValidationWithUnknownWindow одновременно в snapshot и guard разрешает null окно; assessment сохраняет null и RequiresServerValidation=true. Counter failure передаётся тем же ServiceError; поздняя отмена не заменяет failure, после success отмена проверяется.
 
-Успех содержит count до резерва, окно/резерв и `ThresholdReached = estimate >= threshold`. Равенство estimate+reserve==window допустимо **по локальной оценке**, не гарантирует приём сервером. Assessment constructor защищает положительный window, nonnegative reserve<=window и известную estimate в пределах бюджета. Достижение threshold не запускает compact18. При overflow guard не обрезает instructions/history/tools.
+Успех содержит count до резерва, nullable DeclaredInputContextWindow, резерв и `ThresholdReached = estimate >= threshold` (при разрешённой неизвестной оценке — по KnownTokens). Для известного окна равенство estimate+reserve==window допустимо **по локальной оценке**, не гарантирует приём сервером. Assessment constructor защищает положительный known window, nonnegative reserve<=window и известную estimate в пределах бюджета; unknown window требует явной серверной проверки и не обещает соблюдения резерва. Legacy int getter окна отказывает при null. Достижение threshold не запускает compact18. При overflow guard не обрезает instructions/history/tools.
 
 ```csharp
 using AgentBridge.Application;

@@ -3,6 +3,7 @@ using System.Text.Json;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
+using AgentBridge.Configuration;
 using AgentBridge.Sub2Api.Configuration;
 using HttpClientLibrary.Clients;
 using HttpClientLibrary.Exceptions;
@@ -13,7 +14,8 @@ using LibraryHttpRequestOptions = HttpClientLibrary.Models.HttpRequestOptions;
 namespace AgentBridge.Sub2Api.Models;
 
 /// <inheritdoc/>
-internal class Sub2ApiModelCatalog(HttpApiClient http, IOptionsSnapshot<Sub2ApiOptions> options) : IModelCatalog
+internal class Sub2ApiModelCatalog(HttpApiClient http, IOptionsSnapshot<Sub2ApiOptions> options,
+    IOptionsSnapshot<ContextCompactionOptions> contextOptions) : IModelCatalog
 {
     /// <inheritdoc/>
     public async Task<ServiceResult<ModelCatalogSnapshot>> ReadAsync(ModelAccess access, CancellationToken ct = default)
@@ -25,6 +27,14 @@ internal class Sub2ApiModelCatalog(HttpApiClient http, IOptionsSnapshot<Sub2ApiO
         if (!Sub2ApiEndpoints.TryGetModelsUrl(configured.BaseAddress, out string endpoint))
         {
             return Failure(ServiceErrorType.Validation, "Sub2Api.BaseAddress: required_or_invalid.");
+        }
+
+        bool manifest = contextOptions.Value.BudgetPolicy == ContextBudgetPolicy.ServerValidationWithUnknownWindow;
+        if (manifest)
+        {
+            // Existing route выбирает manifest по непустому client_version. Это версия AgentBridge, не impersonation Codex CLI.
+            string clientVersion = typeof(Sub2ApiModelCatalog).Assembly.GetName().Version!.ToString();
+            endpoint += "?client_version=" + Uri.EscapeDataString(clientVersion);
         }
 
         string key = access.RevealApiKey();
@@ -45,7 +55,15 @@ internal class Sub2ApiModelCatalog(HttpApiClient http, IOptionsSnapshot<Sub2ApiO
         try
         {
             HttpResponseResult<JsonElement> response = await http.SendWithResponseAsync<JsonElement>(request, linked.Token);
-            ModelCatalogSnapshot snapshot = Sub2ApiCatalogJsonReader.Read(response.Body);
+            ModelCatalogSnapshot snapshot;
+            if (manifest)
+            {
+                snapshot = Sub2ApiManifestJsonReader.Read(response.Body);
+            }
+            else
+            {
+                snapshot = Sub2ApiCatalogJsonReader.Read(response.Body);
+            }
             ct.ThrowIfCancellationRequested();
             deadline.Token.ThrowIfCancellationRequested();
             return ServiceResult<ModelCatalogSnapshot>.Ok(snapshot);

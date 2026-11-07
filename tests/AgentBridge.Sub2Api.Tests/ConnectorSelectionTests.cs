@@ -51,9 +51,9 @@ public class ConnectorSelectionTests
         Assert.Equal(2, factoryCalls);
     }
 
-    /// <summary>Sub2Api не читает CodexLb; заблокированный gateway не создаёт HTTP, доступ работает отдельно.</summary>
+    /// <summary>Public facade отправляет generation через sub2api без фиктивного CodexLb и без host.</summary>
     [Fact]
-    public async Task Sub2ApiBundleIsScopedAndExplicitlyUnsupportedWithoutCodexLb()
+    public async Task Sub2ApiBundleIsScopedAndGeneratesWithoutCodexLb()
     {
         // Arrange
         ServiceCollection services = Services();
@@ -64,15 +64,22 @@ public class ConnectorSelectionTests
         ApplicationCallContext call = new(DialogId.From(Guid.NewGuid()), owner, Guid.NewGuid(), "agent");
         ModelRequest request = new("model", "medium", "instructions", [], []);
         int callbacks = 0;
+        int factoryCalls = 0;
+        Sub2ApiCatalogFixture.HandlerDouble handler = new();
+        handler.Respond = (_, _) => Task.FromResult(Sub2ApiCatalogFixture.Json("""{"status":"completed","output":[]}"""));
+        using HttpClient client = new(handler);
 
         // Act
-        services.AddAgentBridge(config, _ => throw new InvalidOperationException("HTTP factory must not run"));
+        services.AddAgentBridge(config, _ => { factoryCalls++; return client; });
         using ServiceProvider provider = Build(services);
         provider.GetRequiredService<IStartupValidator>().Validate();
         using IServiceScope scope = provider.CreateScope();
         IModelGateway gateway = scope.ServiceProvider.GetRequiredService<IModelGateway>();
         ServiceResult<ModelResponse> generation = await gateway.GenerateAsync(call, request, access,
             (_, _) => { callbacks++; return ValueTask.CompletedTask; }, TestContext.Current.CancellationToken);
+        ServiceResult<ModelResponse> compact = await gateway.CompactAsync(call, request, access, TestContext.Current.CancellationToken);
+        ServiceResult<ModelAccess> resolved = await scope.ServiceProvider.GetRequiredService<IModelAccessResolver>()
+            .ResolveAsync(owner, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(config.GetSection("CodexLb").Exists());
@@ -80,10 +87,12 @@ public class ConnectorSelectionTests
         Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(HttpApiClient));
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IModelSettingsReader>());
         Assert.Same(gateway, scope.ServiceProvider.GetRequiredService<IModelGateway>());
-        AssertUnsupported(generation);
-        AssertUnsupported(await gateway.CompactAsync(call, request, access, TestContext.Current.CancellationToken));
-        ServiceResult<ModelAccess> resolved = await scope.ServiceProvider.GetRequiredService<IModelAccessResolver>()
-            .ResolveAsync(owner, TestContext.Current.CancellationToken);
+        Assert.True(generation.Success);
+        Assert.Equal(ModelResponseStatus.Completed, generation.Data!.Status);
+        Assert.Null(generation.Data.Continuation);
+        Assert.Equal(1, factoryCalls);
+        Assert.Equal(1, handler.Calls);
+        AssertUnsupported(compact);
         Assert.True(resolved.Success);
         Assert.Equal("synthetic-key", resolved.Data!.RevealApiKey());
         Assert.Equal(0, callbacks);

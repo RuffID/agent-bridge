@@ -1,14 +1,14 @@
 # Подключение sub2api к AgentBridge
 
-Дата создания: 2026-11-06. Статус плана: **in-progress**. Этапы01–02 завершены в своих границах; этап03 частично реализован и заблокирован T01/T05.
+Дата создания: 2026-11-06. Статус плана: **in-progress**. Этапы01–02 завершены в своих границах; этап03 частично реализован и заблокирован T05.
 
 ## Цель и основание
 
 Добавить рядом с codex-lb отдельный коннектор sub2api. Приложение выбирает технологию в DI; его существующие вызовы AgentBridge для диалогов, агента, инструментов и настроек сохраняются. AgentBridge авторизуется API-ключом, выпущенным в sub2api; отдельный OpenAI API key приложению не требуется.
 
-Выполнены контракты/baseline01 и композиция/shared Responses02. На03 existing Sub2Api bundle получил access resolver, ordinary каталог ID и settings reader через HttpClientLibrary. Входной бюджет не подтверждён: settings даёт Unsupported. Generation/compact блокируются до HTTP по T05. Новая проверенная DLL-поставка не подготовлена. Анализ исходников и isolated tests не подтверждают работу с развёрнутым sub2api.
+Выполнены контракты/baseline01 и композиция/shared Responses02. На03 existing Sub2Api bundle получил доступ/ordinary каталог и разрешённый ServerValidationWithUnknownWindow: manifest объявляет ID/effort/API-доступность, settings и snapshot сохраняют неизвестное окно без guessed defaults. Прежние политики остаются строгими к окну. JSON/SSE generation реализована с canonical гарантией на входе sub2api и в истории AgentBridge; existing server transformations допустимы без обещания upstream сохранности. Compact блокируется до HTTP из-за неподтверждённой совместимости T05. Новая DLL-поставка не подготовлена; isolated tests не подтверждают развёрнутый sub2api.
 
-Предлагаемые проверяемые требования находятся в [OpenSpec change](../../../openspec/changes/add-sub2api-connector/proposal.md), пояснения — в [design](../../../openspec/changes/add-sub2api-connector/design.md). [Действующий контракт](../../../openspec/specs/agent-runtime/spec.md) пока не изменяется. [Вопросы](open-questions.md) содержат только оставшиеся технические проверки.
+Предлагаемые проверяемые требования находятся в [OpenSpec change](../../../openspec/changes/add-sub2api-connector/proposal.md), пояснения — в [design](../../../openspec/changes/add-sub2api-connector/design.md). [Действующий контракт](../../../openspec/specs/agent-runtime/spec.md) пока не изменяется. [Вопросы](open-questions.md) содержат оставшиеся технические проверки; открытых клиентских решений нет.
 
 ## Границы первой версии
 
@@ -28,7 +28,7 @@
 | --- | --- | --- | --- |
 | [01. Контракты и совместимость](01-contracts/main.md) | completed | Нет | Матрица с источниками/образцами и сохранённый source/PE baseline; два compile-check green |
 | [02. DI и общая обработка Responses](02-composition/main.md) | completed | 01 | Выбор bundle, собственные Sub2Api options, shared source и проверенная legacy поверхность |
-| [03. Коннектор sub2api](03-sub2api/main.md) | blocked | 02 | Доступ/каталог ID реализованы; только клиентская адаптация к существующему sub2api, T01/T05 открыты |
+| [03. Коннектор sub2api](03-sub2api/main.md) | blocked | 02 | Доступ/каталог, unknown-window settings и JSON/SSE generation реализованы; compact блокирует T05, T01/T02 открыты |
 | [04. История и продолжение](04-dialog-state/main.md) | not-started | 03 | Безопасные границы контекста, restart и смены шлюза |
 | [05. Проверки и поставка](05-acceptance/main.md) | not-started | 04 | Регрессия, DLL consumer и отдельная live-приёмка |
 
@@ -68,8 +68,8 @@ Isolated green, бинарная компиляция, Windows runtime и live O
 
 ## Текущий результат этапа03
 
-На 2026-11-07 реализована независимая часть03.01: доступ, каталог и fail-closed settings. URI нормализуется только для sub2api; individual key приоритетен и фиксируется для последующего чтения. Ordinary каталог не превращает context_window/95%/произвольные metadata в доказанный budget/effort. Gateway отдельно запрещает generation/compact до HTTP: отсутствует подтверждённый профиль T05, а безопасная provenance остаётся этапу04.
+Пользователь разрешил отдельный ServerValidationWithUnknownWindow и budget snapshot v1/v2 со чтением прежнего формата. Реализованы declared manifest settings, validator/guard/status/compactor без числовой подстановки и без ослабления старых политик. T01 открыт как вопрос доказанного бюджета, но не блокирует явный новый settings режим.
 
-[Результаты03](03-sub2api/results.md): финальные compile-check0 warnings/errors; 98 Sub2Api, 414 codex-lb и 56 facade cases passed, без skipped. Зафиксированы также исходные неуспешные проверки. [Блокеры и необходимый серверный контракт](03-sub2api/contract-blockers.md) конкретизируют T01/T05. Все T01–T05 открыты; нет live OAuth, новой поставки, old→new ABI, CLI OpenSpec. Исторические документы01–02 не переписаны; этап04 не начинался.
+[Клиентская адаптация](03-sub2api/client-adaptation.md) использует принятую canonical гарантию на входе sub2api и в истории AgentBridge. Existing forwarding способен удалить reasoning внутри сервера; это допустимо без обещания неизменной upstream передачи. Generation выполняет один POST через HttpClientLibrary, передаёт полный prepared context, читает JSON/SSE без anchors, сохраняет awaited callbacks/partial/terminal/caller/deadline/cleanup. Compact может заменить модель до первого send и остаётся Unsupported. sub2api не дорабатывается.
 
-При продолжении03 повторно проверены28 прежних sources и дополнительные владельцы, а также доступные публичные versioned Model/routes/release материалы; [новая опись](03-sub2api/contract-source-evidence.json) фиксирует46 sources. Подготовленное серверное предложение **отклонено**: доработка sub2api исключена. [Текущий путь](03-sub2api/contract-blockers.md) относится только к клиентской адаптации existing protocol и отделяет server retries от client retries. Нового C# транспорта нет, settings/gateway сохраняют Unsupported. Проверка была статической; приведённые568 cases — прежний результат, без повторного запуска. T01/T05 и этап03 остаются blocked,04 не начат.
+[Результаты03](03-sub2api/results.md): бюджетное продолжение —1151 passed/8 builds; последующая generation по плану Б —151 Sub2Api +414 CodexLb =565 passed,5 адресных compile-check без warnings/errors. Failed/skipped0. Это actual library с fake handlers/local streams, не live OAuth или новый delivery closure. Source evidence48 файлов, T01–T05 открыты;03 blocked compact T05,03.01/03.02 verification,04 не начат. Исторические01–02/main spec и frozen kit не переписывались; CLI OpenSpec/host/HTTP сеть/БД/Docker/deployment не запускались.

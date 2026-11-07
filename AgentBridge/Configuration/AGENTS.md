@@ -1,5 +1,7 @@
 # Конфигурация ядра
 
+- Compaction.BudgetPolicy=ServerValidationWithUnknownWindow явно разрешает unknown model window; не является default и не открывает Sub2Api gateway. Прежние policies сохраняются. Бюджетный контракт — Application/AGENTS.md; declared manifest settings принадлежат Sub2Api adapter.
+
 - `Compaction.BudgetPolicy` опционален, default RequireLocalEstimate сохраняет строгий отказ unknown estimate. ServerValidation задаётся явно приложением для multimodal/opaque; enum проверяется options pipeline. Порог по известной части не объявляет полный размер измеренным. При runner policy фиксируется на весь run.
 
 - AddAgentBridgeDialogCleanup22 явно регистрирует scoped ExpiredDialogCleanup и TryAdd TimeProvider.System без I/O. Persistence read/deletion ports, системную авторизацию, caller scope и расписание предоставляет приложение. Новых options/default limit или фонового сервиса нет.
