@@ -1,4 +1,5 @@
 using AgentBridge.Application.Models;
+using AgentBridge.Application;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.Responses;
@@ -14,10 +15,21 @@ namespace AgentBridge.Sub2Api;
 /// <inheritdoc/>
 /// <remarks>Canonical гарантия относится к границе sub2api; обработка сервера не считается upstream evidence.</remarks>
 internal class Sub2ApiModelGateway(Func<HttpApiClient> httpFactory, IOptionsSnapshot<Sub2ApiOptions> options,
-    ILogger<Sub2ApiModelGateway> logger) : IModelGateway
+    ILogger<Sub2ApiModelGateway> logger, IContextContentInspector inspector) : IModelGateway, IModelContextGateway
 {
     /// <inheritdoc/>
     public bool AutomaticCompactionEnabled => false;
+
+    /// <inheritdoc/>
+    public ModelConnectorProvenance GetContextProvenance(ApplicationCallContext call, ModelAccess access)
+    {
+        if (!Sub2ApiEndpoints.TryGetModelsUrl(options.Value.BaseAddress, out string modelsUrl))
+        {
+            throw new InvalidOperationException("Sub2Api.BaseAddress: required_or_invalid.");
+        }
+
+        return ModelConnectorProvenance.Create("sub2api", call, access, modelsUrl[..^"models".Length] + "responses");
+    }
 
     /// <inheritdoc/>
     public async Task<ServiceResult<ModelResponse>> GenerateAsync(ApplicationCallContext call, ModelRequest request, ModelAccess access,
@@ -45,6 +57,14 @@ internal class Sub2ApiModelGateway(Func<HttpApiClient> httpFactory, IOptionsSnap
         if (!Sub2ApiEndpoints.TryGetModelsUrl(configured.BaseAddress, out string modelsUrl))
         {
             return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Validation, "Sub2Api.BaseAddress: required_or_invalid."));
+        }
+
+        ModelConnectorProvenance provenance = GetContextProvenance(call, access);
+        ServiceError? contextError = ConnectorContextValidation.Check(request, provenance, inspector, cancellationToken);
+        if (contextError is not null)
+        {
+            LogOutcome(call.TurnId, "ContextRejected", contextError.Type);
+            return ServiceResult<ModelResponse>.Fail(contextError);
         }
 
         ServiceResult<ResponseRequestBody> body = ResponseRequestWriter.Write(request, null, onUpdate is not null);
@@ -78,6 +98,11 @@ internal class Sub2ApiModelGateway(Func<HttpApiClient> httpFactory, IOptionsSnap
             }
 
             LogOutcome(call.TurnId, outcome, errorType);
+            if (result.Success)
+            {
+                return ServiceResult<ModelResponse>.Ok(result.Data!.WithConnectorProvenance(provenance));
+            }
+
             return result;
         }
         catch

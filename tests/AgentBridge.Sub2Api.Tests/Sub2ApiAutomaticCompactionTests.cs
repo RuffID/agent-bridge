@@ -48,7 +48,7 @@ public class Sub2ApiAutomaticCompactionTests
         });
         using IServiceScope scope = root.CreateScope();
         AgentRunner runner = scope.ServiceProvider.GetRequiredService<AgentRunner>();
-        CanonicalModelItem current = Item("""{"type":"message","role":"user","content":"current","future":true}""");
+        CanonicalModelItem current = Item("""{"type":"message","role":"user","content":"current"}""");
         AgentRunRequest run = new(http.Call, [current], [], new(1, 1, 1, TimeSpan.FromMinutes(1)));
         Func<ModelStreamUpdate, CancellationToken, ValueTask>? callback = null;
         if (streaming)
@@ -200,11 +200,12 @@ public class Sub2ApiAutomaticCompactionTests
     }
 
     /// <summary>Наблюдает только budget и существующие короткие storage ports; HTTP остаётся actual коннектором.</summary>
-    private class Fixture : IDialogReader, IDialogTurnWriter, IDialogContextWriter, IModelAccessResolver,
+    internal class Fixture : IDialogReader, IDialogTurnWriter, IDialogContextWriter, IModelAccessResolver,
         IModelSettingsReader, IContextTokenCounter
     {
         internal ModelSettingsSnapshot Settings { get; }
-        internal DialogSnapshot Dialog { get; private set; }
+        internal DialogSnapshot Dialog { get; set; }
+        internal int Begins { get; private set; }
         internal int ContextSaves { get; private set; }
         internal long KnownTokens { get; set; } = 200;
 
@@ -228,11 +229,16 @@ public class Sub2ApiAutomaticCompactionTests
                 Item("""{"type":"function_call","call_id":"old-call","name":"old-tool","arguments":"{}"}"""),
                 Item("""{"type":"function_call_output","call_id":"old-call","output":"confirmed"}""")
             ];
-            List<StoredDialogTurn> turns = [new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, history, [], TurnModelSettings.From(Settings))];
+            ModelConnectorProvenance provenance = ModelConnectorProvenance.Create("sub2api", call,
+                new(Sub2ApiCatalogFixture.INDIVIDUAL_KEY), "https://gateway.invalid/prefix/v1/responses");
+            ModelResponse response = ModelResponse.Completed(history.Skip(1).Take(2)).WithConnectorProvenance(provenance);
+            List<StoredDialogTurn> turns = [new(Guid.NewGuid(), 1, DialogTurnStatus.Completed, history,
+                [new(Guid.NewGuid(), response)], TurnModelSettings.From(Settings))];
             StoredDialogContext? context = null;
             if (activeWindow)
             {
-                context = new(1, 1, ModelResponse.Completed([Item("""{"type":"compaction","encrypted_content":"accepted-window","future":true}""")]),
+                context = new(1, 1, ModelResponse.Completed([Item("""{"type":"compaction","encrypted_content":"accepted-window","future":true}""")])
+                    .WithConnectorProvenance(provenance),
                     Settings.Model.Id);
                 turns.Add(new(Guid.NewGuid(), 2, DialogTurnStatus.Completed,
                     [Item("""{"type":"message","role":"user","content":"uncovered-tail"}""")], [], TurnModelSettings.From(Settings)));
@@ -279,6 +285,7 @@ public class Sub2ApiAutomaticCompactionTests
         public Task<ServiceResult<DialogWriteToken>> BeginWithSettingsAsync(DialogAccess access, DialogWriteToken expected,
             Guid turnId, IReadOnlyList<CanonicalModelItem> input, TurnModelSettings settings, CancellationToken cancellationToken = default)
         {
+            Begins++;
             return Write(expected, Dialog.Turns.Append(new(turnId, Dialog.Turns.Count + 1, DialogTurnStatus.InProgress, input, [], settings)));
         }
 

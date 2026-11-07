@@ -18,6 +18,7 @@ public class PersistencePayloadTests
     [InlineData(ModelResponseStatus.Canceled)]
     public void FullResponseSurvivesSerializationWithLifecycleAndUnknownFields(ModelResponseStatus status)
     {
+        // Arrange
         using JsonDocument item = JsonDocument.Parse("{\"type\":\"reasoning\",\"encrypted_content\":\"opaque\",\"unknown\":{\"large\":123456789012345678901234567890}}");
         using JsonDocument tool = JsonDocument.Parse("{\"type\":\"function_call_output\",\"call_id\":\"call-1\",\"output\":\"данные\",\"future\":[null,true]}");
         using JsonDocument envelopeJson = JsonDocument.Parse("{\"id\":\"response-1\",\"usage\":{\"total_tokens\":42},\"future\":{\"x\":1}}");
@@ -34,9 +35,18 @@ public class PersistencePayloadTests
             ModelResponseStatus.Canceled => ModelResponse.Canceled(items, envelope, continuation),
             _ => throw new ArgumentOutOfRangeException(nameof(status))
         };
+        ModelConnectorProvenance provenance = new("sub2api", new string('A', 64));
+        original = original.WithConnectorProvenance(provenance);
+
+        // Act
         ModelResponseRecord persisted = ModelResponseRecord.FromModelResponse(original);
         ModelResponseRecord reloaded = JsonSerializer.Deserialize<ModelResponseRecord>(JsonSerializer.Serialize(persisted))!;
         ModelResponse restored = reloaded.ToModelResponse();
+
+        // Assert
+        Assert.Equal(provenance.ConnectorId, restored.ConnectorProvenance!.ConnectorId);
+        Assert.Equal(provenance.Binding, restored.ConnectorProvenance.Binding);
+        Assert.DoesNotContain("connector", restored.Envelope!.Content.GetRawText());
         Assert.Equal(status, restored.Status);
         Assert.Equal(2, restored.Output.Count);
         Assert.Equal("123456789012345678901234567890", restored.Output[0].Content.GetProperty("unknown").GetProperty("large").GetRawText());
@@ -72,7 +82,8 @@ public class PersistencePayloadTests
     [InlineData(7)]
     public void InvalidPersistedResponseFailsFast(int corruption)
     {
-        ModelResponseRecord record = new();
+        // Arrange
+        ModelResponseRecord record = ModelResponseRecord.FromModelResponse(ModelResponse.Completed([]));
         switch (corruption)
         {
             case 0: record.FormatVersion = 2; break;
@@ -84,13 +95,17 @@ public class PersistencePayloadTests
             case 6: record.EnvelopeJson = "[]"; break;
             case 7: record.ContinuationJson = "null"; break;
         }
-        if (corruption < 5)
+        // Act
+        Exception? failure = Record.Exception(() => record.ToModelResponse());
+
+        // Assert
+        if (corruption < 5 || corruption == 6)
         {
-            Assert.Throws<InvalidOperationException>(() => record.ToModelResponse());
+            Assert.IsType<InvalidOperationException>(failure);
         }
         else
         {
-            Assert.Throws<ArgumentException>(() => record.ToModelResponse());
+            Assert.IsType<ArgumentException>(failure);
         }
     }
 

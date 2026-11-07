@@ -2,6 +2,8 @@ using System.Text.Json;
 using System.Text;
 using System.Runtime.ExceptionServices;
 using AgentBridge.Application.Models;
+using AgentBridge.Application;
+using AgentBridge.Tokenization;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.CodexLb.Configuration;
@@ -17,14 +19,55 @@ namespace AgentBridge.CodexLb.Responses;
 
 /// <inheritdoc/>
 /// <remarks>Callback выбирает SSE, null сохраняет JSON. Caller cancellation приоритетнее локального deadline.</remarks>
-public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOptions> options) : IModelGateway
+public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOptions> options) : IModelGateway, IModelContextGateway
 {
     private const string CLEANUP_DATA_KEY = "HttpClientLibrary.CleanupExceptions";
+    private readonly IContextContentInspector _inspector = new ContextTokenCounter();
+
+    /// <summary>Сохраняет прежний constructor и использует shape policy приложения при регистрации через DI.</summary>
+    public CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOptions> options, IContextContentInspector inspector)
+        : this(http, options)
+    {
+        _inspector = inspector ?? throw new ArgumentNullException(nameof(inspector));
+    }
+
+    /// <inheritdoc/>
+    public ModelConnectorProvenance GetContextProvenance(ApplicationCallContext call, ModelAccess access)
+    {
+        string endpoint = (options.Value.BaseAddress ?? throw new InvalidOperationException("Адрес codex-lb не настроен."))
+            .TrimEnd('/') + "/v1/responses";
+        return ModelConnectorProvenance.Create("codex-lb", call, access, endpoint);
+    }
 
     /// <inheritdoc/>
     public async Task<ServiceResult<ModelResponse>> GenerateAsync(ApplicationCallContext call, ModelRequest request,
         ModelAccess access, Func<ModelStreamUpdate, CancellationToken, ValueTask>? onUpdate = null,
         CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(access);
+        cancellationToken.ThrowIfCancellationRequested();
+        ModelConnectorProvenance provenance = GetContextProvenance(call, access);
+        ServiceError? error = ConnectorContextValidation.Check(request, provenance, _inspector, cancellationToken);
+        if (error is not null)
+        {
+            return ServiceResult<ModelResponse>.Fail(error);
+        }
+
+        ServiceResult<ModelResponse> result = await GenerateCoreAsync(call, request, access, onUpdate, cancellationToken);
+        if (!result.Success)
+        {
+            return result;
+        }
+
+        return ServiceResult<ModelResponse>.Ok(result.Data!.WithConnectorProvenance(provenance));
+    }
+
+    /// <summary>Сохраняет исходный JSON/SSE lifecycle; локальное происхождение добавляется после cleanup.</summary>
+    private async Task<ServiceResult<ModelResponse>> GenerateCoreAsync(ApplicationCallContext call, ModelRequest request,
+        ModelAccess access, Func<ModelStreamUpdate, CancellationToken, ValueTask>? onUpdate,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(request);
@@ -157,6 +200,30 @@ public class CodexLbModelGateway(HttpApiClient http, IOptionsSnapshot<CodexLbOpt
     /// <inheritdoc/>
     public async Task<ServiceResult<ModelResponse>> CompactAsync(ApplicationCallContext call, ModelRequest request,
         ModelAccess access, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(access);
+        cancellationToken.ThrowIfCancellationRequested();
+        ModelConnectorProvenance provenance = GetContextProvenance(call, access);
+        ServiceError? error = ConnectorContextValidation.Check(request, provenance, _inspector, cancellationToken);
+        if (error is not null)
+        {
+            return ServiceResult<ModelResponse>.Fail(error);
+        }
+
+        ServiceResult<ModelResponse> result = await CompactCoreAsync(call, request, access, cancellationToken);
+        if (!result.Success)
+        {
+            return result;
+        }
+
+        return ServiceResult<ModelResponse>.Ok(result.Data!.WithConnectorProvenance(provenance));
+    }
+
+    /// <summary>Читает настоящий compact; marker не становится continuation или частью output.</summary>
+    private async Task<ServiceResult<ModelResponse>> CompactCoreAsync(ApplicationCallContext call, ModelRequest request,
+        ModelAccess access, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(call);
         ArgumentNullException.ThrowIfNull(request);

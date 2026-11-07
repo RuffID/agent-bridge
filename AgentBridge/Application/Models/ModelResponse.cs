@@ -26,6 +26,16 @@ public class ModelResponse
     public CanonicalModelEnvelope? Envelope { get; }
     /// <summary>Снимок продолжения для того же диалога/upstream-владения.</summary>
     public ModelContinuation? Continuation { get; }
+    /// <summary>Локальное происхождение отчёта, не часть envelope/output и не transport anchor.</summary>
+    public ModelConnectorProvenance? ConnectorProvenance { get; private init; }
+
+    /// <summary>Возвращает новый отчёт с локальным происхождением без изменения canonical данных и lifecycle.</summary>
+    public ModelResponse WithConnectorProvenance(ModelConnectorProvenance provenance)
+    {
+        ArgumentNullException.ThrowIfNull(provenance);
+        return new ModelResponse(Status, Output, Error, Envelope, Continuation) { ConnectorProvenance = provenance };
+    }
+
     /// <summary>Создаётся адаптером только после подтверждённого terminal completion.</summary>
     public static ModelResponse Completed(IEnumerable<CanonicalModelItem> output, CanonicalModelEnvelope? envelope = null,
         ModelContinuation? continuation = null) => new(ModelResponseStatus.Completed, output, null, envelope, continuation);

@@ -140,6 +140,13 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             }
 
             settings = selected.Data!;
+            AgentConnectorContext connectorContext = new(compatibility, gateway, request.Call, access.Data!);
+            ServiceResult connectorCompatible = connectorContext.CheckStored(dialog, cancellationToken);
+            if (!connectorCompatible.Success)
+            {
+                return Report(AgentRunStatus.Failed, connectorCompatible.Error!);
+            }
+
             ServiceResult compatible = await compatibility.CheckAsync(request.Call, dialog, settings, cancellationToken);
             if (!compatible.Success)
             {
@@ -161,6 +168,12 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             CanonicalModelItem[] providerItems = prepared.Data!.Input
                 .Take(prepared.Data.Input.Count - historyCount - request.Input.Count)
                 .ToArray();
+            ServiceResult newInputCompatible = connectorContext.CheckNew(providerItems.Concat(request.Input), cancellationToken);
+            if (!newInputCompatible.Success)
+            {
+                return Report(AgentRunStatus.Failed, newInputCompatible.Error!);
+            }
+
             ContextBuilder frozen = new([new FrozenProvider(providerItems)]);
 
             session = new(scopes, request.Call, dialog, time, TurnModelSettings.From(settings),
@@ -174,7 +187,7 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
             ToolExecutionSession toolSession = executor.CreateSession(request.Call, session.Snapshot.Token, dialog.ExpiresAtUtc,
                 request.SelectedToolNames, limits, session);
             ContextCompactor compactor = new(frozen, counter, gateway, session, time,
-                new FrozenOptions<ContextCompactionOptions>(new() { MaxPasses = maxPasses, BudgetPolicy = budgetPolicy }));
+                new FrozenOptions<ContextCompactionOptions>(new() { MaxPasses = maxPasses, BudgetPolicy = budgetPolicy }), compatibility);
             ModelRequest next = new(settings.Model.Id, settings.ReasoningEffort, instructions, [], tools, parameters: request.Parameters);
 
             while (true)
@@ -182,8 +195,14 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                 lastBudgetAssessment = null;
                 cancellationToken.ThrowIfCancellationRequested();
 
+                connectorCompatible = connectorContext.CheckStored(session.Snapshot, cancellationToken);
+                if (!connectorCompatible.Success)
+                {
+                    return await FinishAsync(AgentRunStatus.Failed, connectorCompatible.Error!);
+                }
+
                 ServiceResult<ContextCompactionResult> compacted = await compactor.CompactAsync(request.Call, session.Snapshot,
-                    next, settings, access.Data!, cancellationToken);
+                    connectorContext.Prepare(next), settings, access.Data!, cancellationToken);
                 if (!compacted.Success)
                 {
                     return await FinishAsync(AgentRunStatus.Failed, compacted.Error!);
@@ -230,15 +249,23 @@ public class AgentRunner(IServiceScopeFactory scopes, ContextBuilder builder, IM
                         await onUpdate(update, ct);
                     };
 
-                    generated = await gateway.GenerateAsync(request.Call, compact.PreparedRequest, access.Data!, stream, cancellationToken);
+                    generated = await gateway.GenerateAsync(request.Call, connectorContext.Prepare(compact.PreparedRequest),
+                        access.Data!, stream, cancellationToken);
                 }
                 catch (Exception primary)
                 {
                     if (streamed.Count > 0)
                     {
-                        lastResponse = cancellationToken.IsCancellationRequested
-                            ? ModelResponse.Canceled(streamed)
-                            : ModelResponse.Incomplete(streamed);
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            lastResponse = ModelResponse.Canceled(streamed);
+                        }
+                        else
+                        {
+                            lastResponse = ModelResponse.Incomplete(streamed);
+                        }
+
+                        lastResponse = connectorContext.Bind(lastResponse);
 
                         try
                         {

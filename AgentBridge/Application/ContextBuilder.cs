@@ -86,8 +86,14 @@ public class ContextBuilder
             return ServiceResult<ModelRequest>.Fail(error);
         }
         cancellationToken.ThrowIfCancellationRequested();
-        return ServiceResult<ModelRequest>.Ok(new(newRequest.Model, newRequest.ReasoningEffort,
-            newRequest.Instructions, input, newRequest.Tools, newRequest.Continuation, newRequest.Parameters));
+        ModelRequest prepared = new(newRequest.Model, newRequest.ReasoningEffort,
+            newRequest.Instructions, input, newRequest.Tools, newRequest.Continuation, newRequest.Parameters);
+        if (newRequest.ConnectorProvenance is not null)
+        {
+            prepared = prepared.WithConnectorProvenance(newRequest.ConnectorProvenance);
+        }
+
+        return ServiceResult<ModelRequest>.Ok(prepared);
     }
 
     /// <summary>Проверяет владельца, диалог, срок и непрерывность terminal prefix без изменения snapshot.</summary>

@@ -1,5 +1,7 @@
 # JSON/SSE Responses
 
+- IModelContextGateway задаёт отдельное локальное происхождение generation/compact/partial reports. Opaque input без родного marker отклоняется до HTTP; marker не добавляется в canonical данные или continuation. Compact binding использует generation endpoint, чтобы окно подходило следующей generation. Старый public constructor сохранён; дополнительный принимает IContextContentInspector приложения.
+
 - Внутренние writers, NestedControlsValidator, CanonicalOutputReader, SseEventReader и SSE accumulator находятся в adapters/AgentBridge.Responses (source link обоих адаптеров). Gateway, JSON readers, ResponseSseState wrapper, safe typed errors и bound continuation остаются здесь. Wrapper передаёт прежние continuation/error factories общему accumulator. Public types/constructors остаются в AgentBridge.CodexLb.dll; allowlists, canonical payload, literal URL append и legacy continuation сохраняются.
 
 ## Compact этапа18

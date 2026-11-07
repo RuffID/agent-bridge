@@ -52,7 +52,7 @@ internal static class Sub2ApiComposition
             new HttpErrorResponseOptions { MaxBodyBytes = 65_536 }));
         services.AddScoped<IModelGateway>(provider => new Sub2ApiModelGateway(
             () => provider.GetRequiredService<HttpApiClient>(), provider.GetRequiredService<IOptionsSnapshot<Sub2ApiOptions>>(),
-            provider.GetRequiredService<ILogger<Sub2ApiModelGateway>>()));
+            provider.GetRequiredService<ILogger<Sub2ApiModelGateway>>(), provider.GetRequiredService<IContextContentInspector>()));
         services.AddScoped<IModelCatalog, Sub2ApiModelCatalog>();
         services.AddScoped<IModelAccessResolver, Sub2ApiModelAccessResolver>();
         services.AddScoped<IModelSettingsReader, Sub2ApiModelSettingsReader>();

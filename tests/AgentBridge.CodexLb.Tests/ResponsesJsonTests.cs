@@ -981,8 +981,16 @@ public class ResponsesJsonTests
         /// <summary>Задаёт синтетический HTTP JSON.</summary>
         internal void SetJson(string body) => Handler.Bytes = Encoding.UTF8.GetBytes(body);
         /// <summary>Вызывает публичный compact с синтетическим доступом.</summary>
-        internal Task<ServiceResult<ModelResponse>> Compact(ModelRequest request, CancellationToken ct = default) =>
-            Gateway.CompactAsync(Call, request, new(KEY), ct);
+        internal Task<ServiceResult<ModelResponse>> Compact(ModelRequest request, CancellationToken ct = default)
+        {
+            ModelAccess access = new(KEY);
+            if (request.ConnectorProvenance is null)
+            {
+                request = request.WithConnectorProvenance(((IModelContextGateway)Gateway).GetContextProvenance(Call, access));
+            }
+
+            return Gateway.CompactAsync(Call, request, access, ct);
+        }
         /// <summary>Выбирает доступ публичным resolver и вызывает публичный gateway.</summary>
         internal async Task<ServiceResult<ModelResponse>> Generate(ModelRequest request, ModelAccess? access = null,
             ApplicationCallContext? call = null, CancellationToken ct = default)
@@ -993,6 +1001,11 @@ public class ResponsesJsonTests
                 ServiceResult<ModelAccess> resolved = await Scope.ServiceProvider.GetRequiredService<IModelAccessResolver>().ResolveAsync(current.OwnerId, ct);
                 access = resolved.Data!;
             }
+            if (request.ConnectorProvenance is null)
+            {
+                request = request.WithConnectorProvenance(((IModelContextGateway)Gateway).GetContextProvenance(current, access));
+            }
+
             return await Gateway.GenerateAsync(current, request, access, cancellationToken: ct);
         }
 

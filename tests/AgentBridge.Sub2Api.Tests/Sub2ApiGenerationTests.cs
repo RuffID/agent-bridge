@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AgentBridge.Application.Models;
+using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using Xunit;
 using static AgentBridge.Sub2Api.Tests.Sub2ApiGenerationFixture;
@@ -78,6 +79,7 @@ public class Sub2ApiGenerationTests
         ModelToolDefinition tool = new("tool", "business tool", schema, true);
         ModelRequestParameters parameters = new(Element("""{"text":{"verbosity":"low","future":true},"reasoning":{"summary":"auto"},"parallel_tool_calls":false}"""));
         ModelRequest first = new("public-model", "medium", "original instructions", input, [tool], parameters: parameters);
+        first = first.WithConnectorProvenance(((IModelContextGateway)fixture.Gateway).GetContextProvenance(fixture.Call, fixture.Access));
         List<ModelStreamUpdate> updates = [];
         Func<ModelStreamUpdate, CancellationToken, ValueTask>? callback = null;
         if (streaming)
@@ -97,6 +99,7 @@ public class Sub2ApiGenerationTests
         CanonicalModelItem result = new(Element("""{"type":"function_call_output","call_id":"c","output":"business-result","future":19}"""));
         CanonicalModelItem[] nextInput = [..input, ..initial.Data!.Output, result];
         ModelRequest next = new(first.Model, first.ReasoningEffort, first.Instructions, nextInput, first.Tools, parameters: parameters);
+        next = next.WithConnectorProvenance(initial.Data.ConnectorProvenance!);
 
         // Act
         ServiceResult<ModelResponse> second = await fixture.Gateway.GenerateAsync(fixture.Call, next, fixture.Access, callback,

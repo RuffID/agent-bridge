@@ -4,6 +4,7 @@ using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.Configuration;
 using AgentBridge.Domain.Dialogs;
+using AgentBridge.Tokenization;
 using Microsoft.Extensions.Options;
 
 namespace AgentBridge.Application;
@@ -12,6 +13,16 @@ namespace AgentBridge.Application;
 public class ContextCompactor(ContextBuilder builder, IContextTokenCounter counter, IModelGateway gateway,
     IDialogContextWriter writer, TimeProvider time, IOptionsSnapshot<ContextCompactionOptions> options)
 {
+    private readonly ContextModelGuard _connectorGuard = new(new ContextTokenCounter(), []);
+
+    /// <summary>Использует ту же проверку opaque источников, что и runner; прежний constructor сохранён.</summary>
+    public ContextCompactor(ContextBuilder builder, IContextTokenCounter counter, IModelGateway gateway,
+        IDialogContextWriter writer, TimeProvider time, IOptionsSnapshot<ContextCompactionOptions> options,
+        ContextModelGuard connectorGuard) : this(builder, counter, gateway, writer, time, options)
+    {
+        _connectorGuard = connectorGuard;
+    }
+
     /// <summary>Сжимает по настроенному автоматическому порогу; сохраняет прежнюю бинарную сигнатуру.</summary>
     public Task<ServiceResult<ContextCompactionResult>> CompactAsync(ApplicationCallContext call,
         DialogSnapshot dialog, ModelRequest newRequest, ModelSettingsSnapshot settings, ModelAccess access,
@@ -90,6 +101,31 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
         CanonicalModelItem[] tail = dialog.EffectiveTurns.Where(turn => turn.Sequence > through)
             .SelectMany(turn => turn.Items).Concat(newRequest.Input).ToArray();
 
+        AgentConnectorContext connectorContext = new(_connectorGuard, gateway, call, access);
+        ServiceResult compatible = connectorContext.CheckStored(dialog, cancellationToken);
+        if (!compatible.Success)
+        {
+            return ServiceResult<ContextCompactionResult>.Fail(compatible.Error!);
+        }
+
+        compatible = connectorContext.CheckNew(providers.Concat(newRequest.Input), cancellationToken);
+        if (!compatible.Success)
+        {
+            return ServiceResult<ContextCompactionResult>.Fail(compatible.Error!);
+        }
+
+        if (gateway is IModelContextGateway contextGateway && newRequest.ConnectorProvenance is not null)
+        {
+            ServiceError? markerError = contextGateway.GetContextProvenance(call, access)
+                .ValidateSource(newRequest.ConnectorProvenance);
+            if (markerError is not null)
+            {
+                return ServiceResult<ContextCompactionResult>.Fail(markerError);
+            }
+        }
+
+        prepared = connectorContext.Prepare(prepared);
+
         ContextTokenCount? count = null;
         ModelResponse? lastResponse = null;
         int passes = 0;
@@ -149,6 +185,11 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
 
             ModelRequest compactRequest = new(prepared.Model, prepared.ReasoningEffort, prepared.Instructions,
                 history, [], parameters: CompactParameters(prepared.Parameters));
+            if (prepared.ConnectorProvenance is not null)
+            {
+                compactRequest = compactRequest.WithConnectorProvenance(prepared.ConnectorProvenance);
+            }
+
             ServiceResult<ContextBudgetAssessment> compactBudget = await new ContextBudgetGuard(counter, budgetPolicy)
                 .CheckAsync(compactRequest, settings, cancellationToken);
             if (!compactBudget.Success)
@@ -191,6 +232,11 @@ public class ContextCompactor(ContextBuilder builder, IContextTokenCounter count
 
             ModelRequest candidate = new(prepared.Model, prepared.ReasoningEffort, prepared.Instructions,
                 providers.Concat(lastResponse.Output).Concat(tail), prepared.Tools, parameters: prepared.Parameters);
+            if (prepared.ConnectorProvenance is not null)
+            {
+                candidate = candidate.WithConnectorProvenance(prepared.ConnectorProvenance);
+            }
+
             pairError = ContextBuilder.ValidateFunctionPairs(candidate.Input, cancellationToken);
             if (pairError is not null)
             {

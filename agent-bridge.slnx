@@ -63,6 +63,7 @@
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/main.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/04.01-connector-provenance.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/04.02-restart-and-recovery.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/results.md" />
   </Folder>
   <Folder Name="/Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/">
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/main.md" />

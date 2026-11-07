@@ -7,13 +7,13 @@ namespace AgentBridge.Persistence.EfCore.Models;
 /// <summary>Общий формат полного отчёта модели, размещаемый в колонках шага или compact без EF-зависимостей ядра.</summary>
 public class ModelResponseRecord
 {
-    /// <summary>Версия формата хранения; неизвестная версия отклоняется, а не читается частично.</summary>
+    /// <summary>Неизменяемый discriminator существующей схемы; не выбирает версии JSON reader.</summary>
     public int FormatVersion { get; set; } = 1;
     /// <summary>Явный lifecycle, независимо от наличия текста.</summary>
     public ModelResponseStatus Status { get; set; }
     /// <summary>Полный известный output в порядке модели, включая неполный/ошибочный/отменённый результат.</summary>
     public string OutputJson { get; set; } = "[]";
-    /// <summary>Полный envelope либо отсутствие полного объекта; не input-item.</summary>
+    /// <summary>Единственный текущий JSON wrapper: полный canonical envelope и отдельное локальное происхождение.</summary>
     public string? EnvelopeJson { get; set; }
     /// <summary>Непрозрачное продолжение для того же upstream-владения, без ModelAccess/API key.</summary>
     public string? ContinuationJson { get; set; }
@@ -30,7 +30,12 @@ public class ModelResponseRecord
         {
             Status = response.Status,
             OutputJson = JsonSerializer.Serialize(response.Output.Select(item => item.Content)),
-            EnvelopeJson = response.Envelope?.Content.GetRawText(),
+            EnvelopeJson = JsonSerializer.Serialize(new
+            {
+                envelope = response.Envelope?.Content.GetRawText(),
+                connector = response.ConnectorProvenance?.ConnectorId,
+                binding = response.ConnectorProvenance?.Binding
+            }),
             ContinuationJson = response.Continuation?.Content.GetRawText(),
             ErrorType = response.Error?.Type,
             ErrorMessage = response.Error?.Message
@@ -60,9 +65,50 @@ public class ModelResponseRecord
         {
             items.Add(new CanonicalModelItem(item));
         }
-        CanonicalModelEnvelope? envelope = EnvelopeJson is null ? null : new CanonicalModelEnvelope(ReadObject(EnvelopeJson));
+        if (EnvelopeJson is null)
+        {
+            throw new InvalidOperationException("Отсутствует текущий формат metadata отчёта.");
+        }
+
+        JsonElement metadata = ReadObject(EnvelopeJson);
+        if (metadata.ValueKind != JsonValueKind.Object || metadata.EnumerateObject().Count() != 3
+            || !metadata.TryGetProperty("envelope", out JsonElement rawEnvelope)
+            || !metadata.TryGetProperty("connector", out JsonElement connector)
+            || !metadata.TryGetProperty("binding", out JsonElement binding))
+        {
+            throw new InvalidOperationException("Неподдержанный формат metadata отчёта.");
+        }
+
+        CanonicalModelEnvelope? envelope = null;
+        if (rawEnvelope.ValueKind != JsonValueKind.Null)
+        {
+            if (rawEnvelope.ValueKind != JsonValueKind.String)
+            {
+                throw new InvalidOperationException("Некорректный canonical envelope отчёта.");
+            }
+
+            envelope = new CanonicalModelEnvelope(ReadObject(rawEnvelope.GetString()!));
+        }
+
+        ModelConnectorProvenance? provenance = null;
+        if (connector.ValueKind == JsonValueKind.String && binding.ValueKind == JsonValueKind.String)
+        {
+            try
+            {
+                provenance = new ModelConnectorProvenance(connector.GetString()!, binding.GetString()!);
+            }
+            catch (ArgumentException error)
+            {
+                throw new InvalidOperationException("Некорректное происхождение отчёта.", error);
+            }
+        }
+        else if (connector.ValueKind != JsonValueKind.Null || binding.ValueKind != JsonValueKind.Null)
+        {
+            throw new InvalidOperationException("Некорректное происхождение отчёта.");
+        }
+
         ModelContinuation? continuation = ContinuationJson is null ? null : new ModelContinuation(ReadObject(ContinuationJson));
-        return Status switch
+        ModelResponse response = Status switch
         {
             ModelResponseStatus.Completed => ModelResponse.Completed(items, envelope, continuation),
             ModelResponseStatus.Incomplete => ModelResponse.Incomplete(items, envelope, continuation),
@@ -71,6 +117,12 @@ public class ModelResponseRecord
                 ModelResponse.Failed(items, new ServiceError(type, message), envelope, continuation),
             _ => throw new InvalidOperationException("Неподдержанный lifecycle отчёта.")
         };
+        if (provenance is not null)
+        {
+            response = response.WithConnectorProvenance(provenance);
+        }
+
+        return response;
     }
 
     /// <summary>Копирует JSON-объект независимо от документа; форму проверяет прикладной контейнер.</summary>

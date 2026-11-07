@@ -37,4 +37,16 @@ public class ModelRequest
     public ModelContinuation? Continuation { get; }
     /// <summary>Независимые дополнительные контроли; неизвестную поддержку адаптер отклоняет явно.</summary>
     public ModelRequestParameters? Parameters { get; }
+    /// <summary>Локальное подтверждение происхождения подготовленного input; в wire body не включается.</summary>
+    public ModelConnectorProvenance? ConnectorProvenance { get; private init; }
+
+    /// <summary>Копирует запрос с явно проверенным локальным происхождением, сохраняя canonical input.</summary>
+    public ModelRequest WithConnectorProvenance(ModelConnectorProvenance provenance)
+    {
+        ArgumentNullException.ThrowIfNull(provenance);
+        return new ModelRequest(Model, ReasoningEffort, Instructions, Input, Tools, Continuation, Parameters)
+        {
+            ConnectorProvenance = provenance
+        };
+    }
 }
