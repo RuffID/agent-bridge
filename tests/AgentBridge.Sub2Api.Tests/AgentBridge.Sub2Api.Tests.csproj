@@ -12,6 +12,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/legacy-api-baseline.json" LogicalName="AgentBridge.Tests.LegacyApiBaseline.json" />
     <Compile Include="../Delivery/Consumer/LegacyTransportSurfaceProbe.cs" Link="Consumer/LegacyTransportSurfaceProbe.cs" />
+    <Compile Include="../Delivery/Consumer/Sub2ApiAuxiliaryUsage.cs" Link="Consumer/Sub2ApiAuxiliaryUsage.cs" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />

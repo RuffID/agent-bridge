@@ -10,7 +10,7 @@ AgentBridge — C#-библиотека для приложений на **.NET 
 
 ## Что понадобится
 
-Для usage, загрузки документов и генерации/редактирования изображений доступен optional [дополнительный шлюз](<Documentation/Technical documentation/27-auxiliary-model-operations.md>). Там же описаны ручной compact и явный opt-in серверной проверки неизвестного multimodal бюджета; строгий режим по умолчанию сохранён.
+Для usage, загрузки документов и генерации/редактирования изображений доступен optional [дополнительный шлюз](<Documentation/Technical documentation/27-auxiliary-model-operations.md>). Sub2Api поддерживает только usage через явный `AddAgentBridgeSub2ApiAuxiliary()`. Там же описаны ручной compact и явный opt-in серверной проверки неизвестного multimodal бюджета; строгий режим по умолчанию сохранён.
 
 - .NET 10 SDK для сборки и подходящий .NET 10 runtime на машине приложения.
 - Комплект наших DLL с обязательными NuGet-зависимостями либо полный DLL-комплект для выбранной БД и платформы.

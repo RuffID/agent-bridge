@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/Documentation/openspec/changes/sub2api-usage/">
+    <File Path="openspec/changes/sub2api-usage/proposal.md" />
+    <File Path="openspec/changes/sub2api-usage/context.md" />
+    <File Path="openspec/changes/sub2api-usage/tasks.md" />
+  </Folder>
+  <Folder Name="/Documentation/openspec/changes/sub2api-usage/specs/agent-runtime/">
+    <File Path="openspec/changes/sub2api-usage/specs/agent-runtime/spec.md" />
+  </Folder>
   <Folder Name="/Documentation/openspec/specs/agent-runtime/">
     <File Path="openspec/specs/agent-runtime/spec.md" />
     <File Path="openspec/specs/agent-runtime/context.md" />
@@ -156,6 +164,7 @@
     <File Path="tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj" />
     <File Path="tests/Delivery/Consumer/AGENTS.md" />
     <File Path="tests/Delivery/Consumer/Sub2ApiRegistration.cs" />
+    <File Path="tests/Delivery/Consumer/Sub2ApiAuxiliaryUsage.cs" />
     <File Path="tests/Delivery/Consumer/LegacyTransportSurfaceProbe.cs" />
     <File Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
     <File Path="tests/Delivery/LegacyBaseline/AGENTS.md" />

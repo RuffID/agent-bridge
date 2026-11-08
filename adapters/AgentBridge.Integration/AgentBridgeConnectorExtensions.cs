@@ -46,7 +46,8 @@ public static class AgentBridgeConnectorExtensions
             return;
         }
 
-        Type[] ports = [typeof(IModelGateway), typeof(IModelCatalog), typeof(IModelAccessResolver), typeof(IModelSettingsReader)];
+        Type[] ports = [typeof(IModelGateway), typeof(IModelCatalog), typeof(IModelAccessResolver), typeof(IModelSettingsReader),
+            typeof(IModelAuxiliaryGateway)];
         foreach (ServiceDescriptor descriptor in services)
         {
             if (descriptor.IsKeyedService || !ports.Contains(descriptor.ServiceType))

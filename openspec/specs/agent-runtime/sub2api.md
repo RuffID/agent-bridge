@@ -6,6 +6,14 @@
 
 Приложение выбирает один connector bundle до вызова AddAgentBridge: sub2api либо codex-lb. Без явного выбора сохраняется codex-lb и прежний прикладной API. Коннектор использует ключ sub2api; OAuth upstream выбирает сервер. HTTP остаётся на HttpClientLibrary, хранение PostgreSQL/SQLite/SQL Server — на существующем persistence adapter и EFCoreLibrary. Регистрация DI не запускает внешние операции.
 
+## Optional usage
+
+После выбора Sub2Api и AddAgentBridge приложение отдельно вызывает `AddAgentBridgeSub2ApiAuxiliary()` из AgentBridge.Integration. Используется существующий `IModelAuxiliaryGateway.ReadUsageAsync(ModelAccess, ct)` и `GenerationTimeout`; нового раздела Auxiliary не нужно. Без opt-in порт не подключается. HTTP factory не вызывается при регистрации, разрешении gateway и Unsupported операциях.
+
+GET `/v1/usage` использует выбранный gateway API-ключ, без JWT/upstream OAuth и без повторов или смены доступа. BaseAddress сохраняет prefix и допускает один конечный `/v1`. Ответ — непосредственный JSON `quota_limited`/`unrestricted`; `ModelAuxiliaryResult.Content` сохраняет optional-поля, вложенные значения и null. Например, `{"mode":"quota_limited","isValid":true,"status":"expired"}` не содержит remaining: это неизвестное значение, а не 0 или безлимит.
+
+Unrestricted означает отсутствие key-level лимитов sub2api, при этом кошелёк или подписка могут иметь ограничения. Дополнительная статистика best-effort может отсутствовать. Expired/quota_exhausted ключ может читать свой usage при прохождении базовой авторизации sub2api. Сведения не доказывают upstream ChatGPT quota или доступное окно контекста и не используются generation budget guard. Файлы и изображения остаются Unsupported до HTTP. [Подключение и пример](../../../Documentation/Technical%20documentation/27-auxiliary-model-operations.md), [change и ограничения приёмки](../../changes/sub2api-usage/tasks.md).
+
 ## Полный контекст и неизвестный бюджет
 
 Первый принятый объём sub2api использует HTTP JSON/SSE Responses с полным canonical контекстом без previous_response_id. По явной политике ServerValidationWithUnknownWindow каталог читается из existing /backend-api/codex/models без client_version; exact model/effort/API-доступность проверяются как объявления сервера. Входное окно остаётся null и RequiresServerValidation=true. Порог и локальная приблизительная оценка не заменяют неизвестный серверный лимит. Прежние policies сохраняют известное окно и ordinary /v1/models.

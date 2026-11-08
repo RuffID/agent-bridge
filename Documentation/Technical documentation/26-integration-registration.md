@@ -16,6 +16,7 @@ IServiceCollection AddAgentBridge(this IServiceCollection services,
 ```csharp
 services.AddAgentBridgeSub2ApiConnector();
 services.AddAgentBridge(configuration, httpClientFactory);
+// Optional: services.AddAgentBridgeSub2ApiAuxiliary(); // GET /v1/usage
 // Альтернатива для отдельной composition: AddAgentBridgeCodexLbConnector().
 ```
 
@@ -74,6 +75,8 @@ Ordered `IContextProvider` регистрируются до или после �
 Defaults для public ports, HttpApiClient, counter, inspector, ContextBuilder и сценариев добавляются через TryAdd: заранее зарегистрированный contract сохраняется; последующий явный Add/Replace выбирается обычным правилом DI. Это single-service override; IEnumerable перечисляет все явные registrations. Compatibility port остаётся optional, неподтверждённое opaque switch отклоняется. Configure выполняется до PostConfigure по штатному Options pipeline независимо от порядка подключения фасада. Не заменяйте scoped зависимости singleton, включайте ValidateScopes/ValidateOnBuild.
 
 Повтор **с теми же объектами IConfiguration и HTTP delegate** — no-op, без повторного binding/modules/provider registration. Другие arguments явно отклоняются: новый app/configuration требует нового контейнера. Reload исходной IConfiguration применяется штатно; это не замена регистрационного объекта.
+
+Optional `AddAgentBridgeSub2ApiAuxiliary()` подключает scoped IModelAuxiliaryGateway без новых настроек и создания HTTP при регистрации/resolve. Требуется выбранный Sub2Api; существующий GenerationTimeout ограничивает чтение usage. Upload/images остаются Unsupported до HTTP factory; прямой встроенный CodexLb auxiliary несовместим с выбором Sub2Api. [Контракт и пример usage](27-auxiliary-model-operations.md).
 
 ## Состав и lifetimes
 

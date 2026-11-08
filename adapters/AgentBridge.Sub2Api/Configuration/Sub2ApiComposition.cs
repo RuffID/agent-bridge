@@ -1,10 +1,12 @@
 using AgentBridge.Application.Ports;
 using AgentBridge.Configuration;
 using AgentBridge.Sub2Api.Models;
+using AgentBridge.Sub2Api.Auxiliary;
 using HttpClientLibrary.Clients;
 using HttpClientLibrary.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +16,13 @@ namespace AgentBridge.Sub2Api.Configuration;
 internal static class Sub2ApiComposition
 {
     private const double MAX_TIMEOUT_MILLISECONDS = uint.MaxValue - 1d;
+
+    /// <summary>Подключает optional auxiliary, сохраняя app override и отложенное создание HTTP.</summary>
+    internal static void AddAuxiliary(IServiceCollection services)
+    {
+        services.TryAddScoped<IModelAuxiliaryGateway>(provider => new Sub2ApiAuxiliaryGateway(
+            () => provider.GetRequiredService<HttpApiClient>(), provider.GetRequiredService<IOptionsSnapshot<Sub2ApiOptions>>()));
+    }
 
     /// <summary>Привязывает только Sub2Api и проверяет локальную конфигурацию без I/O.</summary>
     internal static void AddConfiguration(IServiceCollection services, IConfiguration configuration, bool hasIndividualSource)

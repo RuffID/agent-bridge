@@ -18,7 +18,7 @@ public class Sub2ApiOptions
     /// <summary>Общий gateway-ключ; не OpenAI upstream credential.</summary>
     public string? SharedApiKey { get; set; }
 
-    /// <summary>Конечный срок HTTP-операции; используется также для чтения каталога.</summary>
+    /// <summary>Конечный срок HTTP-операции; используется также для чтения каталога и optional usage.</summary>
     public TimeSpan GenerationTimeout { get; set; }
 
     /// <summary>Конечный срок compact.</summary>

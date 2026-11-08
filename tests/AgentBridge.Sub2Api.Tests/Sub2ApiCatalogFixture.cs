@@ -21,7 +21,8 @@ internal class Sub2ApiCatalogFixture : IDisposable
     internal const string CATALOG = """{"object":"list","data":[{"object":"model","id":"public-model"}]}""";
 
     /// <summary>Фабрика вызывается только при разрешении HTTP-потребителя, клиент остаётся у fixture.</summary>
-    internal Sub2ApiCatalogFixture(string address = "https://gateway.invalid/prefix/v1/", TimeSpan? timeout = null)
+    internal Sub2ApiCatalogFixture(string address = "https://gateway.invalid/prefix/v1/", TimeSpan? timeout = null,
+        bool auxiliary = false)
     {
         Handler = new();
         Http = new(Handler);
@@ -47,6 +48,11 @@ internal class Sub2ApiCatalogFixture : IDisposable
             FactoryCalls++;
             return Http;
         });
+        if (auxiliary)
+        {
+            Sub2ApiComposition.AddAuxiliary(services);
+        }
+
         Provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         Scope = Provider.CreateScope();
     }
