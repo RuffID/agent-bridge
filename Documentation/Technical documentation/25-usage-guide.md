@@ -1,10 +1,10 @@
 # Подключение и использование AgentBridge
 
-Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Проверяемые исходники: [Consumer](../../tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj); команды и границы подтверждения: отчёт25 (история Git). Это compile-only библиотека без entry point. Ни один метод примера при проверке не исполнялся.
+Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), текущие изменения Sub2Api — [delta](../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md). Проверяемые исходники: [Consumer](../../tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj); актуальные команды и границы — [результаты05](../Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/results.md). Это compile-only библиотека без entry point. Методы этого примера не исполнялись; отдельные binary tests выполнялись на Windows.
 
 ## 1. Подключить комплект DLL
 
-Для current API требуется комплект с `AgentBridge.Integration.dll`, ядром, обоими адаптерами, полной runtime closure и выбранной migrations DLL (основной provider — SQL Server). Audit Remediation15 (история Git) подготовил и compile-only проверил три MSSQL RID: `artifacts/delivery/stage15-v2/SqlServer/{win-x64,linux-x64,linux-arm64}`. SQLite/PostgreSQL адресно проверены только в `artifacts/delivery/stage15-v2/{Sqlite,PostgreSql}/win-x64`. Не смешивайте версии, RID и migrations assemblies. [Facade/lifetimes](26-integration-registration.md).
+Для current API требуется комплект с `AgentBridge.Integration.dll`, ядром, обоими адаптерами и выбранными persistence/migrations DLL (основной provider — SQL Server). Свежие Release SDK kits05 находятся в `artifacts/delivery-tests/current/sdk/SqlServer/{win-x64,linux-x64,linux-arm64}` и `sdk/{Sqlite,PostgreSql}/win-x64`; компактные DLL/NuGet bundles — в `artifacts/delivery-tests/current/nuget/<Provider>`. Оба способа проверены внешней компиляцией во всей матрице. Не смешивайте версии, RID и migrations assemblies. [Facade/lifetimes](26-integration-registration.md), [DLL/NuGet](29-dll-and-nuget-delivery.md).
 
 Скопируйте полный комплект выбранного provider/RID в приложение. Generated variant props фиксирует RID; Import отклоняет несовпадение `RuntimeIdentifier`. [Состав и ограничения поставки](24-dll-delivery.md). Старые stage24 kits не содержат facade; их evidence сохраняется в историческом отчёте24.
 
@@ -19,9 +19,13 @@
 <Import Project="$(AgentBridgeDeliveryRoot)/AgentBridge.Delivery.props" />
 ```
 
-Import подключает managed DLL из lib и доставляет XML/native выбранного RID стандартными SDK items; satellites сохраняются в culture-каталогах output. Для runtime нужен .NET10 и соответствующий хост приложения. Сервер SQL Server/PostgreSQL, права и `pg_dump` в DLL не входят. Наличие SQLite assets во всех kits связано с общей статической dependency closure и не меняет выбранный provider. Для существующего приложения отдельно проверьте конфликты его package/runtime версий; compile-only consumer не доказывает их отсутствие.
+SDK Import подключает managed DLL из lib и доставляет XML/native выбранного RID стандартными SDK items; satellites сохраняются в culture-каталогах output. Каждый kit содержит ровно выбранный модуль БД и migrations assembly; SQLite не входит в SQL Server/PostgreSQL kits. Для runtime нужен .NET10 и соответствующий хост приложения. Сервер SQL Server/PostgreSQL, права и `pg_dump` в DLL не входят. Для существующего приложения отдельно проверьте конфликты его package/runtime версий; compile-only consumer не доказывает их отсутствие.
 
 ## 2. Настроить options и зависимости приложения
+
+Default остаётся codex-lb. Для Sub2Api вызовите `services.AddAgentBridgeSub2ApiConnector()` перед прежним `AddAgentBridge(configuration, httpClientFactory)`, как в [Sub2ApiRegistration](../../tests/Delivery/Consumer/Sub2ApiRegistration.cs). Задайте собственный раздел `Sub2Api` с BaseAddress, точными Model/ReasoningEffort, KeySource, ключом из secret configuration и timeout. Раздел CodexLb этому выбору не требуется. Logger, HttpClient и выбранный модуль БД регистрирует приложение.
+
+При неизвестном входном окне явно задайте `AgentBridge:Compaction:BudgetPolicy=ServerValidationWithUnknownWindow`. Settings читает `/backend-api/codex/models` без client_version, проверяет объявленные ID/effort/API-доступность и сохраняет null окно. Это не гарантирует приём бюджета сервером. Полный контекст проходит отдельный guard, JSON/SSE не используют continuation; automatic compact отключён, ручной/force compact — Unsupported. При отказе по размеру история не обрезается и запрос не повторяется. Live OAuth05.03 ещё не проверен.
 
 Optional `AgentBridge:Tokenization:ModelEncodings` задаёт дополнительные exact model→encoding соответствия (`o200k_base`/`cl100k_base`) без пересборки DLL; отсутствие секции сохраняет builtin карту. Кодировку новой модели подтверждает приложение, availability/effort/input budget — каталог. Карта фиксируется singleton counter, для изменения перезапустите приложение. Программное подключение — [StrictConfigurationRegistration.AddConfirmedModelEncoding](../../tests/Delivery/Consumer/StrictConfigurationRegistration.cs); JSON, validation и ограничения — [tokenizer](07-tokenizer-and-settings.md#дополнительные-exact-соответствия-приложения).
 

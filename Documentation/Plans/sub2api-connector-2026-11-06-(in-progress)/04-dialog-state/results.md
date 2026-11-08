@@ -1,3 +1,57 @@
+# Актуальный результат этапа04 — PostgreSQL restart и recovery
+
+Дата: 2026-11-08. Этап04,04.02 и04.02.04 — **completed** в согласованном объёме первой версии без нового compact. [Этап](main.md) · [04.02.04](04.02.04-persistence-restart.md) · [Главный план](../main.md). Этап05 не начат; T01/T02/T04/T05 не закрываются этой проверкой.
+
+## Выполненный объём
+
+По отдельному поручению добавлен Integration/Sub2Api:5 PostgreSQL cases в отдельном Sub2ApiPersistenceRestartTests, facade fixture, технический session decorator для потери commit acknowledgement и локальный AGENTS. В родительском Integration уже20 собственных C# файлов; самостоятельная группа сразу вынесена в подпапку, без переноса прежних тестов. Production-код и схема не менялись; новые C# файлы меньше20000 байт.
+
+Использованы actual public AddAgentBridgeSub2ApiConnector/AddAgentBridge, AgentRunner.RunAsync с registered RunOptions, Sub2Api/HttpClientLibrary и production persistence ports/UoW/base repositories EFCoreLibrary. Existing DatabaseIntegrationFixture создаёт postgres:18 с отдельным loopback-портом, пользователем и уникальными БД; fsync/full_page_writes/synchronous_commit включены. Инициализация схемы выполняется настоящим maintenance API. Клиентские утилиты PostgreSQL18 найдены в реестре и проверены штатным bounded runner; backup/restore в этих случаях не выполнялись. Только HTTP handler и инструмент приложения подставные; рабочая конфигурация и реальные credentials не читаются.
+
+Проверено:
+
+- JSON и SSE: committed Started виден отдельному DbContext до handler, полный turn/payload/provenance восстанавливается после disposal facade root и создания нового DI root. Следующая generation содержит opaque reasoning с неизвестным полем, первый вопрос/ответ, прежнюю call/output пару с executionId и новый вопрос. Новый handler не вызывается, automatic compact/continuation отсутствуют.
+- Потеря acknowledgement после настоящего commit Started и Succeeded. Внешний outcome остаётся неизвестным вызывающей стороне; primary IOException и реальный отказ rollback завершённой NpgsqlTransaction сохраняются вместе. Новый root видит Active и отклоняет run без HTTP. Живой lease запрещает fence; expiry equality на управляемом server TimeProvider разрешает fence с новым epoch. Renew прежнего lease отклоняется. Succeeded использует сохранённый output; Started превращается в effective Unknown и требует явного AcknowledgedUnknown, без ложного NotStarted и replay.
+- Отмена уже начатого handler: Unknown/RecoveryRequired сохраняются в БД и блокируют новый run после restart. Explicit recovery записывается append-only; третий DI root читает его по RecoveryId и продолжает только новый turn без handler replay. После fence/recovery/нового turn исходные SQL rows DialogTurns/CanonicalItems/ModelSteps прежнего turn совпадают побайтно в наблюдаемой JSON-проекции строк.
+
+Первый запуск обнаружил ошибку подготовки: opt-in RunBoundedAsync требует отдельной регистрации IBoundedDialogReader. Fixture исправлен на public RunAsync с registered RunOptions — тот же путь использует реальная консоль; production bounded policy не добавлялась. Следующий запуск подтвердил2 happy-path cases; assertions отказов уточнены по established UnitOfWorkScope contract: после actual commit сохраняются обе причины AggregateException. Создание scoped gateway может получить app-owned HttpClient без I/O; отсутствие отправки проверяется по пустому HTTP journal, а не по вызову фабрики. Финальный полный прогон5 cases прошёл. Ожидания безопасности, сохранности history и no-replay не ослаблялись.
+
+Также исправлено устаревшее isolated pinned-run ожидание: вместо общего /v1/ проверяются точный /backend-api/codex/models и два /v1/responses.11 новых DialogCanonicalJson cases и регрессия manifest-маршрута из предыдущей работы теперь выполнены: актуальные isolated результаты ниже. Исторические записи предыдущих прогонов сохранены после разделителя.
+
+## Команды и фактический результат
+
+```powershell
+dotnet build .\tests\AgentBridge.Persistence.EfCore.Tests\AgentBridge.Persistence.EfCore.Tests.csproj -c Debug --no-restore -p:BaseOutputPath=.\artifacts\compile-check\ -p:BuildProjectReferences=false -p:GeneratePackageOnBuild=false --nologo -v quiet
+dotnet .\tests\AgentBridge.Persistence.EfCore.Tests\artifacts\compile-check\Debug\net10.0\AgentBridge.Persistence.EfCore.Tests.dll -class 'AgentBridge.Persistence.EfCore.Tests.Integration.Sub2Api.Sub2ApiPersistenceRestartTests' -trait 'Dependency=Database' -noLogo -longRunning 30
+dotnet .\tests\AgentBridge.Persistence.EfCore.Tests\artifacts\compile-check\Debug\net10.0\AgentBridge.Persistence.EfCore.Tests.dll -trait- 'Dependency=Database' -noLogo
+docker ps -a --format '{{.ID}} {{.Names}} {{.Image}}'
+```
+
+Build:0 warnings/errors. Последний PostgreSQL прогон:5 passed,0 failed/errors/skipped/not-run,9,941 с с подготовкой/cleanup. Последний isolated persistence:510 passed,0 failed/errors/skipped/not-run,3,534 с. Время не включает написание тестов и предшествующие попытки подготовки. После завершения docker ps -a пуст; каталог agentbridge-integration в temp не содержит собственных тестовых подкаталогов. Ручного удаления ресурсов и Docker prune не было.
+
+Актуальные результаты из этой сессии без суммирования повторов:
+
+| Набор | Passed | Failed | Errors | Skipped |
+| --- | ---: | ---: | ---: | ---: |
+| Core, isolated | 569 | 0 | 0 | 0 |
+| Sub2Api, isolated | 178 | 0 | 0 | 0 |
+| CodexLb, isolated | 422 | 0 | 0 | 0 |
+| Persistence, isolated | 510 | 0 | 0 | 0 |
+| Console, isolated | 63 | 0 | 0 | 0 |
+| PostgreSQL, только новый класс04.02.04 | 5 | 0 | 0 | 0 |
+
+1742 isolated cases и отдельно5 PostgreSQL cases. Core/Sub2Api/CodexLb/Console выполнены перед добавлением этой группы; production-код после них не менялся. Первый совместный CodexLb запуск был прерван без результата; отдельный диагностический повтор прошёл422 cases и только он учтён. Изначальный isolated persistence failure из-за URL устранён и510 cases повторно прошли. API/frozen kit и legacy consumers не пересобирались.
+
+## Существенные границы
+
+Это reconnect приложения с новым DI/DbContext над настоящей PostgreSQL, без рестарта PostgreSQL/ОС. Прерывание и потеря acknowledgement вводятся управляемо после фактических записей; физический обрыв сети или kill процесса не выполнялись. Unknown не выдаётся за подтверждённый внешний исход. SQLite/MSSQL и весь исторический maintenance-набор не запускались без нового риска. Live OAuth/sub2api, DLL-поставка/consumer ABI, другие RID и strict OpenSpec CLI остаются задачами05; этот этап не начат. Compact и основание T05 не менялись.
+
+Ручные изменения выполнены через apply_patch. Соседние репозитории, baseline kit/frozen DLL, исторические01–02/evidence, completed03.03.01 и main OpenSpec spec не менялись. Git, OpenSpec CLI, project scripts, host, live HTTP/OAuth и deployment не выполнялись. Разрешённые SQL/миграции/Docker ограничены собственными ресурсами existing integration fixture.
+
+Ниже сохранены предшествующие результаты04 на дату их выполнения; их статусы не заменяют актуальную запись выше.
+
+---
+
 # Актуальный результат этапа04 — изолированные проверки
 
 Дата: 2026-11-07. Этап04 и04.02 — **verification**,04.01 — **completed** изолированно. Подэтапы04.02.01–03 completed изолированно;04.02.04 not-started. [Этап](main.md) · [Декомпозиция04.02](04.02-restart-and-recovery.md) · [Главный план](../main.md).

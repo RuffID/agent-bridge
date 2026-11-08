@@ -1,6 +1,6 @@
 # Отдельный коннектор sub2api
 
-Статус: in-progress; этапы01–02 выполнены,03 и03.01/03.02 verification в объёме первой версии без compact; отложенный compact blocked T05; T01 открыт. 04.01 completed изолированно,04.02 verification до реального persistence restart;05 не начат. Создано 2026-11-06.
+Статус: in-progress; этапы01–02 выполнены,03 и03.01/03.02 verification в объёме первой версии без compact; отложенный compact blocked T05; T01 открыт. 04 completed после PostgreSQL evidence;05.01–05.02 completed в локальных границах,05 verification до live05.03 (not-started). Создано 2026-11-06.
 
 ## Why
 
@@ -19,7 +19,7 @@ AgentBridge использует ключ, выпущенный в sub2api. Ти
 
 ## Impact
 
-Обязательный объём первой версии согласован без compact. Полный контекст проходит отдельный budget guard; превышение бюджета возвращает ошибку без обрезания истории и retry. Неограниченная длина диалога не гарантируется, ручной/force compact остаётся Unsupported до factory/HTTP. Compact03.03.02–03.03.06 — отдельная отложенная работа с T05; приёмку первой версии не блокирует. 04.01 проверен изолированно;04.02.01–03 прошли16 новых cases public runner/restart/recovery, реальный persistence restart04.02.04 остаётся непроверенным;05 не начат.
+Обязательный объём первой версии согласован без compact. Полный контекст проходит отдельный budget guard; превышение бюджета возвращает ошибку без обрезания истории и retry. Неограниченная длина диалога не гарантируется, ручной/force compact остаётся Unsupported до factory/HTTP. Compact03.03.02–03.03.06 — отдельная отложенная работа с T05; приёмку первой версии не блокирует. 04 completed после16 isolated public runner/restart/recovery cases и5 PostgreSQL cases04.02.04. На05.01–05.02 прошли1707 isolated cases, strict OpenSpec validation и fresh delivery/source/ABI/Windows проверки; live05.03 не начинался. [Результаты05](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/results.md).
 
 Клиентское продолжение03 добавило ServerValidationWithUnknownWindow, nullable budget assessment/snapshot и чтение budget JSON v1/v2 без изменения DB schema. Этот независимый бюджетный контракт сохраняется. [Клиентская адаптация](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md) проверена вместе с JSON/SSE generation в границах03. Canonical гарантия относится к границе AgentBridge, server transformations допустимы без обещания upstream сохранности. Новое локальное происхождение04.01 и его проверки описаны отдельно в [результатах04](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/04-dialog-state/results.md).
 
@@ -29,7 +29,7 @@ OpenSpec main пока не синхронизируется: полная во�
 
 Подготовленное на03 [серверное предложение](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/server-contract-proposal.md) отклонено. Доработка sub2api исключена; выполнена [адаптация AgentBridge к существующему серверу](../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/contract-blockers.md). Новые server fields/enforcement не являются зависимостью; T01/T05 остаются открытыми.
 
-Текущий безопасный режим03.03 явно отключает automatic compact sub2api, сохраняя полный generation input выше локального threshold через отдельный budget guard. Ручной/force compact остаётся Unsupported. Аддитивный default interface member сохраняет автоматическое сжатие прежних IModelGateway; Disabled добавлен после прежних значений enum. Это не включение compact, новая поставка/ABI приёмка или restart04. Совместимость compact-окна с generation и recovery остаётся T05; mapping сам по себе не объявляется доказанной несовместимостью.
+Текущий безопасный режим03.03 явно отключает automatic compact sub2api, сохраняя полный generation input выше локального threshold через отдельный budget guard. Ручной/force compact остаётся Unsupported. Аддитивный default interface member сохраняет автоматическое сжатие прежних IModelGateway; Disabled добавлен после прежних значений enum. Этот режим не включает compact. Restart04 и новая поставка/API/ABI05.02 проверены отдельно; live05.03 остаётся открытым. Совместимость compact-окна с generation и recovery остаётся T05; mapping сам по себе не объявляется доказанной несовместимостью.
 
 ## Out of Scope
 

@@ -46,7 +46,19 @@ AgentBridge MUST сохранять действующую сигнатуру Ad
 
 ### Requirement: Явная серверная проверка неизвестного входного окна
 
-AgentBridge MUST разрешать неизвестный InputContextWindow только при явно выбранной политике ServerValidationWithUnknownWindow в settings и guard. Порог сжатия MUST оставаться локальным ориентиром, резерв MUST NOT выдаваться за обеспеченный при неизвестном окне. Exact model/effort и объявленная API-доступность MUST проверяться по каталогу; context_window, effective percent и локальные оценки MUST NOT подменять входное окно. Прежние строгий режим и ServerValidation MUST сохранять требование известного окна.
+AgentBridge MUST разрешать неизвестный InputContextWindow только при явно выбранной политике ServerValidationWithUnknownWindow в settings и guard.
+
+#### Scenario: Подробные правила — Явная серверная проверка неизвестного входного окна
+
+- **WHEN** проверяется неизвестное окно и способ чтения каталога
+- **THEN** Порог сжатия MUST оставаться локальным ориентиром, резерв MUST NOT выдаваться за обеспеченный при неизвестном окне. Exact model/effort и объявленная API-доступность MUST проверяться по каталогу; context_window, effective percent и локальные оценки MUST NOT подменять входное окно. Прежние строгий режим и ServerValidation MUST сохранять требование известного окна.
+- **AND** В этом режиме Sub2Api MUST читать manifest через существующий `/backend-api/codex/models` с сохранением BaseAddress prefix и нормализацией одного конечного `/v1`. Запрос MUST NOT содержать client_version или объявлять assembly version AgentBridge/фиксированную версию Codex; upstream Codex-версию выбирает sub2api. Ordinary каталог MUST сохранять `/v1/models` без client_version. Ошибка manifest MUST NOT запускать retry или fallback к ordinary каталогу.
+
+#### Scenario: Manifest без версии приложения
+
+- **WHEN** приложение выбрало ServerValidationWithUnknownWindow и BaseAddress `https://gateway.invalid/proxy/v1/`
+- **THEN** каталог запрашивается один раз по `https://gateway.invalid/proxy/backend-api/codex/models` без client_version с выбранным Bearer.
+- **AND** при HTTP 502 коннектор возвращает явный отказ без второго запроса или замены каталога.
 
 #### Scenario: Неизвестное окно и явный режим
 
@@ -62,7 +74,12 @@ AgentBridge MUST разрешать неизвестный InputContextWindow т
 
 ### Requirement: Адаптация к существующему sub2api
 
-AgentBridge MUST адаптироваться к существующим sub2api routes и поведению без доработки sub2api и без обязательных новых server headers/fields. Запрет клиентских retries MUST NOT трактоваться как запрет всех внутренних server retries. Коннектор MUST сохранять canonical данные при отправке sub2api и получении его ответа; история AgentBridge MUST сохранять исходные items. Удаление reasoning.content и encrypted reasoning при existing server normalization/recovery MAY происходить внутри sub2api; коннектор MUST NOT объявлять неизменную upstream передачу доказанной. Коннектор MUST NOT выдумывать budget/capabilities или выдавать requested model echo за доказанную actual upstream identity. Один guessed flag или успешная fixture MUST NOT снимать неподтверждённые ограничения compact.
+AgentBridge MUST адаптироваться к существующим sub2api routes и поведению без доработки sub2api и без обязательных новых server headers/fields.
+
+#### Scenario: Подробные правила — Адаптация к существующему sub2api
+
+- **WHEN** коннектор обрабатывает запрос и ответ существующего sub2api
+- **THEN** Запрет клиентских retries MUST NOT трактоваться как запрет всех внутренних server retries. Коннектор MUST сохранять canonical данные при отправке sub2api и получении его ответа; история AgentBridge MUST сохранять исходные items. Удаление reasoning.content и encrypted reasoning при existing server normalization/recovery MAY происходить внутри sub2api; коннектор MUST NOT объявлять неизменную upstream передачу доказанной. Коннектор MUST NOT выдумывать budget/capabilities или выдавать requested model echo за доказанную actual upstream identity. Один guessed flag или успешная fixture MUST NOT снимать неподтверждённые ограничения compact.
 
 #### Scenario: Чужая continuation при вручную переданном запросе
 
@@ -104,9 +121,13 @@ AgentBridge MUST адаптироваться к существующим sub2ap
 
 ### Requirement: Первая версия sub2api без compact
 
-Первая версия sub2api-коннектора MUST явно отключать автоматическое сжатие и MUST NOT создавать или активировать новое compact-окно. Ручной/force CompactAsync MUST возвращать Unsupported до HTTP factory, отправки и сохранения нового окна. История MUST сохраняться без удаления или обрезания ради прохождения запроса; compact MUST NOT подменяться обычной генерацией.
+Первая версия sub2api-коннектора MUST явно отключать автоматическое сжатие и MUST NOT создавать или активировать новое compact-окно.
 
-Достижение локального threshold MUST NOT само по себе останавливать generation: existing полный рабочий контекст MUST проходить отдельный budget guard и передаваться без обрезания при допустимой policy. Превышение известного локального лимита либо отказ сервера по размеру MUST возвращаться явно. Отказ generation MUST NOT вызывать retry, смену выбора или повтор бизнес-инструмента. Прежние коннекторы MUST сохранять автоматическое сжатие по умолчанию.
+#### Scenario: Подробные правила — Первая версия sub2api без compact
+
+- **WHEN** используется первая версия коннектора sub2api
+- **THEN** Ручной/force CompactAsync MUST возвращать Unsupported до HTTP factory, отправки и сохранения нового окна. История MUST сохраняться без удаления или обрезания ради прохождения запроса; compact MUST NOT подменяться обычной генерацией.
+- **AND** Достижение локального threshold MUST NOT само по себе останавливать generation: existing полный рабочий контекст MUST проходить отдельный budget guard и передаваться без обрезания при допустимой policy. Превышение известного локального лимита либо отказ сервера по размеру MUST возвращаться явно. Отказ generation MUST NOT вызывать retry, смену выбора или повтор бизнес-инструмента. Прежние коннекторы MUST сохранять автоматическое сжатие по умолчанию.
 
 #### Scenario: Порог достигнут при отключённом compact
 
@@ -127,9 +148,13 @@ AgentBridge MUST адаптироваться к существующим sub2ap
 
 ### Requirement: Безопасность сохранённого контекста между коннекторами
 
-Встроенные коннекторы MUST отклонять неподтверждённое использование чужого или неизвестного opaque-контекста до HTTP. Совпадение model ID MUST NOT само по себе подтверждать совместимость. Локальное происхождение MUST связывать коннектор, диалог, владельца, агента, endpoint и доступ без сохранения ключа. Оно MUST храниться отдельно от canonical envelope/output и transport continuation и MUST NOT передаваться upstream. Durable fencing, owner/expiry, pinned settings/access и no-replay MUST сохраняться.
+Встроенные коннекторы MUST отклонять неподтверждённое использование чужого или неизвестного opaque-контекста до HTTP.
 
-Хранение результатов модели MUST использовать единственный новый JSON-формат с отдельными canonical envelope и metadata происхождения, без совместимого чтения прежнего JSON и без выбора v1/v2. Сохранение уже записанных старых диалогов не требуется; несовместимые записи MUST отклоняться явно без автоматического backfill, удаления или fallback. Прежние публичные сигнатуры MUST сохраняться; metadata MAY добавляться отдельными свойствами и методами.
+#### Scenario: Подробные правила — Безопасность сохранённого контекста между коннекторами
+
+- **WHEN** сохраняется или повторно используется контекст модели
+- **THEN** Совпадение model ID MUST NOT само по себе подтверждать совместимость. Локальное происхождение MUST связывать коннектор, диалог, владельца, агента, endpoint и доступ без сохранения ключа. Оно MUST храниться отдельно от canonical envelope/output и transport continuation и MUST NOT передаваться upstream. Durable fencing, owner/expiry, pinned settings/access и no-replay MUST сохраняться.
+- **AND** Хранение результатов модели MUST использовать единственный новый JSON-формат с отдельными canonical envelope и metadata происхождения, без совместимого чтения прежнего JSON и без выбора v1/v2. Сохранение уже записанных старых диалогов не требуется; несовместимые записи MUST отклоняться явно без автоматического backfill, удаления или fallback. Прежние публичные сигнатуры MUST сохраняться; metadata MAY добавляться отдельными свойствами и методами.
 
 #### Scenario: Смена шлюза при той же модели
 
@@ -156,7 +181,12 @@ AgentBridge MUST адаптироваться к существующим sub2ap
 
 ### Requirement: Проверка полного входного бюджета
 
-Guard MUST использовать exact model/effort, configured threshold/reserve и объявленный InputContextWindow. Прежние RequireLocalEstimate/ServerValidation MUST требовать положительное окно каталога. Только явный ServerValidationWithUnknownWindow одновременно в settings и guard MAY разрешать null окно; assessment MUST сохранять null и RequiresServerValidation=true даже при известной текстовой оценке. ContextWindow/MaxOutputTokens MUST NOT подменять входной лимит. Default RequireLocalEstimate MUST отклонять неизвестную полную оценку. Explicit ServerValidation MAY разрешать opaque input с null estimate и допустимой KnownTokens+reserve, MUST сохранять null estimate и RequiresServerValidation=true, MUST NOT объявлять серверный приём гарантированным. Некорректные настройки и превышение известной части MUST отклоняться без integer overflow; ошибка counter MUST передаваться тем же ServiceError.
+Guard MUST использовать exact model/effort, configured threshold/reserve и объявленный InputContextWindow.
+
+#### Scenario: Серверная оценка и ошибки полного бюджета
+
+- **WHEN** guard оценивает полный входной бюджет
+- **THEN** Прежние RequireLocalEstimate/ServerValidation MUST требовать положительное окно каталога. Только явный ServerValidationWithUnknownWindow одновременно в settings и guard MAY разрешать null окно; assessment MUST сохранять null и RequiresServerValidation=true даже при известной текстовой оценке. ContextWindow/MaxOutputTokens MUST NOT подменять входной лимит. Default RequireLocalEstimate MUST отклонять неизвестную полную оценку. Explicit ServerValidation MAY разрешать opaque input с null estimate и допустимой KnownTokens+reserve, MUST сохранять null estimate и RequiresServerValidation=true, MUST NOT объявлять серверный приём гарантированным. Некорректные настройки и превышение известной части MUST отклоняться без integer overflow; ошибка counter MUST передаваться тем же ServiceError.
 
 #### Scenario: Граница и неизвестный бюджет
 
@@ -191,9 +221,13 @@ Guard MUST использовать exact model/effort, configured threshold/res
 
 ### Requirement: Явная оценка моделей без подтверждённой кодировки
 
-Optional `TokenizationOptions.UnknownModelEstimateEncoding` MAY явно задавать `o200k_base`/`cl100k_base` для приблизительного BPE подсчёта ID без подтверждённого mapping; default null MUST сохранять Unsupported. Подтверждённый mapping MUST иметь приоритет. Результат MUST содержать IsApproximateEncoding=true и MUST NOT объявлять кодировку модели подтверждённой. KnownTokens в таком результате является приблизительным, opaque/continuation MUST сохранять null full estimate. Настройка MUST валидироваться безопасно и фиксироваться при создании singleton.
+Optional `TokenizationOptions.UnknownModelEstimateEncoding` MAY явно задавать `o200k_base`/`cl100k_base` для приблизительного BPE подсчёта ID без подтверждённого mapping; default null MUST сохранять Unsupported.
 
-Guard/compactor MUST допускать такую оценку только с explicit ServerValidation либо ServerValidationWithUnknownWindow после catalog validation exact модели/effort/API-доступности и бюджета согласно выбранной policy. Строгий режим MUST запрещать approximation до generation/compact dispatch и до candidate save, включая force. Порог автоматического сжатия MAY использовать приблизительный текстовый count; это MUST NOT объявляться серверным подсчётом. Runner MUST сохранять происхождение последнего успешного generation assessment и сбрасывать его перед следующим шагом; status MUST различать approximate count и strict refusal.
+#### Scenario: Происхождение и допуск приблизительной оценки
+
+- **WHEN** используется явно настроенная приблизительная кодировка
+- **THEN** Подтверждённый mapping MUST иметь приоритет. Результат MUST содержать IsApproximateEncoding=true и MUST NOT объявлять кодировку модели подтверждённой. KnownTokens в таком результате является приблизительным, opaque/continuation MUST сохранять null full estimate. Настройка MUST валидироваться безопасно и фиксироваться при создании singleton.
+- **AND** Guard/compactor MUST допускать такую оценку только с explicit ServerValidation либо ServerValidationWithUnknownWindow после catalog validation exact модели/effort/API-доступности и бюджета согласно выбранной policy. Строгий режим MUST запрещать approximation до generation/compact dispatch и до candidate save, включая force. Порог автоматического сжатия MAY использовать приблизительный текстовый count; это MUST NOT объявляться серверным подсчётом. Runner MUST сохранять происхождение последнего успешного generation assessment и сбрасывать его перед следующим шагом; status MUST различать approximate count и strict refusal.
 
 #### Scenario: Новая catalog модель с неподтверждённой кодировкой
 

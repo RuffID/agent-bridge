@@ -104,8 +104,18 @@ public class DialogCatalogStaging(DialogCatalogQueries queries, RecordStaging<Di
             ModelResponse response = step.Response.ToModelResponse();
             foreach (CanonicalModelItem output in response.Output)
             {
-                if (offset >= content.Items.Count || output.Content.GetRawText() != content.Items[offset].ContentJson)
+                if (offset >= content.Items.Count)
+                {
                     return ServiceResult.Fail(new(ServiceErrorType.Validation, "catalog_step_items_mismatch"));
+                }
+
+                // Отчёт прошёл сериализацию: сравниваем весь JSON, сохраняя исходный текст canonical item.
+                using JsonDocument original = JsonDocument.Parse(content.Items[offset].ContentJson);
+                if (!JsonElement.DeepEquals(output.Content, original.RootElement))
+                {
+                    return ServiceResult.Fail(new(ServiceErrorType.Validation, "catalog_step_items_mismatch"));
+                }
+
                 JsonElement value = output.Content;
                 if (value.TryGetProperty("type", out JsonElement outputType) && outputType.ValueKind == JsonValueKind.String &&
                     outputType.GetString() == "function_call_output")

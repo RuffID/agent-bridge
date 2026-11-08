@@ -24,17 +24,10 @@ internal class Sub2ApiModelCatalog(HttpApiClient http, IOptionsSnapshot<Sub2ApiO
         ct.ThrowIfCancellationRequested();
 
         Sub2ApiOptions configured = options.Value;
-        if (!Sub2ApiEndpoints.TryGetModelsUrl(configured.BaseAddress, out string endpoint))
+        bool manifest = contextOptions.Value.BudgetPolicy == ContextBudgetPolicy.ServerValidationWithUnknownWindow;
+        if (!Sub2ApiEndpoints.TryGetModelsUrl(configured.BaseAddress, out string endpoint, manifest: manifest))
         {
             return Failure(ServiceErrorType.Validation, "Sub2Api.BaseAddress: required_or_invalid.");
-        }
-
-        bool manifest = contextOptions.Value.BudgetPolicy == ContextBudgetPolicy.ServerValidationWithUnknownWindow;
-        if (manifest)
-        {
-            // Existing route выбирает manifest по непустому client_version. Это версия AgentBridge, не impersonation Codex CLI.
-            string clientVersion = typeof(Sub2ApiModelCatalog).Assembly.GetName().Version!.ToString();
-            endpoint += "?client_version=" + Uri.EscapeDataString(clientVersion);
         }
 
         string key = access.RevealApiKey();

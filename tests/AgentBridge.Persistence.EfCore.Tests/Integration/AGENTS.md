@@ -1,5 +1,7 @@
 # Интеграционные проверки завершённых сценариев
 
+- `Sub2Api/` проверяет actual public facade/runner/transport с настоящей PostgreSQL: disposal и новый DI root, полный payload/provenance, lost start/outcome acknowledgement, live/expired lease/fence и durable explicit recovery без replay. Подробные границы и local HTTP — в `Sub2Api/AGENTS.md`; адресный native xUnit запуск использует `-class 'AgentBridge.Persistence.EfCore.Tests.Integration.Sub2Api.Sub2ApiPersistenceRestartTests' -trait 'Dependency=Database'`. Это reconnect приложения, не рестарт сервера или физический сетевой сбой.
+
 ## Актуализация схемы и migrations
 
 - При добавлении/изменении migration любого provider в той же задаче обновлять IntegrationSchemaExpectations: точные ordered migration IDs и полный состав собственных таблиц. Fixtures Initialize/Update/Inspect/history и current-schema Down/Up/backup/restore проверки используют этот контракт, а не исторические количества 3/1 migrations или 6 таблиц. ProviderDesignTimeTests сверяет его с actual generated migration assemblies и current model без подключения к БД, чтобы isolated запуск обнаруживал рассинхронизацию integration expectations.

@@ -303,7 +303,12 @@ Instructions/tools/controls MUST сохраняться в полном generati
 
 ### Requirement: Ограниченное принятие compact
 
-Сценарий MUST проверять exact settings, считать полный request и запускать compact при estimate >= threshold. Unknown estimate MUST NOT заменяться KnownTokens либо прошлым usage. Явный force MUST разрешать ручное сжатие ниже threshold без обхода остальных guards. При explicit ServerValidation и opaque input сценарий MAY запустить compact по известной части или force, сохраняя null full estimate. Число проходов MUST ограничиваться MaxPasses; known non-reduction MUST останавливать проходы без принятия увеличенного окна.
+Сценарий MUST проверять exact settings, считать полный request и запускать compact при estimate >= threshold. Unknown estimate MUST NOT заменяться KnownTokens либо прошлым usage.
+
+#### Scenario: Force и ограничение проходов
+
+- **WHEN** рассматривается ручной либо очередной проход compact
+- **THEN** Явный force MUST разрешать ручное сжатие ниже threshold без обхода остальных guards. При explicit ServerValidation и opaque input сценарий MAY запустить compact по известной части или force, сохраняя null full estimate. Число проходов MUST ограничиваться MaxPasses; known non-reduction MUST останавливать проходы без принятия увеличенного окна.
 
 #### Scenario: Неизвестный opaque бюджет
 
@@ -393,9 +398,13 @@ IContextTokenCounter MUST применять полноценный .NET BPE tok
 
 ### Requirement: Явная оценка моделей без подтверждённой кодировки
 
-Optional `TokenizationOptions.UnknownModelEstimateEncoding` MAY явно задавать `o200k_base`/`cl100k_base` для приблизительного BPE подсчёта ID без подтверждённого mapping; default null MUST сохранять Unsupported. Подтверждённый mapping MUST иметь приоритет. Результат MUST содержать IsApproximateEncoding=true и MUST NOT объявлять кодировку модели подтверждённой. KnownTokens в таком результате является приблизительным, opaque/continuation MUST сохранять null full estimate. Настройка MUST валидироваться безопасно и фиксироваться при создании singleton.
+Optional `TokenizationOptions.UnknownModelEstimateEncoding` MAY явно задавать `o200k_base`/`cl100k_base` для приблизительного BPE подсчёта ID без подтверждённого mapping; default null MUST сохранять Unsupported. Подтверждённый mapping MUST иметь приоритет.
 
-Guard/compactor MUST допускать такую оценку только с explicit ServerValidation после catalog validation модели/effort/input budget. Строгий режим MUST запрещать approximation до generation/compact dispatch и до candidate save, включая force. Порог автоматического сжатия MAY использовать приблизительный текстовый count; это MUST NOT объявляться серверным подсчётом. Runner MUST сохранять происхождение последнего успешного generation assessment и сбрасывать его перед следующим шагом; status MUST различать approximate count и strict refusal.
+#### Scenario: Происхождение и допуск приблизительной оценки
+
+- **WHEN** counter возвращает приблизительную оценку для модели без подтверждённого mapping
+- **THEN** Результат MUST содержать IsApproximateEncoding=true и MUST NOT объявлять кодировку модели подтверждённой. KnownTokens в таком результате является приблизительным, opaque/continuation MUST сохранять null full estimate. Настройка MUST валидироваться безопасно и фиксироваться при создании singleton.
+- **AND** Guard/compactor MUST допускать такую оценку только с explicit ServerValidation после catalog validation модели/effort/input budget. Строгий режим MUST запрещать approximation до generation/compact dispatch и до candidate save, включая force. Порог автоматического сжатия MAY использовать приблизительный текстовый count; это MUST NOT объявляться серверным подсчётом. Runner MUST сохранять происхождение последнего успешного generation assessment и сбрасывать его перед следующим шагом; status MUST различать approximate count и strict refusal.
 
 #### Scenario: Новая catalog модель с неподтверждённой кодировкой
 
@@ -409,9 +418,13 @@ Guard/compactor MUST допускать такую оценку только с 
 
 ### Requirement: Дополнительные кодировки моделей приложения
 
-AgentBridge MUST принимать optional `AgentBridge:Tokenization:ModelEncodings` как словарь exact ID модели → `o200k_base` либо `cl100k_base`, а также программную настройку через `AddAgentBridgeTokenization(Action<TokenizationOptions>)`. Отсутствующий/пустой словарь MUST сохранять builtin mapping. Явные дополнения MUST NOT включать prefix/case/suffix fallback или подменять проверку доступности/effort/input window каталога. Приложение MUST подтверждать кодировку дополнительной модели; библиотека MUST NOT считать наличие записи доказательством её live доступности.
+AgentBridge MUST принимать optional `AgentBridge:Tokenization:ModelEncodings` как словарь exact ID модели → `o200k_base` либо `cl100k_base`, а также программную настройку через `AddAgentBridgeTokenization(Action<TokenizationOptions>)`. Отсутствующий/пустой словарь MUST сохранять builtin mapping.
 
-Недопустимая форма, неизвестная кодировка, пустой/обрамлённый пробелами ID и противоречие builtin encoding MUST отклоняться при public options/startup validation без исходных keys/values. Counter MUST копировать валидный словарь с ordinal сравнением при создании; изменение options/configuration MUST NOT менять карту работающего singleton. Прямой constructor с IOptions MUST выполнять те же проверки. Custom IContextTokenCounter MUST сохраняться при DI registration.
+#### Scenario: Проверка и фиксация дополнительного mapping
+
+- **WHEN** приложение передало дополнительные exact model encodings
+- **THEN** Явные дополнения MUST NOT включать prefix/case/suffix fallback или подменять проверку доступности/effort/input window каталога. Приложение MUST подтверждать кодировку дополнительной модели; библиотека MUST NOT считать наличие записи доказательством её live доступности.
+- **AND** Недопустимая форма, неизвестная кодировка, пустой/обрамлённый пробелами ID и противоречие builtin encoding MUST отклоняться при public options/startup validation без исходных keys/values. Counter MUST копировать валидный словарь с ordinal сравнением при создании; изменение options/configuration MUST NOT менять карту работающего singleton. Прямой constructor с IOptions MUST выполнять те же проверки. Custom IContextTokenCounter MUST сохраняться при DI registration.
 
 #### Scenario: Новая модель с существующим tokenizer
 
@@ -457,7 +470,12 @@ KnownTokens MUST сохранять локально посчитанную из
 
 ### Requirement: Проверка полного входного бюджета
 
-Guard MUST использовать exact model/effort и положительный InputContextWindow из проверенного каталога, configured threshold и reserve. ContextWindow/MaxOutputTokens MUST NOT подменять входной лимит. Default RequireLocalEstimate MUST отклонять неизвестную полную оценку. Explicit ServerValidation MAY разрешать opaque input с null estimate и допустимой KnownTokens+reserve, MUST сохранять null estimate и RequiresServerValidation=true, MUST NOT объявлять серверный приём гарантированным. Некорректные настройки и превышение известной части MUST отклоняться без integer overflow; ошибка counter MUST передаваться тем же ServiceError.
+Guard MUST использовать exact model/effort и положительный InputContextWindow из проверенного каталога, configured threshold и reserve. ContextWindow/MaxOutputTokens MUST NOT подменять входной лимит. Default RequireLocalEstimate MUST отклонять неизвестную полную оценку.
+
+#### Scenario: Серверная оценка и ошибки полного бюджета
+
+- **WHEN** guard оценивает opaque input либо получает ошибку counter/settings
+- **THEN** Explicit ServerValidation MAY разрешать opaque input с null estimate и допустимой KnownTokens+reserve, MUST сохранять null estimate и RequiresServerValidation=true, MUST NOT объявлять серверный приём гарантированным. Некорректные настройки и превышение известной части MUST отклоняться без integer overflow; ошибка counter MUST передаваться тем же ServiceError.
 
 #### Scenario: Граница и неизвестный бюджет
 
@@ -1168,7 +1186,12 @@ AgentBridge MUST хранить историю и состояние, необх
 
 ### Requirement: Ограничения хранения
 
-Подключающее приложение MUST задавать мягкий порог объёма содержимого на диалог в байтах. Срок хранения MUST быть опциональным: отсутствие/null означает бессрочное хранение, заданный период MUST быть положительным и отсчитываться от создания. Текущая политика MUST применяться к новым и существующим диалогам. Байты сообщений, результатов инструментов и состояний контекста MUST входить в метрику; физические индексы и overhead провайдера MUST NOT выдаваться за объём содержимого. Превышение мягкого порога MUST NOT само по себе удалять историю или блокировать диалог. Политика срока хранения MUST распространяться также на производные состояния контекста и результаты сжатия.
+Подключающее приложение MUST задавать мягкий порог объёма содержимого на диалог в байтах. Срок хранения MUST быть опциональным: отсутствие/null означает бессрочное хранение, заданный период MUST быть положительным и отсчитываться от создания. Текущая политика MUST применяться к новым и существующим диалогам.
+
+#### Scenario: Метрика и последствия мягкого порога
+
+- **WHEN** рассчитывается объём диалога и применяется политика хранения
+- **THEN** Байты сообщений, результатов инструментов и состояний контекста MUST входить в метрику; физические индексы и overhead провайдера MUST NOT выдаваться за объём содержимого. Превышение мягкого порога MUST NOT само по себе удалять историю или блокировать диалог. Политика срока хранения MUST распространяться также на производные состояния контекста и результаты сжатия.
 
 #### Scenario: Превышение мягкого порога
 
@@ -1191,7 +1214,12 @@ AgentBridge MUST хранить историю и состояние, необх
 
 ### Requirement: Дата истечения диалога
 
-AgentBridge MUST сохранять `CreatedAtUtc` и предоставлять nullable `ExpiresAtUtc`, вычисленный как время создания плюс текущий настроенный период; без периода результат MUST быть null. Новый scope MUST применять актуальную политику также к существующим строкам. Сохраняемое legacy поле ExpiresAtUtc MAY оставаться неизменяемой метаданной создания с DateTimeOffset.MaxValue для бессрочных записей; оно MUST NOT подменять текущую политику. Просроченный диалог MUST NOT использоваться для нового обращения даже до физической очистки строк. При отключённом сроке автоматическое удаление MUST быть запрещено, явное удаление владельцем MUST оставаться доступным.
+AgentBridge MUST сохранять `CreatedAtUtc` и предоставлять nullable `ExpiresAtUtc`, вычисленный как время создания плюс текущий настроенный период; без периода результат MUST быть null. Новый scope MUST применять актуальную политику также к существующим строкам.
+
+#### Scenario: Legacy expiry и запрет обращения после срока
+
+- **WHEN** загружается существующий диалог при текущей политике хранения
+- **THEN** Сохраняемое legacy поле ExpiresAtUtc MAY оставаться неизменяемой метаданной создания с DateTimeOffset.MaxValue для бессрочных записей; оно MUST NOT подменять текущую политику. Просроченный диалог MUST NOT использоваться для нового обращения даже до физической очистки строк. При отключённом сроке автоматическое удаление MUST быть запрещено, явное удаление владельцем MUST оставаться доступным.
 
 #### Scenario: Бессрочное хранение по умолчанию
 
@@ -1946,7 +1974,12 @@ AgentBridge MUST предоставлять AddAgentBridge(IServiceCollection, I
 
 ### Requirement: Library-owned bounded каталог диалогов
 
-AgentBridge MUST предоставлять отдельный catalog Create с immutable owner/site/agent/profile/policy и fixed nullable expiry. Legacy roots MUST NOT импортироваться автоматически. Canonical saved user/assistant messages, root CAS, server timestamp, compact projection и scope change record MUST сохраняться одной transaction. Pure bounded app projector MUST быть зарегистрирован exact key/version; unknown/ambiguous schema MUST отменять write. Tool/reasoning/delta/compact/recovery MUST NOT становиться title/snippet/message date.
+AgentBridge MUST предоставлять отдельный catalog Create с immutable owner/site/agent/profile/policy и fixed nullable expiry. Legacy roots MUST NOT импортироваться автоматически.
+
+#### Scenario: Атомарная проекция каталога
+
+- **WHEN** сохраняется изменение library-owned диалога
+- **THEN** Canonical saved user/assistant messages, root CAS, server timestamp, compact projection и scope change record MUST сохраняться одной transaction. Pure bounded app projector MUST быть зарегистрирован exact key/version; unknown/ambiguous schema MUST отменять write. Tool/reasoning/delta/compact/recovery MUST NOT становиться title/snippet/message date.
 
 #### Scenario: Первый сохранённый вопрос
 
@@ -1956,7 +1989,12 @@ AgentBridge MUST предоставлять отдельный catalog Create с
 
 ### Requirement: Bounded keyset и reconciliation
 
-Catalogue MUST читать один compact slice с explicit limit 1..256, order SortTime DESC/RFC UUID bytes DESC, без full snapshots/count/refill. Host MUST переавторизовать immutable profile и защищать search/UI cursor. Durable scope feed MUST быть bounded ordered sequence с compact projection/tombstone; gaps/unknown checkpoints MUST возвращать ResetRequired/Unsupported. Reconciliation/rebuild MUST использовать compact states, не сканировать canonical snapshots. Tombstone MUST запрещать registered ID reuse и late upsert.
+Catalogue MUST читать один compact slice с explicit limit 1..256, order SortTime DESC/RFC UUID bytes DESC, без full snapshots/count/refill. Host MUST переавторизовать immutable profile и защищать search/UI cursor.
+
+#### Scenario: Reconciliation и tombstone
+
+- **WHEN** приложение читает scope feed либо восстанавливает каталог
+- **THEN** Durable scope feed MUST быть bounded ordered sequence с compact projection/tombstone; gaps/unknown checkpoints MUST возвращать ResetRequired/Unsupported. Reconciliation/rebuild MUST использовать compact states, не сканировать canonical snapshots. Tombstone MUST запрещать registered ID reuse и late upsert.
 
 #### Scenario: Feed после delete
 
@@ -1976,7 +2014,12 @@ Registered Begin/input/settings/lease/epoch MUST приниматься одно
 
 ### Requirement: Append-only recovery и effective context
 
-Recovery MUST проверять owner/incarnation/root/recovery revision/epoch и full bounded pending batch атомарно. NotStarted MUST подтверждаться журналом; KnownCanceled и ConfirmedExternalOutcome MUST иметь отдельный trusted evidence resolver вне transaction с последующим CAS recheck. AcknowledgedUnknown MUST требовать explicit owner acknowledgement без replay. Original items/reports/attempts/terminal и confirmed ordinary outputs MUST оставаться неизменными. Effective context MUST содержать original calls и ровно один truthful resolution для закрытой pending position, включая repeated call_id.
+Recovery MUST проверять owner/incarnation/root/recovery revision/epoch и full bounded pending batch атомарно. NotStarted MUST подтверждаться журналом; KnownCanceled и ConfirmedExternalOutcome MUST иметь отдельный trusted evidence resolver вне transaction с последующим CAS recheck. AcknowledgedUnknown MUST требовать explicit owner acknowledgement без replay.
+
+#### Scenario: Неизменность originals после recovery
+
+- **WHEN** recovery закрывает pending positions, включая repeated call_id
+- **THEN** Original items/reports/attempts/terminal и confirmed ordinary outputs MUST оставаться неизменными. Effective context MUST содержать original calls и ровно один truthful resolution для закрытой pending position, включая repeated call_id.
 
 #### Scenario: Evidence возвращён после concurrent recovery
 
@@ -1986,7 +2029,12 @@ Recovery MUST проверять owner/incarnation/root/recovery revision/epoch 
 
 ### Requirement: Явная bounded history materialization
 
-Opt-in SQL Server history policy MUST задавать явные record/record-byte/query limits без defaults. Supplied reader и внутренние runner/write/lifecycle/recovery/compact loaders MUST применять scalar preflight и server payload predicate/Take до full materialization всех необходимых canonical/provenance rows. Overflow MUST возвращать safe refusal без truncated model history, изменения read state, automatic retry/refill/replay или implicit нового диалога. Strict runner MUST требовать registered capability до history/providers/model и сохранять actual full payload budget guard, authorization/root/profile/retention/tombstone/CAS/incarnation/fencing и function-pair/recovery semantics. Policy MUST документировать per-operation payload bounds отдельно от CLR heap, server scan/work и SQL/provider acceptance.
+Opt-in SQL Server history policy MUST задавать явные record/record-byte/query limits без defaults. Supplied reader и внутренние runner/write/lifecycle/recovery/compact loaders MUST применять scalar preflight и server payload predicate/Take до full materialization всех необходимых canonical/provenance rows.
+
+#### Scenario: Отказ bounded materialization и strict capability
+
+- **WHEN** применяется strict history policy либо её лимиты превышены
+- **THEN** Overflow MUST возвращать safe refusal без truncated model history, изменения read state, automatic retry/refill/replay или implicit нового диалога. Strict runner MUST требовать registered capability до history/providers/model и сохранять actual full payload budget guard, authorization/root/profile/retention/tombstone/CAS/incarnation/fencing и function-pair/recovery semantics. Policy MUST документировать per-operation payload bounds отдельно от CLR heap, server scan/work и SQL/provider acceptance.
 
 #### Scenario: Existing oversized history
 

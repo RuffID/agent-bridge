@@ -7,6 +7,7 @@ namespace AgentBridge.Persistence.EfCore.Mapping;
 /// <summary>Effective pairs по original positions; originals/terminal/confirmed JSON не переписываются.</summary>
 internal static class DialogRecoveryContextMapping
 {
+    /// <summary>Сопоставляет полное JSON-содержимое original позиций без зависимости от сериализованного оформления.</summary>
     public static IReadOnlyList<StoredDialogTurn> Apply(IReadOnlyList<StoredDialogTurn> history,
         IReadOnlyList<DialogRecoveryOperationRecord> operations)
     {
@@ -36,9 +37,15 @@ internal static class DialogRecoveryContextMapping
             {
                 StoredModelStep step = turn.ModelSteps.Single(item => item.StepId == call.StepId);
                 if (call.ItemIndex < 0 || call.ItemIndex >= turn.Items.Count || call.OutputIndex < 0 ||
-                    call.OutputIndex >= step.Response.Output.Count ||
-                    turn.Items[call.ItemIndex].Content.GetRawText() != step.Response.Output[call.OutputIndex].Content.GetRawText())
+                    call.OutputIndex >= step.Response.Output.Count)
+                {
                     throw new InvalidOperationException("Recovery original position mismatch.");
+                }
+
+                if (!JsonElement.DeepEquals(turn.Items[call.ItemIndex].Content, step.Response.Output[call.OutputIndex].Content))
+                {
+                    throw new InvalidOperationException("Recovery original position mismatch.");
+                }
 
                 CanonicalModelItem output;
                 if (call.OutputItemIndex is int index)

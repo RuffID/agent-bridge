@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**;**\bin\**;**\obj\**;**\artifacts\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <AssemblyMetadata Include="AgentBridgeLegacyBaselineRoot" Value="$(AgentBridgeLegacyBaselineRoot)" />
+    <AssemblyMetadata Include="AgentBridgeCurrentDeliveryRoot" Value="$(AgentBridgeCurrentDeliveryRoot)" />
+    <Compile Include="../../AgentBridge.Sub2Api.Tests/PeSurfaceReader.cs" Link="PeSurfaceReader.cs" />
+    <Compile Include="../../AgentBridge.Sub2Api.Tests/LegacyApiBaseline.cs" Link="LegacyApiBaseline.cs" />
+    <EmbeddedResource Include="../../AgentBridge.Sub2Api.Tests/Fixtures/legacy-api-baseline.json" LogicalName="AgentBridge.Tests.LegacyApiBaseline.json" />
+    <EmbeddedResource Include="../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/baseline-evidence.json" LogicalName="AgentBridge.Tests.BaselineEvidence.json" />
+  </ItemGroup>
+</Project>

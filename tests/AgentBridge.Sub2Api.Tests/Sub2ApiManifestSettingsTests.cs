@@ -13,12 +13,20 @@ public class Sub2ApiManifestSettingsTests
 {
     private const string MANIFEST = """{"models":[{"slug":"public-model","supported_in_api":true,"supported_reasoning_levels":[{"effort":"medium","description":"declared"}],"context_window":272000,"effective_context_window_percent":95,"input_context_window":258400}]}""";
 
-    /// <summary>Явный режим получает exact effort и API-флаг без выдуманного окна, использует pinned ключ без source I/O.</summary>
-    [Fact]
-    public async Task DeclaredManifestEnablesSettingsWithoutInventedWindow()
+    /// <summary>Явный режим выбирает прямой manifest без client_version, сохраняет prefix, exact effort и pinned ключ.</summary>
+    [Theory]
+    [InlineData("https://gateway.invalid", "https://gateway.invalid/backend-api/codex/models")]
+    [InlineData("https://gateway.invalid/", "https://gateway.invalid/backend-api/codex/models")]
+    [InlineData("https://gateway.invalid/v1", "https://gateway.invalid/backend-api/codex/models")]
+    [InlineData("https://gateway.invalid/v1/", "https://gateway.invalid/backend-api/codex/models")]
+    [InlineData("https://gateway.invalid/prefix", "https://gateway.invalid/prefix/backend-api/codex/models")]
+    [InlineData("https://gateway.invalid/prefix/", "https://gateway.invalid/prefix/backend-api/codex/models")]
+    [InlineData("https://gateway.invalid/prefix/v1", "https://gateway.invalid/prefix/backend-api/codex/models")]
+    [InlineData("https://gateway.invalid/prefix/v1/", "https://gateway.invalid/prefix/backend-api/codex/models")]
+    public async Task DeclaredManifestEnablesSettingsWithoutInventedWindow(string address, string expectedUrl)
     {
         // Arrange
-        using Sub2ApiCatalogFixture fixture = new();
+        using Sub2ApiCatalogFixture fixture = new(address);
         fixture.Scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<ContextCompactionOptions>>().Value.BudgetPolicy =
             ContextBudgetPolicy.ServerValidationWithUnknownWindow;
         fixture.Handler.Respond = (_, _) => Task.FromResult(Sub2ApiCatalogFixture.Json(MANIFEST));
@@ -36,8 +44,9 @@ public class Sub2ApiManifestSettingsTests
         Assert.Null(result.Data.Model.ContextWindow);
         Assert.Equal(ContextBudgetPolicy.ServerValidationWithUnknownWindow, result.Data.BudgetPolicy);
         Assert.Equal("Bearer pinned-key", Assert.Single(fixture.Handler.Authorizations));
-        string version = typeof(Sub2Api.Configuration.Sub2ApiOptions).Assembly.GetName().Version!.ToString();
-        Assert.Equal("https://gateway.invalid/prefix/v1/models?client_version=" + version, Assert.Single(fixture.Handler.Urls));
+        string url = Assert.Single(fixture.Handler.Urls);
+        Assert.Equal(expectedUrl, url);
+        Assert.DoesNotContain("client_version", url);
         Assert.Equal(0, fixture.KeySource.Calls);
         Assert.Null(TurnModelSettings.From(result.Data).DeclaredInputContextWindow);
     }
@@ -71,6 +80,7 @@ public class Sub2ApiManifestSettingsTests
     [InlineData("{\"models\":[{\"slug\":\"public-model\"},{\"slug\":\"public-model\"}]}", 200, ServiceErrorType.Rejected)]
     [InlineData("{}", 403, ServiceErrorType.Forbidden)]
     [InlineData("{}", 429, ServiceErrorType.Rejected)]
+    [InlineData("{}", 502, ServiceErrorType.Rejected)]
     public async Task MissingDeclarationsAndFailuresDoNotFallback(string body, int status, ServiceErrorType expected)
     {
         // Arrange
@@ -86,6 +96,7 @@ public class Sub2ApiManifestSettingsTests
         // Assert
         Assert.Equal(expected, result.Error!.Type);
         Assert.Equal(1, fixture.Handler.Calls);
+        Assert.Equal("https://gateway.invalid/prefix/backend-api/codex/models", Assert.Single(fixture.Handler.Urls));
         Assert.Null(result.Data);
     }
 }

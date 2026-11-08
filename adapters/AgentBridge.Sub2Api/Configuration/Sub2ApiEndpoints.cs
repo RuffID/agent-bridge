@@ -3,8 +3,8 @@ namespace AgentBridge.Sub2Api.Configuration;
 /// <summary>Разрешает server root или prefix с единственным завершающим /v1.</summary>
 internal static class Sub2ApiEndpoints
 {
-    /// <summary>Не угадывает полный endpoint, encoded route или повторный /v1; не выполняет I/O.</summary>
-    internal static bool TryGetModelsUrl(string? address, out string url)
+    /// <summary>Выбирает ordinary либо прямой manifest без query; не принимает полный endpoint, encoded route или повторный /v1.</summary>
+    internal static bool TryGetModelsUrl(string? address, out string url, bool manifest = false)
     {
         url = string.Empty;
         if (string.IsNullOrWhiteSpace(address) || address.Any(char.IsWhiteSpace) || address.Any(char.IsControl))
@@ -66,7 +66,15 @@ internal static class Sub2ApiEndpoints
             path = path[..^3];
         }
 
-        url = uri.GetLeftPart(UriPartial.Authority) + path + "/v1/models";
+        if (manifest)
+        {
+            url = uri.GetLeftPart(UriPartial.Authority) + path + "/backend-api/codex/models";
+        }
+        else
+        {
+            url = uri.GetLeftPart(UriPartial.Authority) + path + "/v1/models";
+        }
+
         return true;
     }
 }

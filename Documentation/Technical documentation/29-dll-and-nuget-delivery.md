@@ -1,12 +1,14 @@
 # Собственные DLL и обязательные NuGet-зависимости
 
+Текущая проверенная локальная поставка Sub2Api от 2026-11-08: `artifacts/delivery-tests/current/nuget/<Provider>` и полные комплекты `sdk/<Provider>/<RID>`. EF 10.0.14, SqlClient 7.1.1, Tokenizers 2.0.1; 11 собственных DLL. [Результаты05](../Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/results.md) фиксируют manifests, внешний locked restore/compile и Windows tests. Live OAuth и Linux runtime остаются непроверенными. Следующие датированные сведения относятся к прежним поставкам.
+
 Поставка catalog/lifecycle/recovery для 01A от 11.10.2026: `artifacts/assistant01a-delivery-20261011-coherent/SqlServer`, manifest SHA256 `5fd8ddabe234857a68a79d49a74079e384920e7a122af7536dc54b7b97d9206a`. Это отдельный целый schema3 комплект с exact EF 10.0.12 / SqlClient 7.0.2, прошедший external locked restore/compile для трёх SQL Server RID. [Фактический API](30-dialog-catalog-and-recovery.md), полное evidence (история Git) и ограничения приёмки; в Ledger этот комплект не принят автоматически, его 01A остаётся In Progress. Следующие разделы описывают общий механизм поставки.
 
 ## Подключение
 
 AgentBridge, выбранный модуль БД и его migrations assembly, EFCoreLibrary с maintenance и HttpClientLibrary поставляются своими DLL. Сторонние Microsoft/System/Azure и другие зависимости подключаются через PackageReference импортируемого файла. Публикация наших библиотек в NuGet не требуется.
 
-Для SQL Server комплект находится в `artifacts/nuget-delivery/SqlServer`, для SQLite/PostgreSQL — в соседних одноимённых папках. Это сборочные artifacts, которые не входят в исходники. Скопируйте весь выбранный комплект в приложение и импортируйте его **после** остальных PackageReference:
+Для SQL Server текущий комплект находится в `artifacts/delivery-tests/current/nuget/SqlServer`, для SQLite/PostgreSQL — в соседних одноимённых папках. Это сборочные artifacts, которые не входят в исходники. Скопируйте весь выбранный комплект в приложение и импортируйте его **после** остальных PackageReference:
 
 ```xml
 <PropertyGroup>
@@ -26,7 +28,7 @@ AgentBridge/
   delivery.manifest.json          schema3, SHA256, package roots/source graphs
 ```
 
-Текущая source closure включает AgentBridge.Sub2Api.dll через Integration. На этапе02 это подготовленный bundle с ответами Unsupported; транспорт относится к этапу03. Новый состав требует повторной подготовки и проверки комплекта; результаты прежних датированных поставок не подтверждают его приёмку.
+Текущая closure включает AgentBridge.Sub2Api.dll через Integration вместе с сохранённой AgentBridge.CodexLb.dll. Выбор DI не исключает второй адаптер из поставки. Sub2Api поддерживает доступ, manifest/settings и JSON/SSE generation с полным контекстом; compact остаётся Unsupported. Новый состав проверен на05.02; результаты прежних датированных поставок учитываются отдельно.
 
 SQL Server поддерживает win-x64/linux-x64/linux-arm64; SQLite/PostgreSQL комплекты проверены для win-x64. Наши DLL одинаковы для RID выбранного комплекта; native-файлы, разные варианты сторонних сборок и локализации выбирает NuGet/SDK. Они не хранятся в libs. Некоторые Microsoft/System сборки web-приложения предоставляет shared framework ASP.NET Core: SDK не копирует их повторно в output. .NET 10 runtime устанавливается отдельно.
 
@@ -36,7 +38,7 @@ SQL Server поддерживает win-x64/linux-x64/linux-arm64; SQLite/Postgr
 
 [Assemble-NuGetDelivery.ps1](../../tests/Delivery/Build/Assemble-NuGetDelivery.ps1) сначала проверяет полный manifest каждого исходного SDK kit: hashes/size/case/paths/provenance и отсутствие лишних файлов. Наши DLL/XML сохраняются один раз, их bytes должны совпадать между RID. Пакетные roots вычисляются по прямым NuGet-зависимостям всех project libraries в исходном deps; учитывать только AgentBridge.dll недостаточно. Транзитивные зависимости восстанавливает NuGet.
 
-SQL Server имеет 12 обязательных PackageReference: Microsoft.Bcl.Memory, Microsoft.Data.SqlClient, Microsoft.EntityFrameworkCore/Relational/SqlServer, Microsoft.Extensions.DependencyInjection.Abstractions, Logging/Logging.Abstractions, Options.ConfigurationExtensions и три Microsoft.ML.Tokenizers пакета. SQLite имеет 13 roots, PostgreSQL — 12. Версии берутся из проверенного source graph, а не выбираются вручную по имени DLL.
+SQL Server имеет 13 обязательных PackageReference: Microsoft.Bcl.Memory, Microsoft.Data.SqlClient, Microsoft.EntityFrameworkCore/Relational/SqlServer, Microsoft.Extensions.DependencyInjection.Abstractions, Logging/Logging.Abstractions, Options.ConfigurationExtensions, три Microsoft.ML.Tokenizers пакета и System.Security.Cryptography.Pkcs. SQLite имеет 13 roots, PostgreSQL — 12. Версии берутся из проверенного source graph, а не выбираются вручную по имени DLL.
 
 Все roots задаются exact диапазоном `[version]`. Если приложение уже указало тот же пакет с minimum version, равной проверенной версии, импорт приводит её к exact без дубликата. Иная версия, удалённый обязательный пакет или повторный PackageReference отклоняются Error-only target до restore/build. Импорт не запускает скрипты, DLL, приложение или SQL.
 

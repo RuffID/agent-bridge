@@ -1,6 +1,6 @@
 # 04. История и продолжение
 
-Статус: **verification**. Зависимости: обязательный объём первой версии этапа03 без compact.
+Статус: **completed**. Зависимости: обязательный объём первой версии этапа03 без compact.
 
 ## Цель
 
@@ -19,7 +19,7 @@ T05 и отложенные03.03.02–03.03.06 не являются завис�
 | Подэтап | Статус | Зависимости | Результат |
 | --- | --- | --- | --- |
 | [04.01. Provenance и граница смены коннектора](04.01-connector-provenance.md) | completed | 03.03.01 в обязательном объёме03 | Guards и единственный новый JSON-формат проверены изолированно. |
-| [04.02. Полный ход, restart и отсутствие повторов](04.02-restart-and-recovery.md) | verification | 04.01 | 16 новых изолированных сценариев; реальный persistence restart не проверен. |
+| [04.02. Полный ход, restart и отсутствие повторов](04.02-restart-and-recovery.md) | completed | 04.01 | 16 isolated сценариев и 5 PostgreSQL cases: новый DI, payload/provenance, fence/recovery и no-replay. |
 
 ## Общий результат и приёмка
 
@@ -27,4 +27,6 @@ T05 и отложенные03.03.02–03.03.06 не являются завис�
 
 ## Фактический результат
 
-04.01 завершён изолированно. На04.02 выполнены полный ход, сериализованный restart с новым DI и отказы/recovery/no-replay; все16 новых сценариев и499 изолированных persistence cases прошли. Core569/Sub2Api170/CodexLb422 также прошли: всего1660 cases, failed/skipped0, без суммирования повторных прогонов. Реальный restart/recovery БД выделен в04.02.04 и не выполнен: текущие ограничения запрещают БД/Docker. [Фактические результаты и ограничения](results.md). Этап05 не начат; compact/T05 не изменены.
+04.01 завершён изолированно. На04.02 проверены полный ход, serialized restart, отказы и no-replay; на04.02.04 добавлены и выполнены5 PostgreSQL cases с настоящими persistence/EFCoreLibrary и local HTTP. Подтверждены JSON/SSE после нового facade root, сохранность original SQL rows, Started до handler, lost start/outcome acknowledgement, live/expired lease, stale epoch и durable explicit recovery без повторного инструмента.
+
+Актуальные isolated результаты: Core569/Sub2Api178/CodexLb422/Persistence510 и Console63 —1742 passed; последние проверки persistence после новых tests также прошли. Отдельно PostgreSQL5 passed; failed/errors/skipped0. Это provider reconnect приложения/DI, без рестарта PostgreSQL/ОС и без физического сетевого сбоя. [Фактические результаты и ограничения](results.md). Этап04 completed;05 не начат, compact/T05 не изменены.

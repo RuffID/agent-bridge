@@ -2,7 +2,7 @@
 
 В обычном решении подключены пять тестовых проектов ядра, транспорта, композиции, хранения и hosting. API-тесты Sub2Api читают текстовый эталон из embedded resource и не требуют сохранённых DLL или каталога профиля.
 
-Metadata, LegacyBaseline и внешний Compatibility представлены в solution как документы для отдельного запуска. Сборка решения и самих тестовых проектов не запускает упаковщики или PowerShell.
+Metadata, LegacyBaseline, Abi и внешний Compatibility представлены в solution как документы для отдельного запуска. Сборка решения и самих тестовых проектов не запускает упаковщики или PowerShell.
 
 ## Проверка текущей поставки
 
@@ -47,6 +47,14 @@ dotnet test --project tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.T
 ## Внешний DLL-потребитель
 
 `Compatibility/` проверяется отдельно после копирования исходников за пределы репозиториев с импортом целого выбранного binary kit. Правила — [Compatibility/AGENTS.md](Compatibility/AGENTS.md). Это отдельный этап проверки поставки, а не source ProjectReference unit-тест.
+
+## Старые DLL на новой поставке
+
+[Abi](Abi/AgentBridge.Delivery.Abi.Tests.csproj) читает PE metadata без исполнения target DLL. При сборке явно передаются `AgentBridgeLegacyBaselineRoot` и `AgentBridgeCurrentDeliveryRoot` с абсолютными путями к сохранённому baseline и подготовленному `current`. Запуск — `dotnet <test-assembly.dll> -noLogo -longRunning 30` после local restore и compile-check этого проекта с `GeneratePackageOnBuild=false`.
+
+Проверяются pinned hashes старой поставки, все TypeRef/MemberRef/MethodSpec original/surface DLL на SQL Server win-x64/linux-x64/linux-arm64 и semantic public/protected поверхность на всех пяти вариантах. Frozen DLL напрямую зависят от SQL Server и не являются потребителями SQLite/PostgreSQL. Их неизменённые исходники отдельно компилируются во всей матрице. Synthetic positive/negative controls проверяют сам verifier; unknown metadata shape даёт отказ. Это статическое evidence совместимости, без runtime old consumer или старого формата диалогов.
+
+Текущие результаты Sub2Api и внешних consumers — [05.01–05.02](../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/results.md). Они не заменяют live05.03.
 
 ## Разрешения
 

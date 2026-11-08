@@ -6,7 +6,7 @@
 
 ## Технические вопросы разработчику — внутренний раздел
 
-T01/T02/T04/T05 открыты. Первая версия согласована без compact: T05 относится к отложенной работе. Полный контекст и явный отказ при превышении бюджета сохраняются. [Результаты03](03-sub2api/results.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованную generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge; server transformations допустимы без обещания upstream сохранности. Provenance T03 проверен в изолированных границах04.01;04.02 verification после16 новых isolated runner/restart/recovery cases. Реальный persistence restart04.02.04 не выполнялся; БД/Docker запрещены в текущем запуске.
+T01/T02/T05 открыты; T04 закрыт в локальных границах05.02. Первая версия согласована без compact: T05 относится к отложенной работе. Полный контекст и явный отказ при превышении бюджета сохраняются. [Результаты03](03-sub2api/results.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованную generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge; server transformations допустимы без обещания upstream сохранности. Provenance T03 проверен изолированно на04.01;04.02 и этап04 completed после16 isolated runner/restart/recovery cases и5 PostgreSQL cases04.02.04. Проверены reconnect приложения, fence и explicit recovery, без физического сетевого сбоя или рестарта PostgreSQL. [Результаты05](05-acceptance/results.md) подтверждают новую поставку/API/ABI и external consumers; live T02 остаётся05.03, not-started.
 
 ### T01. Доказанный входной бюджет и происхождение metadata
 
@@ -22,9 +22,9 @@ OAuth stream/store и SSE→JSON не объявляются потерями с
 
 ### T04. Новая поставка и прежняя бинарная поверхность
 
-Изолированный PE/API comparator и source-linked legacy probe сохраняют прежние сигнатуры; это не проверка resolution frozen binaries против fresh closure. Baseline kit и frozen DLL не перезаписываются. На05.02 остаются source rebuild прежнего consumer, semantic API и TypeRef/MemberRef/MethodSpec resolution новой поставки, новые consumers и RID. [Методика01](01-contracts/compatibility-checks.md) и исторические [результаты02](02-composition/results.md) сохраняются.
+Закрыт2026-11-08 на05.02: semantic API на пяти variants, все TypeRef/MemberRef/MethodSpec original/surface frozen SQL Server DLL на трёх SQL Server RID, source rebuild без бизнес-правок на пяти variants и новый Sub2Api consumer прошли. Подготовлены fresh kits; exact locks/output hashes,42 Metadata/23 ABI/7 external Windows cases подтверждены. [Результаты05](05-acceptance/results.md) отделяют статическую ABI от Windows runtime и непроверенного Linux/live. Baseline kit и frozen DLL только читались. [Методика01](01-contracts/compatibility-checks.md) и исторические [результаты02](02-composition/results.md) сохраняются.
 
-Новый unknown-window режим использует nullable DeclaredInputContextWindow; legacy int getter fail-fast при null. Snapshot v2 читает обновлённый AgentBridge; старый reader v1 его не принимает. Это ограничение согласованного бюджетного режима, не доказательство полной old→new ABI.
+Новый unknown-window режим использует nullable DeclaredInputContextWindow; legacy int getter fail-fast при null. Snapshot v2 читает обновлённый AgentBridge; старый reader v1 его не принимает. Это сохранённое ограничение согласованного бюджетного режима; T04 не обещает поддержку старых JSON-диалогов или runtime всех методов arbitrary consumer.
 
 ### T05. Совместимость compact — отдельная отложенная работа
 

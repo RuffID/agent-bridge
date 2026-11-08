@@ -107,7 +107,12 @@ public class Sub2ApiRunFlowTests
         Assert.Equal(1, fixture.Transport.CatalogCalls);
         Assert.Equal(2, fixture.Transport.Bodies.Count);
         Assert.All(fixture.Transport.Authorizations, value => Assert.Equal("Bearer synthetic-pinned-key", value));
-        Assert.All(fixture.Transport.Urls, value => Assert.StartsWith("https://gateway.invalid/prefix/v1/", value));
+        Assert.Equal(
+        [
+            "https://gateway.invalid/prefix/backend-api/codex/models",
+            "https://gateway.invalid/prefix/v1/responses",
+            "https://gateway.invalid/prefix/v1/responses"
+        ], fixture.Transport.Urls);
         Assert.All(fixture.Transport.Bodies, body =>
         {
             Assert.Equal("gpt-5", body.GetProperty("model").GetString());

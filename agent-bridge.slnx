@@ -74,6 +74,8 @@
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/05.01-regression.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/05.02-binary-delivery.md" />
     <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/05.03-live-acceptance.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/results.md" />
+    <File Path="Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/scenario-coverage.md" />
   </Folder>
   <Folder Name="/Documentation/openspec/changes/add-sub2api-connector/">
     <File Path="openspec/changes/add-sub2api-connector/proposal.md" />
@@ -147,10 +149,30 @@
     <File Path="tests/Delivery/Build/Assemble-NuGetDelivery.ps1" />
     <File Path="tests/Delivery/Build/Prepare-DeliveryTests.ps1" />
     <File Path="tests/Delivery/Consumer/AgentBridge.BinaryConsumer.csproj" />
+    <File Path="tests/Delivery/Consumer/AGENTS.md" />
+    <File Path="tests/Delivery/Consumer/Sub2ApiRegistration.cs" />
     <File Path="tests/Delivery/Consumer/LegacyTransportSurfaceProbe.cs" />
     <File Path="tests/Delivery/Metadata/AgentBridge.Delivery.Metadata.Tests.csproj" />
     <File Path="tests/Delivery/LegacyBaseline/AGENTS.md" />
     <File Path="tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.Tests.csproj" />
     <File Path="tests/Delivery/LegacyBaseline/LegacyBaselineTests.cs" />
+  </Folder>
+  <Folder Name="/Tests/Delivery/Abi/">
+    <File Path="tests/Delivery/Abi/AGENTS.md" />
+    <File Path="tests/Delivery/Abi/AgentBridge.Delivery.Abi.Tests.csproj" />
+    <File Path="tests/Delivery/Abi/AbiEvidence.cs" />
+    <File Path="tests/Delivery/Abi/AbiGenericConstraints.cs" />
+    <File Path="tests/Delivery/Abi/AbiSignatureProvider.cs" />
+    <File Path="tests/Delivery/Abi/AbiTypeSignature.cs" />
+    <File Path="tests/Delivery/Abi/ConsumerReferenceSites.cs" />
+    <File Path="tests/Delivery/Abi/FrozenConsumerAbiTests.cs" />
+    <File Path="tests/Delivery/Abi/FrozenReferenceVerifier.cs" />
+    <File Path="tests/Delivery/Abi/FrozenReferenceVerifierTests.cs" />
+  </Folder>
+  <Folder Name="/Tests/Delivery/Compatibility/">
+    <File Path="tests/Delivery/Compatibility/AGENTS.md" />
+    <File Path="tests/Delivery/Compatibility/AgentBridge.BinaryCompatibility.Tests.csproj" />
+    <File Path="tests/Delivery/Compatibility/BinaryCompatibilityTests.cs" />
+    <File Path="tests/Delivery/Compatibility/Sub2ApiBinaryTests.cs" />
   </Folder>
 </Solution>

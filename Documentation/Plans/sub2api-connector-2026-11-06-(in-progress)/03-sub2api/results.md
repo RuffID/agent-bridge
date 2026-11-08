@@ -1,5 +1,15 @@
 # Результаты этапа03
 
+## Исправление manifest-маршрута, 2026-11-08
+
+По результату реальной диагностики обнаружена ошибка: assembly version AgentBridge `1.0.0.0` передавалась в client_version, который sub2api пересылает upstream как Codex-версию. Upstream отклонил формат HTTP 400, sub2api вернул HTTP 502. Разрешённый одиночный диагностический GET к настроенному sub2api по `/backend-api/codex/models` без client_version вернул HTTP 200, массив из21 модели и необходимые объявления для выбранных модели/effort/API-доступности. Проверка выполнялась отдельным HTTP-запросом, не через изменённую DLL, без запуска консоли, generation или операций БД; raw body и ключ не сохранялись.
+
+В Sub2ApiModelCatalog и internal URL builder изменён выбор manifest для ServerValidationWithUnknownWindow: `/backend-api/codex/models` без query и без версии приложения/фиксированной версии Codex. Действующей upstream Codex-версией управляет sub2api. Ordinary `/v1/models`, prefix/конечный `/v1`, выбранный Bearer и существующие deadline/error/cleanup guards сохранены. Нет новых retries, fallback, настроек, public API, миграций или изменений sub2api/HttpClientLibrary/EFCoreLibrary.
+
+Добавлены assertions actual bundle/settings для восьми форм BaseAddress (root/prefix, с конечным `/v1` и без него) и HTTP 502 без второго запроса. Addressed compile-check коннектора и Sub2Api.Tests с `BuildProjectReferences=false`, `GeneratePackageOnBuild=false`, `--no-restore` завершился с0 warnings/errors. Тесты не запускались. В консольный потребитель скопированы только новая AgentBridge.Sub2Api.dll и XML с проверкой SHA256; базовые AgentBridge.dll/HttpClientLibrary.dll совпали с его комплектом. Это не полный этап05 поставки.
+
+Генерация через обновлённый коннектор, выполнение инструмента и реальный persistence restart/recovery этим исправлением не проверены. Этап04 остаётся verification, этап05 и compact не начинались. Приведённые ниже датированные результаты и прежний маршрут в историческом описании сохранены как история; действующее поведение описано в [клиентской адаптации](client-adaptation.md).
+
 Текущее продолжение после зафиксированных ниже результатов03: [04.01](../04-dialog-state/04.01-connector-provenance.md) completed изолированно;04.02 verification после16 новых runner/restart/recovery cases и1660 passed isolated cases в четырёх наборах. Поддержка старых сохранённых диалогов отменена, используется один новый формат. [Результаты04](../04-dialog-state/results.md). Реальный persistence restart04.02.04 не выполнялся;05 не начат. Нижеследующие результаты03 и их отметки о ещё не начатом04 сохраняют состояние на момент соответствующего прохода, а не текущий статус04.
 
 Дата: 2026-11-07. Статус: **verification в объёме первой версии без compact**; отложенный compact остаётся blocked T05. [Этап](main.md) · [Ограничения](contract-blockers.md) · [Клиентская адаптация](client-adaptation.md).
