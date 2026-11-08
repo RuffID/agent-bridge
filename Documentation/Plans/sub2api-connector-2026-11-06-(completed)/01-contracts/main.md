@@ -10,7 +10,7 @@
 
 Чтение текущих AgentBridge/sub2api, тестовые образцы без секретов и проектирование. Вызовы реального сервера и изменение соседних проектов не входят.
 
-Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md).
+Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/specs/agent-runtime/spec.md).
 
 ## Подэтапы
 

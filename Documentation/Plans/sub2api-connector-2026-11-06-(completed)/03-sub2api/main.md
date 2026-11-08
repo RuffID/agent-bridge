@@ -1,6 +1,6 @@
 # 03. Коннектор sub2api
 
-Статус: **verification** в объёме первой версии без compact (budget/settings и generation реализованы; T01/T02 открыты). Отложенный compact — blocked T05. Зависимости: Этап02.
+Статус: **completed** в согласованном объёме первой версии без compact. T02 закрыт на05.03; T01 остаётся исследованием источника бюджета и не блокирует принятый unknown-window режим. Отложенный compact — blocked T05. Зависимости: Этап02.
 
 ## Цель
 
@@ -8,18 +8,18 @@
 
 ## Границы
 
-Актуальное продолжение: [04.01](../04-dialog-state/04.01-connector-provenance.md) completed изолированно;04.02 verification после16 новых runner/restart/recovery cases, реальный provider restart04.02.04 не выполнялся. Этап05 не начат. Описания результата03 ниже относятся к его собственному проходу; текущий статус04 — в [результатах04](../04-dialog-state/results.md).
+Актуальное продолжение:04 completed после PostgreSQL04.02.04;05.01–05.02 completed локально. [Live05.03](../05-acceptance/05.03-live-acceptance.md) подтвердил JSON/SSE/tools/restart,3 generation/2 manifest/1 probe; тег deployment latest подтверждён пользователем,05 completed в согласованном объёме. Описания собственного прохода03 ниже и исторические результаты сохранены; текущий статус04 — в [результатах04](../04-dialog-state/results.md).
 
 Новый net10.0 adapter и isolated tests. Только ключ sub2api, HTTP/SSE и выбранное OpenAI-направление; live acceptance относится к05.03.
 
-Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md).
+Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/specs/agent-runtime/spec.md).
 
 ## Подэтапы
 
 | Подэтап | Статус | Зависимости | Результат |
 | --- | --- | --- | --- |
-| [03.01. Настройки, ключ и каталог моделей](03.01-catalog-and-access.md) | verification | 02.02 | Доступ/ordinary и manifest settings с явным unknown window проверены; T01 не закрыт |
-| [03.02. JSON/SSE генерация и инструменты](03.02-generation-and-tools.md) | verification | 03.01 | Actual JSON/SSE через HttpClientLibrary, canonical на границе AgentBridge; live T02 открыт |
+| [03.01. Настройки, ключ и каталог моделей](03.01-catalog-and-access.md) | completed в unknown-window режиме первой версии | 02.02 | Доступ/ordinary и manifest settings с явным unknown window проверены; T01 не закрыт |
+| [03.02. JSON/SSE генерация и инструменты](03.02-generation-and-tools.md) | completed | 03.01 | Actual JSON/SSE/tools/restart прошли live на05.03; T02 закрыт для проверенного маршрута latest по подтверждению пользователя |
 | [03.03. Полный контекст и отложенный compact](03.03-compaction.md) | completed в изолированных границах первой версии | Реализованный путь03.02 | Automatic compact отключён, full request выше threshold через guard проверен; ручной/force Unsupported; дальнейший compact вынесен за объём первой версии |
 
 ### Детализация03.03
@@ -35,7 +35,7 @@
 | [03.03.05. Принятие окна](03.03.05-window-activation.md) | not-started; за объёмом первой версии | 03.03.04, действующее основание03.03.02 | Completed-only, сохранение до активации, prefix/хвост/история |
 | [03.03.06. Проверки compact](03.03.06-compact-verification.md) | not-started; за объёмом первой версии | 03.03.05 | Регрессия и сведение evidence/статусов |
 
-Статический вывод03.03.02 не изменился; совместимость compact не подтверждена.03.03.03–03.03.06 не начинаются;03.03.01 остаётся рабочим режимом первой версии. T01 относится к03.01 и не блокирует разрешённый unknown-window режим; live T02 остаётся05.03. Этап03 — verification, а не полная приёмка. Provenance/restart04, новая поставка05 и live-приёмка не начинались; изменение объёма не разрешает их реализацию.
+Статический вывод03.03.02 не изменился; совместимость compact не подтверждена.03.03.03–03.03.06 не начинаются;03.03.01 остаётся рабочим режимом первой версии. T01 относится к03.01 и не блокирует разрешённый unknown-window режим. Live-сценарии T02 прошли на05.03; пользователь подтвердил тег deployment latest. Этап03 completed в согласованном объёме первой версии. Provenance/restart04 и новая поставка05.02 выполнены по отдельным поручениям; compact и sync/archive не начинались.
 
 ## Общий результат и приёмка
 

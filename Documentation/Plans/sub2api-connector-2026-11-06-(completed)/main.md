@@ -1,14 +1,14 @@
 # Подключение sub2api к AgentBridge
 
-Дата создания: 2026-11-06. Статус плана: **in-progress**. Этапы01–02/04 завершены в своих границах;03 и05 — verification до live05.03.05.01–05.02 completed. Отложенный compact остаётся blocked T05.
+Дата создания: 2026-11-06. Статус плана: **completed** на2026-11-08. Этапы01–05 завершены в согласованном объёме первой версии без compact. Тег проверенного deployment latest подтверждён пользователем. Требования синхронизированы в main spec, change архивирован. Отложенный compact остаётся blocked T05.
 
 ## Цель и основание
 
 Добавить рядом с codex-lb отдельный коннектор sub2api. Приложение выбирает технологию в DI; его существующие вызовы AgentBridge для диалогов, агента, инструментов и настроек сохраняются. AgentBridge авторизуется API-ключом, выпущенным в sub2api; отдельный OpenAI API key приложению не требуется.
 
-Выполнены контракты/baseline01 и композиция/shared Responses02. На03 existing Sub2Api bundle получил доступ/ordinary каталог и разрешённый ServerValidationWithUnknownWindow: manifest объявляет ID/effort/API-доступность, settings и snapshot сохраняют неизвестное окно без guessed defaults. Прежние политики остаются строгими к окну. JSON/SSE generation реализована с canonical гарантией на входе sub2api и в истории AgentBridge; existing server transformations допустимы без обещания upstream сохранности. Compact блокируется до HTTP из-за неподтверждённой совместимости T05. Свежая DLL-поставка и external API/ABI проверены на05.02; live05.03 не начат.
+Выполнены контракты/baseline01 и композиция/shared Responses02. На03 existing Sub2Api bundle получил доступ/ordinary каталог и разрешённый ServerValidationWithUnknownWindow: manifest объявляет ID/effort/API-доступность, settings и snapshot сохраняют неизвестное окно без guessed defaults. Прежние политики остаются строгими к окну. JSON/SSE generation реализована с canonical гарантией на входе sub2api и в истории AgentBridge; existing server transformations допустимы без обещания upstream сохранности. Compact блокируется до HTTP из-за неподтверждённой совместимости T05. Свежая DLL-поставка и external API/ABI проверены на05.02; на05.03 live JSON/SSE/tools/restart прошли, тег deployment latest подтверждён пользователем.
 
-Предлагаемые проверяемые требования находятся в [OpenSpec change](../../../openspec/changes/add-sub2api-connector/proposal.md), пояснения — в [design](../../../openspec/changes/add-sub2api-connector/design.md). [Действующие требования](../../../openspec/specs/agent-runtime/spec.md) не синхронизированы с delta; на05.01 исправлена только структура длинных блоков для strict validation. [Вопросы](open-questions.md) содержат оставшиеся технические проверки; открытых клиентских решений нет.
+[Действующие требования](../../../openspec/specs/agent-runtime/spec.md) синхронизированы с принятым объёмом. [Архив OpenSpec change](../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/proposal.md) и [design](../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/design.md) сохраняют историю; [стабильный контекст](../../../openspec/specs/agent-runtime/sub2api.md) описывает подключение и ограничения. [Вопросы](open-questions.md) содержат оставшиеся технические проверки; открытых клиентских решений нет.
 
 Первая версия согласована без обязательного compact. Её рабочий режим — полный контекст через отдельный generation budget guard; при превышении бюджета возвращается явная ошибка без обрезания истории или повторной отправки. Продолжение сколь угодно длинного диалога не гарантируется. Compact вынесен в отдельную отложенную работу03.03.02–03.03.06 с открытым T05 и не блокирует приёмку первой версии. Это изменение объёма, а не подтверждение совместимости окна или завершение остальных проверок.
 
@@ -30,15 +30,15 @@
 | --- | --- | --- | --- |
 | [01. Контракты и совместимость](01-contracts/main.md) | completed | Нет | Матрица с источниками/образцами и сохранённый source/PE baseline; два compile-check green |
 | [02. DI и общая обработка Responses](02-composition/main.md) | completed | 01 | Выбор bundle, собственные Sub2Api options, shared source и проверенная legacy поверхность |
-| [03. Коннектор sub2api](03-sub2api/main.md) | verification | 02 | Первая версия без compact; доступ/settings/generation и полный контекст проверены изолированно, T01/T02 открыты; отложенный compact blocked T05 |
+| [03. Коннектор sub2api](03-sub2api/main.md) | completed в объёме первой версии | 02 | Unknown-window settings и live T02 приняты; T01 остаётся исследованием, отложенный compact blocked T05 |
 | [04. История и продолжение](04-dialog-state/main.md) | completed | Обязательный объём03 без compact | Изолированные guards/runner/recovery и 5 PostgreSQL restart/fence/recovery cases без replay прошли |
-| [05. Проверки и поставка](05-acceptance/main.md) | verification | 04 |05.01–05.02 completed: regression/strict validation/fresh kits/API/ABI/external consumers;05.03 not-started |
+| [05. Проверки и поставка](05-acceptance/main.md) | completed | 04 |05.01–05.02 completed; live05.03 прошёл:3 generation/2 manifest/1 probe. Тег deployment latest подтверждён пользователем |
 
 Зависимости в таблицах этапов обязательны. Независимые подэтапы не требуют делегирования. Запуск каждого этапа — только после отдельного поручения реализации.
 
 ### Детализация оставшейся работы03
 
-В [навигаторе03](03-sub2api/main.md) сохранены03.01/03.02. Обязательный объём03.03 первой версии ограничен [03.03.01 — безопасным полным контекстом](03-sub2api/03.03.01-full-context-mode.md), completed изолированно. [03.03.02 — пригодность compact-окна](03-sub2api/03.03.02-window-compatibility.md) остаётся blocked T05: анализ завершён без основания допуска.03.03.03–03.03.06 — not-started, отдельная отложенная работа. Без нового достаточного основания и поручения compact transport не начинается. T01 не блокирует unknown-window режим; live T02 остаётся05.03. 04.01 completed изолированно;04.02 completed после PostgreSQL проверки04.02.04. По поручению выполнены05.01–05.02; [результаты05](05-acceptance/results.md) подтверждают локальную регрессию/поставку.05.03 не начат и требует отдельного согласования live-границ.
+В [навигаторе03](03-sub2api/main.md) сохранены03.01/03.02. Обязательный объём03.03 первой версии ограничен [03.03.01 — безопасным полным контекстом](03-sub2api/03.03.01-full-context-mode.md), completed изолированно. [03.03.02 — пригодность compact-окна](03-sub2api/03.03.02-window-compatibility.md) остаётся blocked T05: анализ завершён без основания допуска.03.03.03–03.03.06 — not-started, отдельная отложенная работа. Без нового достаточного основания и поручения compact transport не начинается. T01 не блокирует unknown-window режим. 04.01 completed изолированно;04.02 completed после PostgreSQL проверки04.02.04. По поручению выполнены05.01–05.02; [результаты05](05-acceptance/results.md) подтверждают локальную регрессию/поставку. [Live-сценарии T02 на05.03](05-acceptance/05.03-live-acceptance.md) прошли после разрешения точных команд и подтверждения тестовой БД/OAuth-группы:3 генерации,2 manifest,1 probe, JSON→restart→SSE с сохранением всей истории.Пользователь подтвердил тег deployment latest;05.03 completed, T02 закрыт для проверенного маршрута. Дополнительных live-запросов не выполнялось.
 
 ## Итоговая приёмка
 
@@ -56,7 +56,15 @@ Isolated green, бинарная компиляция, Windows runtime и live O
 
 Подготовлены 19 документов плана и 4 документа OpenSpec change. Проверены 70 относительных ссылок, наличие всех новых документов в solution, XML решения, статусы и UTF-8 без повреждённых символов. Навигаторы документации обновлены.
 
-При первоначальной подготовке плана код коннекторов, csproj, настройки runtime и БД не изменялись; сборки, тесты, live HTTP и CLI OpenSpec не запускались. Проверки, выполненные позднее на этапе01, описаны ниже; строгая CLI-валидация нового change ещё не подтверждена.
+При первоначальной подготовке плана код коннекторов, csproj, настройки runtime и БД не изменялись; сборки, тесты, live HTTP и CLI OpenSpec не запускались. Проверки, выполненные позднее на этапе01, описаны ниже; последующие strict CLI и live результаты учитываются отдельно в итоговом закрытии.
+
+## Финальное закрытие2026-11-08
+
+По поручению пользователя требования синхронизированы в main spec:8 добавлены,6 уточнены, остальные156 исходных требований сохранены без изменений. Main содержит170 требований; все14 блоков архивной delta совпадают с main, дубликатов нет.35 обязательных задач выполнены; T01 и compact03.03.02–03.03.06 сохранены как отложенная работа вне задач change, без отметки выполнения.
+
+Историческая карта05.01 с35 сценариями не переписывалась. Финальная delta содержит43 сценария: дополнительно включены existing правила каталога, settings и compact. Их реализация сверена статически с ModelSelectionValidator, Sub2ApiModelCatalog, ContextCompactor и IModelGateway. Existing Sub2ApiManifestSettingsTests проверяют manifest/ordinary маршруты, объявления и отсутствие fallback; UnknownWindowBudgetTests — явный режим без подстановки бюджета; Sub2ApiAutomaticCompactionTests — полный request, отдельный guard, Disabled и Unsupported force. Сценарии прежнего compact сохраняют existing ContextCompactorTests. Новых требований поведения и новых запусков тестов при sync/archive нет.
+
+`openspec status` подтвердил все4 artifacts done; `openspec instructions apply` —35/35 и all_done. `openspec validate add-sub2api-connector --strict --no-interactive` перед переносом и `openspec validate --specs --strict --no-interactive` после переноса завершились успешно. Change перенесён в [архив](../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/proposal.md), этот план — в completed. Ссылки и solution items скорректированы; baseline/evidence и frozen DLL не переписывались. Ниже сохранены исторические итоги этапов в их прежних границах; они не отменяют итогового статуса.
 
 ## Результат этапа01
 
@@ -74,7 +82,7 @@ Isolated green, бинарная компиляция, Windows runtime и live O
 
 ## Текущий результат этапа03
 
-Текущее продолжение после03: этап04 и [04.02](04-dialog-state/04.02-restart-and-recovery.md) completed. [Результаты04](04-dialog-state/results.md):1742 isolated cases прошли с учётом консоли; отдельно5 PostgreSQL cases подтверждают новый DI/DbContext, полный payload/provenance, fence/recovery и отсутствие replay. Failed/errors/skipped0. Restart означает reconnect приложения над настоящей БД; физический сетевой сбой и рестарт сервера не моделировались.05.01–05.02 completed:1707 isolated cases, strict validation, fresh kits и external API/ABI/Windows tests прошли; T04 закрыт локально.05.03 not-started. Приведённые ниже результаты03 относятся к его собственному завершённому проходу.
+Текущее продолжение после03: этап04 и [04.02](04-dialog-state/04.02-restart-and-recovery.md) completed. [Результаты04](04-dialog-state/results.md):1742 isolated cases прошли с учётом консоли; отдельно5 PostgreSQL cases подтверждают новый DI/DbContext, полный payload/provenance, fence/recovery и отсутствие replay. Failed/errors/skipped0. Restart означает reconnect приложения над настоящей БД; физический сетевой сбой и рестарт сервера не моделировались.05.01–05.02 completed:1707 isolated cases, strict validation, fresh kits и external API/ABI/Windows tests прошли; T04 закрыт локально.05.03 completed после live JSON→restart→SSE:3 generation/2 manifest/1 probe, без replay. Приведённые ниже результаты03 относятся к его собственному завершённому проходу.
 
 Пользователь разрешил отдельный ServerValidationWithUnknownWindow и budget snapshot v1/v2 со чтением прежнего формата. Реализованы declared manifest settings, validator/guard/status/compactor без числовой подстановки и без ослабления старых политик. T01 открыт как вопрос доказанного бюджета, но не блокирует явный новый settings режим.
 

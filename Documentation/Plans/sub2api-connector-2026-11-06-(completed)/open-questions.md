@@ -6,19 +6,13 @@
 
 ## Технические вопросы разработчику — внутренний раздел
 
-T01/T02/T05 открыты; T04 закрыт в локальных границах05.02. Первая версия согласована без compact: T05 относится к отложенной работе. Полный контекст и явный отказ при превышении бюджета сохраняются. [Результаты03](03-sub2api/results.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованную generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge; server transformations допустимы без обещания upstream сохранности. Provenance T03 проверен изолированно на04.01;04.02 и этап04 completed после16 isolated runner/restart/recovery cases и5 PostgreSQL cases04.02.04. Проверены reconnect приложения, fence и explicit recovery, без физического сетевого сбоя или рестарта PostgreSQL. [Результаты05](05-acceptance/results.md) подтверждают новую поставку/API/ABI и external consumers; live T02 остаётся05.03, not-started.
+T01/T05 открыты; T02 закрыт на05.03 для проверенного маршрута; пользователь подтвердил тег deployment latest. T04 закрыт в локальных границах05.02. Первая версия согласована без compact: T05 относится к отложенной работе. Полный контекст и явный отказ при превышении бюджета сохраняются. [Результаты03](03-sub2api/results.md) и [клиентская адаптация](03-sub2api/client-adaptation.md) различают реализованную generation и неподтверждённый compact. Canonical гарантия относится к границе AgentBridge; server transformations допустимы без обещания upstream сохранности. Provenance T03 проверен изолированно на04.01;04.02 и этап04 completed после16 isolated runner/restart/recovery cases и5 PostgreSQL cases04.02.04. Проверены reconnect приложения, fence и explicit recovery, без физического сетевого сбоя или рестарта PostgreSQL. [Результаты05.01–05.02](05-acceptance/results.md) подтверждают новую поставку/API/ABI и external consumers; [live05.03](05-acceptance/05.03-live-acceptance.md) — JSON/SSE/tools/restart на подтверждённых пользователем OAuth-группе и тестовой PostgreSQL,3 generation/2 manifest/1 probe.
 
 ### T01. Доказанный входной бюджет и происхождение metadata
 
 Достаточного публичного источника InputContextWindow не найдено. context_window, max_context_window,95%, token threshold и похожие поля не подставляются. Ordinary каталог сохраняет только ID; явный новый режим читает existing manifest и проецирует exact slug/effort/API-доступность как объявления, не как independently verified pool metadata.
 
 При новом режиме validator/guard/snapshot допускают null окно, локальный порог и обязательную серверную проверку; это больше не блокирует пригодный settings path. Прежние strict и ServerValidation требуют известного окна. T01 остаётся открытым как проверка источника бюджета/metadata, а не требование нового server API. Изолированная fixture проверяет клиентскую проекцию, не серверную истинность budget или применимость всего pool.
-
-### T02. Полный контекст с OAuth и инструментами
-
-Actual Sub2Api JSON/SSE generation реализована и проверена через existing composition/HttpClientLibrary с fake handlers/local streams. Передаются полное принятое compact-окно, непокрытый хвост и текущий input без previous_response_id/legacy turn-state; call/output пары и ordering сохраняются на клиентской границе. Incoming continuation отклоняется до factory, returned response id не создаёт continuation. Client retries, смена ключа/модели/коннектора и business tool replay запрещены. Isolated проверки не подтверждают развёрнутый OAuth/tool chain; эта часть T02 остаётся открытой для05.
-
-OAuth stream/store и SSE→JSON не объявляются потерями сами по себе. При отсутствии terminal возможен SSE fallback: будущий клиент обязан сохранять partial output и не подтверждать Completed по HTTP200/EOF. Live/OAuth, caller server drain и биллинг в текущем запуске не проверяются.
 
 ### T04. Новая поставка и прежняя бинарная поверхность
 

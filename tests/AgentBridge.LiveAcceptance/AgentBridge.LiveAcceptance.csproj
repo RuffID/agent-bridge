@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**</DefaultItemExcludes>
+    <UseAppHost>false</UseAppHost>
+    <ConsoleSource>$(MSBuildThisFileDirectory)..\..\..\agent-bridge-console\</ConsoleSource>
+    <DeliveryRoot>$(MSBuildThisFileDirectory)..\..\artifacts\delivery-tests\current\nuget\PostgreSql\</DeliveryRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="[10.0.14]" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="[10.0.14]" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="[10.0.14]" />
+    <Compile Include="$(ConsoleSource)ConsoleConfiguration.cs" Link="Console/ConsoleConfiguration.cs" />
+    <Compile Include="$(ConsoleSource)ConfigurationFileException.cs" Link="Console/ConfigurationFileException.cs" />
+    <Compile Include="$(ConsoleSource)ConsoleIdentity.cs" Link="Console/ConsoleIdentity.cs" />
+    <Compile Include="$(ConsoleSource)ConsoleCatalogProjector.cs" Link="Console/ConsoleCatalogProjector.cs" />
+    <Compile Include="$(ConsoleSource)VisibleText.cs" Link="Console/VisibleText.cs" />
+    <Compile Include="$(ConsoleSource)ProbeTool.cs" Link="Console/ProbeTool.cs" />
+    <Compile Include="$(ConsoleSource)ProbeToolValidator.cs" Link="Console/ProbeToolValidator.cs" />
+  </ItemGroup>
+  <Import Project="$(DeliveryRoot)AgentBridge.Delivery.props" />
+</Project>

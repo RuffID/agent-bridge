@@ -2,7 +2,7 @@
 
 ## Явный режим неизвестного окна
 
-Клиентская адаптация03 добавляет optional `Compaction.BudgetPolicy=ServerValidationWithUnknownWindow`. Model/effort/API-доступность проверяются по объявленному каталогу; окно остаётся null, threshold — локальным ориентиром, а окончательный приём и соблюдение reserve не гарантируются клиентом. Прежние strict/ServerValidation и codex-lb settings сохраняют известное окно. Nullable DeclaredInputContextWindow и budget JSON v1/v2 описаны в [клиентском контракте03](<../Plans/sub2api-connector-2026-11-06-(in-progress)/03-sub2api/client-adaptation.md>); бюджетная policy сама по себе не доказывает upstream приём/identity. Sub2Api generation реализована с отдельной принятой canonical границей, compact остаётся Unsupported, provenance04 не реализован.
+Клиентская адаптация03 добавляет optional `Compaction.BudgetPolicy=ServerValidationWithUnknownWindow`. Model/effort/API-доступность проверяются по объявленному каталогу; окно остаётся null, threshold — локальным ориентиром, а окончательный приём и соблюдение reserve не гарантируются клиентом. Прежние strict/ServerValidation и codex-lb settings сохраняют известное окно. Nullable DeclaredInputContextWindow и budget JSON v1/v2 описаны в [клиентском контракте03](<../Plans/sub2api-connector-2026-11-06-(completed)/03-sub2api/client-adaptation.md>); бюджетная policy сама по себе не доказывает upstream приём/identity. Sub2Api generation реализована с отдельной принятой canonical границей, compact остаётся Unsupported, connector provenance04 реализован и проверен изолированно, на PostgreSQL recovery и live JSON→restart→SSE; он не доказывает upstream identity.
 
 ## Tokenizer
 

@@ -1,5 +1,7 @@
 # Изолированные тесты
 
+- `AgentBridge.LiveAcceptance/` — отдельный executable 05.03 для явно разрешаемых JSON/SSE/OAuth/PostgreSQL проверок. Не является isolated test project и не входит в обычный test run/solution build; границы запуска и безопасного evidence — в его AGENTS.md.
+
 - AgentBridge.Sub2Api.Tests проверяет public selection/options/access/catalog/settings и actual JSON/SSE generation через HttpClientLibrary/fake handlers/local streams: полный canonical input без continuation, terminal/partial/awaited callbacks, caller/deadline/cleanup и safe outcomes. Automatic compact отключён явно; actual runner продолжает полный запрос выше threshold через отдельный guard без compact save. Incoming continuation и ручной/force compact отклоняются до factory. Нет AppData/external kit/готовой поставки; API сравнивается с embedded baseline без frozen DLL rebuild. Live/provenance04/compact compatibility отдельно.
 
 - BoundedHistoryQueryTests/BoundedHistoryTests проверяют actual SQL size translation без connection и actual reader/runner/write/lifecycle/recovery над bounded base I/O doubles. Fixture связывает supplied query adapters одним budget/gate; журнал различает scalar/payload queries/rows. Проверять inclusive bytes/count/query limits, overflow до payload, unchanged canonical, authorization/races, cancellation и old-turn/recovery/fencing. Double применяет production predicates/Take до выдачи rows, но не доказывает SQL plans/provider materialization/concurrency/restart.

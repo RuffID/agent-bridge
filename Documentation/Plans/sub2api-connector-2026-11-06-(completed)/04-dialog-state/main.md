@@ -12,7 +12,7 @@ Existing guard/context/run/recovery boundaries и адаптер. Автомат
 
 T05 и отложенные03.03.02–03.03.06 не являются зависимостью первой версии. Проверяются чужое/неизвестное opaque-состояние и codex-lb compact в единственном новом формате. Поддержка ранее сохранённых диалогов обоих коннекторов отменена; reader старого JSON и миграция данных не создаются. Новый Sub2Api compact не реализуется.
 
-Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md).
+Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/specs/agent-runtime/spec.md).
 
 ## Подэтапы
 

@@ -1,6 +1,6 @@
 # Покрытие сценариев delta spec на05.01
 
-Дата:2026-11-08. Все35 сценариев [delta](../../../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md) сопоставлены с actual tests либо ранее зафиксированным source evidence. [Результаты и ограничения](results.md).
+Дата:2026-11-08. Все35 сценариев [delta](../../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/specs/agent-runtime/spec.md) сопоставлены с actual tests либо ранее зафиксированным source evidence. [Результаты и ограничения](results.md).
 
 Наборы: [Sub2Api](../../../../tests/AgentBridge.Sub2Api.Tests/), [Core](../../../../tests/AgentBridge.Tests/), [Persistence](../../../../tests/AgentBridge.Persistence.EfCore.Tests/), [Hosting](../../../../tests/AgentBridge.Hosting.Tests/), [external binary](../../../../tests/Delivery/Compatibility/), [ABI](../../../../tests/Delivery/Abi/). Имена ниже — реальные методы этих наборов; строки с несколькими методами относятся к одной проверяемой границе. Структурные переносы длинных normative paragraphs в сценарии не добавляют поведения.
 

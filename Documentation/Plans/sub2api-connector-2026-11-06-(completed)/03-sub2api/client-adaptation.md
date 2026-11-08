@@ -1,6 +1,6 @@
 # Клиентская адаптация03: бюджет и граница canonical
 
-Дата: 2026-11-07. [Результаты](results.md) · [Текущие ограничения](contract-blockers.md) · [OpenSpec delta](../../../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md).
+Дата: 2026-11-07. [Результаты](results.md) · [Текущие ограничения](contract-blockers.md) · [OpenSpec delta](../../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/specs/agent-runtime/spec.md).
 
 ## Объём первой версии
 

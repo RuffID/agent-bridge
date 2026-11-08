@@ -238,3 +238,58 @@ Optional `TokenizationOptions.UnknownModelEstimateEncoding` MAY явно зад�
 
 - **WHEN** модель отсутствует в каталоге либо effort не поддерживается
 - **THEN** отказ сохраняется до dispatch независимо от включённого оценочного словаря.
+
+### Requirement: Динамический каталог выбранного ключа
+
+AgentBridge MUST читать выбранный каталог через HttpClientLibrary с per-call ModelAccess и без client_version. Прежние policies и ordinary каталог MUST использовать канонический `/v1/models`; sub2api с явно выбранной ServerValidationWithUnknownWindow MUST использовать existing manifest `/backend-api/codex/models` согласно требованию неизвестного входного окна. Каталог MUST NOT заменяться статическим списком, прошлым снимком другого ключа или скрытым retry.
+
+#### Scenario: Изменение возможностей
+
+- **WHEN** повторное чтение каталога получает другой input budget или набор effort
+- **THEN** проверка нового выбора использует новый ответ
+- **AND** прежний снимок остаётся неизменным.
+
+#### Scenario: Сохранение объявлений каталога
+
+- **WHEN** коннектор читает ответ выбранного каталога
+- **THEN** Снимки MUST сохранять необходимые объявленные budgets, усилия и флаги независимо от исходного JSON. Отсутствующий metadata MUST оставаться неизвестным.
+
+### Requirement: Явная проверка модельных настроек
+
+AgentBridge MUST проверять точный ID модели, supported_in_api и точный effort по выбранному каталогу. При известном положительном metadata.input_context_window сумма положительного TokenThreshold и неотрицательного InputTokenReserve MUST NOT превышать его. Недопустимый выбор MUST NOT скрыто заменяться. Проверка MUST NOT объявляться токенизацией реального запроса или подтверждением compact/Responses поддержки.
+
+#### Scenario: Граница бюджета
+
+- **WHEN** threshold плюс reserve равны input_context_window
+- **THEN** проверка бюджета успешна
+- **AND** превышение на один токен отклоняется.
+
+#### Scenario: Неизвестный бюджет модельных настроек
+
+- **WHEN** выбранный каталог не объявляет входное окно
+- **THEN** Неизвестный budget MUST давать явный Unsupported, кроме явно выбранной ServerValidationWithUnknownWindow после проверки exact model/effort и объявленной API-доступности; в этом режиме окно MUST оставаться null с обязательной серверной проверкой.
+
+### Requirement: Ограниченное принятие compact
+
+Сценарий MUST проверять exact settings и считать полный request. Если выбранный gateway разрешает автоматическое сжатие, сценарий MUST запускать compact при estimate >= threshold. При отключённом automatic compact сценарий MUST возвращать Disabled с полным PreparedRequest без compact dispatch/save; force MUST NOT обходить явный Unsupported выбранного gateway. Unknown estimate MUST NOT заменяться KnownTokens либо прошлым usage.
+
+#### Scenario: Force и ограничение проходов
+
+- **WHEN** выбранный gateway поддерживает сжатие и рассматривается ручной либо очередной проход compact
+- **THEN** Явный force MUST разрешать ручное сжатие ниже threshold без обхода остальных guards. При explicit ServerValidation и opaque input сценарий MAY запустить compact по известной части или force, сохраняя null full estimate. Число проходов MUST ограничиваться MaxPasses; known non-reduction MUST останавливать проходы без принятия увеличенного окна.
+
+#### Scenario: Неизвестный opaque бюджет
+
+- **WHEN** Completed output имеет opaque состояние и full counter возвращает null estimate
+- **THEN** version-aware save принимает окно и сценарий возвращает UnknownBudget
+- **AND** guard17 по-прежнему отклоняет генерацию без полной оценки.
+
+#### Scenario: Сбой второго прохода
+
+- **WHEN** первый проход сохранён, а второй завершился ошибкой либо потерял актуальность
+- **THEN** активным остаётся окно первого прохода, ошибка сохраняется без автоматического повторения.
+
+#### Scenario: Проверка правила — Ограниченное принятие compact
+
+- **WHEN** known estimate достиг threshold, а проход не уменьшил окно
+- **THEN** число проходов ограничено MaxPasses, увеличенный кандидат не принимается.

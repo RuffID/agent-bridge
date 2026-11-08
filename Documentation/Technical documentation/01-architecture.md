@@ -8,7 +8,7 @@
 
 ## Фактические проекты
 
-Этап02 [плана sub2api](<../Plans/sub2api-connector-2026-11-06-(in-progress)/02-composition/main.md>) добавил отдельный подготовленный transport bundle и выбор в [Integration](26-integration-registration.md); операции sub2api пока Unsupported. Общие internal JSON/SSE механизмы подключены source link в оба адаптера. Главная спецификация не объявляет полный коннектор реализованным.
+[Коннектор sub2api](../../openspec/specs/agent-runtime/sub2api.md) реализует выбор bundle, доступ, каталог/declared manifest settings и HTTP JSON/SSE generation через [Integration](26-integration-registration.md). Общие internal JSON/SSE механизмы подключены source link в оба адаптера. Automatic compact Sub2Api отключён; полный контекст проходит отдельный budget guard, ручной/force compact Unsupported. Этапы01–05 завершены в принятом объёме; нормативные требования синхронизированы в main spec.
 
 Этап17 добавляет `Tokenization/` в существующее ядро: offline Microsoft.ML.Tokenizers2.0.0 с двумя embedded dictionaries, direct Bcl.Memory10.0.4, IContextTokenCounter, explicit DI и Application.ContextBudgetGuard. Новый проект/host/адаптер не создаётся; DB/HTTP границы не меняются. [Точные mapping/источники/границы](07-tokenizer-and-settings.md#проверенный-exact-mapping-и-источники).
 

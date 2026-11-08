@@ -54,7 +54,7 @@ dotnet test --project tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.T
 
 Проверяются pinned hashes старой поставки, все TypeRef/MemberRef/MethodSpec original/surface DLL на SQL Server win-x64/linux-x64/linux-arm64 и semantic public/protected поверхность на всех пяти вариантах. Frozen DLL напрямую зависят от SQL Server и не являются потребителями SQLite/PostgreSQL. Их неизменённые исходники отдельно компилируются во всей матрице. Synthetic positive/negative controls проверяют сам verifier; unknown metadata shape даёт отказ. Это статическое evidence совместимости, без runtime old consumer или старого формата диалогов.
 
-Текущие результаты Sub2Api и внешних consumers — [05.01–05.02](../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/05-acceptance/results.md). Они не заменяют live05.03.
+Текущие результаты Sub2Api и внешних consumers — [05.01–05.02](../../Documentation/Plans/sub2api-connector-2026-11-06-(completed)/05-acceptance/results.md). Они не заменяют live05.03.
 
 ## Разрешения
 

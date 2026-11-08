@@ -10,7 +10,7 @@
 
 Integration и транспортные модули. Не менять application ports, business tools, persistence provider selection и поведение default codex-lb.
 
-Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/add-sub2api-connector/specs/agent-runtime/spec.md).
+Общие требования и ограничения — в [главном плане](../main.md); нормативный проект — в [OpenSpec](../../../../openspec/changes/archive/2026-11-08-add-sub2api-connector/specs/agent-runtime/spec.md).
 
 ## Подэтапы
 

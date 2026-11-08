@@ -19,6 +19,6 @@
     <Compile Include="../../AgentBridge.Sub2Api.Tests/PeSurfaceReader.cs" Link="PeSurfaceReader.cs" />
     <Compile Include="../../AgentBridge.Sub2Api.Tests/LegacyApiBaseline.cs" Link="LegacyApiBaseline.cs" />
     <EmbeddedResource Include="../../AgentBridge.Sub2Api.Tests/Fixtures/legacy-api-baseline.json" LogicalName="AgentBridge.Tests.LegacyApiBaseline.json" />
-    <EmbeddedResource Include="../../../Documentation/Plans/sub2api-connector-2026-11-06-(in-progress)/01-contracts/baseline-evidence.json" LogicalName="AgentBridge.Tests.BaselineEvidence.json" />
+    <EmbeddedResource Include="../../../Documentation/Plans/sub2api-connector-2026-11-06-(completed)/01-contracts/baseline-evidence.json" LogicalName="AgentBridge.Tests.BaselineEvidence.json" />
   </ItemGroup>
 </Project>
