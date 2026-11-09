@@ -16,7 +16,7 @@ IServiceCollection AddAgentBridge(this IServiceCollection services,
 ```csharp
 services.AddAgentBridgeSub2ApiConnector();
 services.AddAgentBridge(configuration, httpClientFactory);
-// Optional: services.AddAgentBridgeSub2ApiAuxiliary(); // GET /v1/usage
+// Optional: services.AddAgentBridgeSub2ApiAuxiliary(); // usage и завершённые изображения
 // Альтернатива для отдельной composition: AddAgentBridgeCodexLbConnector().
 ```
 
@@ -76,7 +76,7 @@ Defaults для public ports, HttpApiClient, counter, inspector, ContextBuilder 
 
 Повтор **с теми же объектами IConfiguration и HTTP delegate** — no-op, без повторного binding/modules/provider registration. Другие arguments явно отклоняются: новый app/configuration требует нового контейнера. Reload исходной IConfiguration применяется штатно; это не замена регистрационного объекта.
 
-Optional `AddAgentBridgeSub2ApiAuxiliary()` подключает scoped IModelAuxiliaryGateway без новых настроек и создания HTTP при регистрации/resolve. Требуется выбранный Sub2Api; существующий GenerationTimeout ограничивает чтение usage. Upload/images остаются Unsupported до HTTP factory; прямой встроенный CodexLb auxiliary несовместим с выбором Sub2Api. [Контракт и пример usage](27-auxiliary-model-operations.md).
+Optional `AddAgentBridgeSub2ApiAuxiliary()` подключает scoped IModelAuxiliaryGateway без новых настроек и создания HTTP при регистрации/resolve. Требуется выбранный Sub2Api; существующий GenerationTimeout ограничивает usage и завершённые generation/multipart edits. UploadFileAsync остаётся Unsupported до HTTP factory; прямой встроенный CodexLb auxiliary несовместим с выбором Sub2Api. [Контракт, пример и состояние DLL-поставки](27-auxiliary-model-operations.md).
 
 ## Состав и lifetimes
 

@@ -12,7 +12,17 @@
 
 GET `/v1/usage` использует выбранный gateway API-ключ, без JWT/upstream OAuth и без повторов или смены доступа. BaseAddress сохраняет prefix и допускает один конечный `/v1`. Ответ — непосредственный JSON `quota_limited`/`unrestricted`; `ModelAuxiliaryResult.Content` сохраняет optional-поля, вложенные значения и null. Например, `{"mode":"quota_limited","isValid":true,"status":"expired"}` не содержит remaining: это неизвестное значение, а не 0 или безлимит.
 
-Unrestricted означает отсутствие key-level лимитов sub2api, при этом кошелёк или подписка могут иметь ограничения. Дополнительная статистика best-effort может отсутствовать. Expired/quota_exhausted ключ может читать свой usage при прохождении базовой авторизации sub2api. Сведения не доказывают upstream ChatGPT quota или доступное окно контекста и не используются generation budget guard. Файлы и изображения остаются Unsupported до HTTP. [Подключение и пример](../../../Documentation/Technical%20documentation/27-auxiliary-model-operations.md), [change и ограничения приёмки](../../changes/sub2api-usage/tasks.md).
+Unrestricted означает отсутствие key-level лимитов sub2api, при этом кошелёк или подписка могут иметь ограничения. Дополнительная статистика best-effort может отсутствовать. Expired/quota_exhausted ключ может читать свой usage при прохождении базовой авторизации sub2api. Сведения не доказывают upstream ChatGPT quota или доступное окно контекста и не используются generation budget guard. UploadFileAsync остаётся Unsupported до HTTP. [Подключение и пример](../../../Documentation/Technical%20documentation/27-auxiliary-model-operations.md), [usage change и ограничения приёмки](../../changes/sub2api-usage/tasks.md).
+
+## Завершённые изображения
+
+Тот же optional gateway поддерживает GenerateImageAsync (JSON POST `/v1/images/generations`) и EditImageAsync (multipart POST `/v1/images/edits`, файлы `image[]`). Коллекция и bytes фиксируются до await; отдельный upload не нужен. Модель изображений задаётся в ModelImageRequest, без подстановки текстовой Sub2Api.Model. Count/Size/Quality/Background/OutputFormat сохраняются, stream=false. Например, Count=2, Quality=high, OutputFormat=webp не заменяются значениями по умолчанию при server refusal.
+
+Sub2api выполняет upstream OAuth/upload/account selection. Доступность зависит от платформы, group AllowImageGeneration, модели и capability/size routing аккаунтов. Явные model/size и native options влияют на маршрут; адаптер не удаляет их и не делает повторов. Внутренние server retries не запрещаются клиентским no-retry контрактом.
+
+Ведущие whitespace heartbeat допускаются при чтении JSON. HTTP 200 с error, пустой data, malformed JSON/UTF-8 и отсутствие payload хотя бы у одного элемента дают отказ. Успешный ModelAuxiliaryResult сохраняет data[].b64_json или data[].url и дополнительные поля без скачивания URL. JSON/bytes/prompt/URL/ключи не логируются. Общий GenerationTimeout покрывает send/body, caller cancellation и cleanup сохраняют existing library contract. Приложение владеет HttpClient и отключает retry/redirect.
+
+Объём не включает masks, streaming, async tasks, batches и входные фото AgentRunner; provenance guard сохранён. [Change и результаты проверок](../../changes/sub2api-images/tasks.md). Live-доступность и обновлённая DLL-поставка требуют отдельной приёмки.
 
 ## Полный контекст и неизвестный бюджет
 

@@ -8,6 +8,7 @@ using AgentBridge.Sub2Api.Configuration;
 using HttpClientLibrary.Clients;
 using HttpClientLibrary.Exceptions;
 using HttpClientLibrary.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using LibraryHttpRequestOptions = HttpClientLibrary.Models.HttpRequestOptions;
 
@@ -15,7 +16,7 @@ namespace AgentBridge.Sub2Api.Auxiliary;
 
 /// <inheritdoc/>
 internal class Sub2ApiAuxiliaryGateway(Func<HttpApiClient> httpFactory,
-    IOptionsSnapshot<Sub2ApiOptions> options) : IModelAuxiliaryGateway
+    IOptionsSnapshot<Sub2ApiOptions> options, ILogger<Sub2ApiAuxiliaryGateway> logger) : IModelAuxiliaryGateway
 {
     /// <inheritdoc/>
     public async Task<ServiceResult<ModelAuxiliaryResult>> ReadUsageAsync(ModelAccess access,
@@ -114,14 +115,65 @@ internal class Sub2ApiAuxiliaryGateway(Func<HttpApiClient> httpFactory,
     public Task<ServiceResult<ModelAuxiliaryResult>> GenerateImageAsync(ModelImageRequest request, ModelAccess access,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Failure(ServiceErrorType.Unsupported, "Генерация изображений sub2api не поддерживается."));
+        return SendImageAsync(request, access, false, cancellationToken);
     }
 
     /// <inheritdoc/>
     public Task<ServiceResult<ModelAuxiliaryResult>> EditImageAsync(ModelImageEditRequest request, ModelAccess access,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Failure(ServiceErrorType.Unsupported, "Редактирование изображений sub2api не поддерживается."));
+        return SendImageAsync(request, access, true, cancellationToken);
+    }
+
+    /// <summary>Пишет безопасный итог после проверки JSON и очистки, не изменяя transport exception.</summary>
+    private async Task<ServiceResult<ModelAuxiliaryResult>> SendImageAsync(ModelImageRequest request, ModelAccess access,
+        bool edit, CancellationToken cancellationToken)
+    {
+        try
+        {
+            ServiceResult<ModelAuxiliaryResult> result = await new Sub2ApiImageTransport(httpFactory, options)
+                .SendAsync(request, access, edit, cancellationToken);
+            string outcome = "Rejected";
+            if (result.Success)
+            {
+                outcome = "Completed";
+            }
+
+            LogImageOutcome(edit, outcome, result.Error?.Type);
+
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            LogImageOutcome(edit, "Canceled", null);
+            throw;
+        }
+        catch (Exception)
+        {
+            LogImageOutcome(edit, "Exception", null);
+            throw;
+        }
+    }
+
+    /// <summary>Использует только фиксированные operation/outcome и тип ошибки, без input/result/exception.</summary>
+    private void LogImageOutcome(bool edit, string outcome, ServiceErrorType? errorType)
+    {
+        string operation = "Generate";
+        if (edit)
+        {
+            operation = "Edit";
+        }
+
+        try
+        {
+            logger.LogInformation(new EventId(5201, "Sub2ApiImageFinished"),
+                "Sub2Api image finished; Operation={Operation}; Outcome={Outcome}; ErrorType={ErrorType}",
+                operation, outcome, errorType);
+        }
+        catch (Exception)
+        {
+            // Диагностика не подменяет результат/primary и не создаёт повторную платную операцию.
+        }
     }
 
     /// <summary>Проверяет discriminator и error envelope без перепроецирования серверного JSON.</summary>

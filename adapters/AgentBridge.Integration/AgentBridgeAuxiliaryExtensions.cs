@@ -6,9 +6,9 @@ namespace AgentBridge.Integration;
 /// <summary>Явное подключение auxiliary выбранного sub2api без дополнительных настроек.</summary>
 public static class AgentBridgeAuxiliaryExtensions
 {
-    /// <summary>Подключает usage sub2api через существующий GenerationTimeout и HTTP factory основного bundle.</summary>
+    /// <summary>Подключает usage и завершённые изображения sub2api через GenerationTimeout и HTTP factory bundle.</summary>
     /// <remarks>Сначала выберите AddAgentBridgeSub2ApiConnector и подключите AddAgentBridge.
-    /// Файлы и изображения возвращают Unsupported. Регистрация не создаёт HTTP-клиент и сохраняет app override.</remarks>
+    /// UploadFileAsync возвращает Unsupported. Регистрация не создаёт HTTP-клиент и сохраняет app override.</remarks>
     public static IServiceCollection AddAgentBridgeSub2ApiAuxiliary(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/Documentation/openspec/changes/sub2api-images/">
+    <File Path="openspec/changes/sub2api-images/proposal.md" />
+    <File Path="openspec/changes/sub2api-images/context.md" />
+    <File Path="openspec/changes/sub2api-images/tasks.md" />
+  </Folder>
+  <Folder Name="/Documentation/openspec/changes/sub2api-images/specs/agent-runtime/">
+    <File Path="openspec/changes/sub2api-images/specs/agent-runtime/spec.md" />
+  </Folder>
   <Folder Name="/Documentation/openspec/changes/sub2api-usage/">
     <File Path="openspec/changes/sub2api-usage/proposal.md" />
     <File Path="openspec/changes/sub2api-usage/context.md" />

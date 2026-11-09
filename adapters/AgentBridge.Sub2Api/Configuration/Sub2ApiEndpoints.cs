@@ -3,6 +3,26 @@ namespace AgentBridge.Sub2Api.Configuration;
 /// <summary>Разрешает server root или prefix с единственным завершающим /v1.</summary>
 internal static class Sub2ApiEndpoints
 {
+    /// <summary>Сохраняет prefix и общие ограничения адреса для Images API.</summary>
+    internal static bool TryGetImagesUrl(string? address, bool edit, out string url)
+    {
+        url = string.Empty;
+        if (!TryGetModelsUrl(address, out string modelsUrl))
+        {
+            return false;
+        }
+
+        string operation = "generations";
+        if (edit)
+        {
+            operation = "edits";
+        }
+
+        url = modelsUrl[..^"models".Length] + "images/" + operation;
+
+        return true;
+    }
+
     /// <summary>Использует ту же проверку root/prefix и единственного /v1, что и ordinary каталог.</summary>
     internal static bool TryGetUsageUrl(string? address, out string url)
     {
@@ -59,7 +79,7 @@ internal static class Sub2ApiEndpoints
         foreach (string segment in segments)
         {
             string decoded = Uri.UnescapeDataString(segment);
-            if (decoded is "models" or "responses" or "usage" or "backend-api" or "compact" or "." or "..")
+            if (decoded is "models" or "responses" or "usage" or "images" or "backend-api" or "compact" or "." or "..")
             {
                 return false;
             }

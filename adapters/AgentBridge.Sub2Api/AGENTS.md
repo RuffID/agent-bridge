@@ -1,7 +1,7 @@
 # Адаптер sub2api
 
 - Отдельная net10.0 библиотека зависит только от ядра и HttpClientLibrary. CodexLb, EF и hosting dependencies запрещены. Общие внутренние механизмы Responses подключены source link из соседней AgentBridge.Responses.
-- Optional usage подключается через Integration.AddAgentBridgeSub2ApiAuxiliary отдельно от bundle. Границы direct JSON, доступа и Unsupported операций — Auxiliary/AGENTS.md; новых обязательных options нет.
+- Optional usage и завершённые images подключаются через Integration.AddAgentBridgeSub2ApiAuxiliary отдельно от bundle. Границы direct JSON/multipart, доступа и Unsupported upload — Auxiliary/AGENTS.md; новых обязательных options нет.
 - Существующий bundle содержит scoped access resolver, ordinary/declared manifest ModelCatalog/SettingsReader и actual JSON/SSE generation. Gateway отклоняет incoming continuation до factory; AutomaticCompactionEnabled=false не даёт локальному threshold остановить полный запрос из-за compact. Separate full budget guard обязателен; ручной/force compact Unsupported до factory/HTTP. Границы Responses — Responses/AGENTS.md; нет guessed enable flag.
 - Публичный выбор — Integration.AddAgentBridgeSub2ApiConnector до старого AddAgentBridge. Bind получает section Sub2Api, не CodexLb. IConfiguration не передаётся runtime-компонентам. Секреты/значения неисправных options не включаются в ошибки.
 - Приложение владеет ключевым источником, HttpClient/handlers/logger; регистрация не вызывает factory и не строит ServiceProvider. Individual source регистрируется заранее; error/empty индивидуального ключа не разрешает shared fallback.

@@ -81,9 +81,30 @@ public class Sub2ApiUsageRegistrationTests
         Assert.Equal(["Bearer selected-key"], handler.Authorizations);
         Assert.Equal(["https://gateway.invalid/prefix/v1/usage"], handler.Urls);
         Assert.False(handler.Disposed);
+
+        // Arrange
+        handler.Respond = (_, _) => Task.FromResult(Sub2ApiCatalogFixture.Json("{\"data\":[{\"b64_json\":\"aW1hZ2U=\"}]}"));
+
+        // Act
+        ServiceResult<ModelAuxiliaryResult> generated = await gateway.GenerateImageAsync(
+            new() { Model = "chosen-image-model", Prompt = "synthetic prompt" }, new("selected-key"),
+            TestContext.Current.CancellationToken);
+        ServiceResult<ModelAuxiliaryResult> edited = await gateway.EditImageAsync(
+            new() { Model = "chosen-image-model", Prompt = "synthetic prompt",
+                Images = [new() { FileName = "input.png", Bytes = [1, 2, 3] }] }, new("selected-key"),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.True(generated.Success);
+        Assert.True(edited.Success);
+        Assert.Equal(1, factoryCalls);
+        Assert.Equal(["https://gateway.invalid/prefix/v1/usage", "https://gateway.invalid/prefix/v1/images/generations",
+            "https://gateway.invalid/prefix/v1/images/edits"], handler.Urls);
+        Assert.Equal(["Bearer selected-key", "Bearer selected-key", "Bearer selected-key"], handler.Authorizations);
+        Assert.False(handler.Disposed);
     }
 
-    /// <summary>Все неподдержанные операции отказывают до options, HTTP factory и проверки входных DTO.</summary>
+    /// <summary>Неподдержанный upload отказывает до options, HTTP factory и проверки входных DTO.</summary>
     [Fact]
     public async Task UnsupportedMethodsNeverCreateHttp()
     {
@@ -105,13 +126,9 @@ public class Sub2ApiUsageRegistrationTests
 
         // Act
         ServiceResult<string> upload = await gateway.UploadFileAsync(null!, null!, canceled.Token);
-        ServiceResult<ModelAuxiliaryResult> generation = await gateway.GenerateImageAsync(null!, null!, canceled.Token);
-        ServiceResult<ModelAuxiliaryResult> edit = await gateway.EditImageAsync(null!, null!, canceled.Token);
 
         // Assert
         Assert.Equal(ServiceErrorType.Unsupported, upload.Error!.Type);
-        Assert.Equal(ServiceErrorType.Unsupported, generation.Error!.Type);
-        Assert.Equal(ServiceErrorType.Unsupported, edit.Error!.Type);
         Assert.Equal(0, factoryCalls);
     }
 

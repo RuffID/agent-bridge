@@ -32,8 +32,36 @@ Sub2Api MUST предоставлять явное optional AddAgentBridgeSub2Ap
 
 #### Scenario: Неподдержанные auxiliary-операции
 
-- **WHEN** вызываются UploadFileAsync, GenerateImageAsync или EditImageAsync
+- **WHEN** вызывается UploadFileAsync
 - **THEN** gateway MUST вернуть Unsupported до HTTP factory и HTTP.
+
+### Requirement: Завершённые изображения sub2api
+
+Optional sub2api auxiliary MUST реализовать GenerateImageAsync через JSON POST prefix/v1/images/generations и EditImageAsync через multipart POST prefix/v1/images/edits в HttpClientLibrary. Gateway MUST использовать выбранный per-call ModelAccess, per-request Bearer и GenerationTimeout на send/body, сохраняя usage, selector isolation, CodexLb API, текстовые JSON/SSE и provenance guard AgentRunner.
+
+#### Scenario: Сохранение запроса
+
+- **WHEN** приложение передало валидные параметры изображения
+- **THEN** model, prompt, count как n, size, quality, background и output_format MUST передаваться без скрытой замены или удаления, со stream=false
+- **AND** edits MUST скопировать коллекцию и bytes до первого await и отправить fresh multipart с image[] без клиентского OAuth/upload
+- **AND** невалидный запрос, доступ или endpoint MUST отклоняться до HTTP factory
+- **AND** retry, смена ключа/модели, fallback, маски, async tasks, batches и image streaming MUST NOT добавляться.
+
+#### Scenario: Проверка результата
+
+- **WHEN** получен завершённый JSON, в том числе с ведущими whitespace heartbeat
+- **THEN** успех MUST требовать объект без non-null error envelope, непустой data и непустой b64_json либо url в каждом элементе
+- **AND** malformed JSON, повреждённый UTF-8, неоднозначные duplicate fields, пустой data или отсутствие image payload MUST возвращать Rejected
+- **AND** HTTP 200 с error MUST NOT считаться успехом; HTTP 401/403 MUST возвращать Unauthorized/Forbidden, прочие отказы MUST возвращать Rejected без server text
+- **AND** результат MUST сохраняться самостоятельным JSON-снимком без автоматического скачивания URL.
+
+#### Scenario: Отмена, очистка и секреты
+
+- **WHEN** send или body завершаются отказом, caller cancellation, timeout либо cleanup failure
+- **THEN** caller cancellation MUST сохранять исходный токен и иметь приоритет над deadline; timeout MUST возвращать Timeout
+- **AND** transport resources MUST освобождаться, borrowed HttpClient MUST оставаться у приложения, primary/cleanup failures MUST оставаться наблюдаемыми
+- **AND** logs и безопасные ошибки MUST NOT содержать prompt, image bytes, URL, credentials, raw body или exceptions
+- **AND** отказ сервера по платформе, группе, модели или capability MUST NOT запускать повтор платной операции или удаление параметров.
 
 ### Requirement: Optional usage, files и images
 

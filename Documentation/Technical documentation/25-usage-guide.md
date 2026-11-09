@@ -6,6 +6,8 @@
 
 Optional usage Sub2Api добавлен после проверенной поставки05. Новый целый комплект с `AddAgentBridgeSub2ApiAuxiliary()` подготовлен штатным упаковщиком в `artifacts/delivery-tests/current`; 42 metadata-теста прошли. Внешняя бинарная компиляция нового usage-примера ещё не проверена. [Подключение usage и компилируемый пример](27-auxiliary-model-operations.md).
 
+Генерация и multipart-редактирование изображений реализованы позже в исходниках через тот же optional gateway. Текущий DLL-комплект usage их ещё не включает: требуется отдельная штатная упаковка и проверка внешнего consumer. [Пример и ограничения](27-auxiliary-model-operations.md#генерация-и-редактирование), [результаты Images](../../openspec/changes/sub2api-images/tasks.md).
+
 Для current API требуется комплект с `AgentBridge.Integration.dll`, ядром, обоими адаптерами и выбранными persistence/migrations DLL (основной provider — SQL Server). Свежие Release SDK kits находятся в `artifacts/delivery-tests/current/sdk/SqlServer/{win-x64,linux-x64,linux-arm64}` и `sdk/{Sqlite,PostgreSql}/win-x64`; компактные DLL/NuGet bundles — в `artifacts/delivery-tests/current/nuget/<Provider>`. Внешняя компиляция всей матрицы подтверждена для базовой поставки05; новый usage-комплект пока прошёл metadata-проверки. Не смешивайте версии, RID и migrations assemblies. [Facade/lifetimes](26-integration-registration.md), [DLL/NuGet](29-dll-and-nuget-delivery.md).
 
 Скопируйте полный комплект выбранного provider/RID в приложение. Generated variant props фиксирует RID; Import отклоняет несовпадение `RuntimeIdentifier`. [Состав и ограничения поставки](24-dll-delivery.md). Старые stage24 kits не содержат facade; их evidence сохраняется в историческом отчёте24.

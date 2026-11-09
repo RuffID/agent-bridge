@@ -21,7 +21,8 @@ internal static class Sub2ApiComposition
     internal static void AddAuxiliary(IServiceCollection services)
     {
         services.TryAddScoped<IModelAuxiliaryGateway>(provider => new Sub2ApiAuxiliaryGateway(
-            () => provider.GetRequiredService<HttpApiClient>(), provider.GetRequiredService<IOptionsSnapshot<Sub2ApiOptions>>()));
+            () => provider.GetRequiredService<HttpApiClient>(), provider.GetRequiredService<IOptionsSnapshot<Sub2ApiOptions>>(),
+            provider.GetRequiredService<ILogger<Sub2ApiAuxiliaryGateway>>()));
     }
 
     /// <summary>Привязывает только Sub2Api и проверяет локальную конфигурацию без I/O.</summary>
