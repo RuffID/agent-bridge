@@ -20,6 +20,8 @@
 
 ## Validation и завершение changes
 
+[sub2api-compact-safety](changes/sub2api-compact-safety/proposal.md) закрепляет действующий полный контекст, блокировку trigger/compact items в generation и сохраняет T05 открытым. Его delta добавляет требования к sub2api и не отменяет CodexLb compact18. Исторические завершённые планы не переписываются; strict validation нового change выполняется только по отдельному разрешению.
+
 Сначала сверить текущие папки с original18 в Results09; новые changes учитывать отдельно. CLI в PATH или версия package.json не заменяют фактический запуск. Version/help, strict validation, повтор после правки и любые mutation-команды требуют точного разрешения согласно root AGENTS.
 
 Постоянное разрешение пользователя (userMessage `01a10fa0-7b81-70e1-a47e-5fc67440131d`, «разрешаю всегда прогон этих команд») действует на exact19 strict validation commands из Results/evidence09: main agent-runtime и перечисленные original18, тот же wrapper `D:/Media/User/AppData/npm/openspec.cmd`, cwd `D:/Media/User/source/repos/agent-bridge`, flags `--type spec|change --strict --json --no-interactive`. Повтор именно этих команд не требует нового разрешения. Оно не распространяется на version/help, новые changes, installation или любые CLI mutations, включая sync/rename/archive.

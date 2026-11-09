@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/Documentation/openspec/changes/sub2api-compact-safety/">
+    <File Path="openspec/changes/sub2api-compact-safety/proposal.md" />
+    <File Path="openspec/changes/sub2api-compact-safety/context.md" />
+    <File Path="openspec/changes/sub2api-compact-safety/tasks.md" />
+  </Folder>
+  <Folder Name="/Documentation/openspec/changes/sub2api-compact-safety/specs/agent-runtime/">
+    <File Path="openspec/changes/sub2api-compact-safety/specs/agent-runtime/spec.md" />
+  </Folder>
   <Folder Name="/Documentation/openspec/changes/sub2api-images/">
     <File Path="openspec/changes/sub2api-images/proposal.md" />
     <File Path="openspec/changes/sub2api-images/context.md" />

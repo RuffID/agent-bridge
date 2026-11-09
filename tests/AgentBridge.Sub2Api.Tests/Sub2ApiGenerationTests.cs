@@ -52,7 +52,7 @@ public class Sub2ApiGenerationTests
         }
     }
 
-    /// <summary>Каждый send содержит compact-окно, хвост/input, reasoning, instructions/tools/effort без anchors.</summary>
+    /// <summary>Каждый send содержит полный prefix, хвост/input, reasoning, instructions/tools/effort без anchors.</summary>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -70,7 +70,7 @@ public class Sub2ApiGenerationTests
         };
         CanonicalModelItem[] input =
         [
-            new(Element("""{"type":"compaction","encrypted_content":"accepted-window","future":[1,2]}""")),
+            new(Element("""{"type":"message","role":"user","content":"full covered prefix","future":[1,2]}""")),
             new(Element("""{"type":"reasoning","content":[{"type":"reasoning_text","text":"original"}],"encrypted_content":"opaque-input"}""")),
             new(Element("""{"type":"message","role":"user","content":[{"type":"input_text","text":"tail"}]}""")),
             new(Element("""{"type":"message","role":"user","content":[{"type":"input_text","text":"current"}]}"""))
@@ -84,7 +84,11 @@ public class Sub2ApiGenerationTests
         Func<ModelStreamUpdate, CancellationToken, ValueTask>? callback = null;
         if (streaming)
         {
-            callback = (update, _) => { updates.Add(update); return ValueTask.CompletedTask; };
+            callback = (update, _) =>
+            {
+                updates.Add(update);
+                return ValueTask.CompletedTask;
+            };
         }
 
         // Act
@@ -138,7 +142,7 @@ public class Sub2ApiGenerationTests
 
         string logs = string.Join("", fixture.Logs.Entries);
         Assert.DoesNotContain("opaque-", logs);
-        Assert.DoesNotContain("accepted-window", logs);
+        Assert.DoesNotContain("full covered prefix", logs);
         Assert.DoesNotContain("business-result", logs);
         Assert.DoesNotContain(Sub2ApiCatalogFixture.INDIVIDUAL_KEY, logs);
     }

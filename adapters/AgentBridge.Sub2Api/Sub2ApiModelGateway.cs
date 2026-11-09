@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AgentBridge.Application.Models;
 using AgentBridge.Application;
 using AgentBridge.Application.Ports;
@@ -67,6 +68,13 @@ internal class Sub2ApiModelGateway(Func<HttpApiClient> httpFactory, IOptionsSnap
             return ServiceResult<ModelResponse>.Fail(contextError);
         }
 
+        if (HasCompactInput(request, cancellationToken))
+        {
+            LogOutcome(call.TurnId, "ContextRejected", ServiceErrorType.Unsupported);
+            return ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Unsupported,
+                "Сжатие sub2api отключено: trigger и compact-окно нельзя передавать через generation; сохранность покрытого контекста не подтверждена. Исходный контекст не изменён."));
+        }
+
         ServiceResult<ResponseRequestBody> body = ResponseRequestWriter.Write(request, null, onUpdate is not null);
         if (!body.Success)
         {
@@ -123,6 +131,27 @@ internal class Sub2ApiModelGateway(Func<HttpApiClient> httpFactory, IOptionsSnap
 
         return Task.FromResult(ServiceResult<ModelResponse>.Fail(new(ServiceErrorType.Unsupported,
             "Сжатие sub2api отключено: использование сжатого окна следующей генерацией не подтверждено; сервер может удалить непрочитанный compact. Исходный контекст не изменён.")));
+    }
+
+    /// <summary>Не допускает native/legacy compact и отправку неподтверждённой замены prefix через generation.</summary>
+    private static bool HasCompactInput(ModelRequest request, CancellationToken cancellationToken)
+    {
+        foreach (CanonicalModelItem item in request.Input)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Проверяем все occurrences: серверные JSON readers могут выбирать другое поле при дублировании type.
+            foreach (JsonProperty property in item.Content.EnumerateObject())
+            {
+                if (property.NameEquals("type") && property.Value.ValueKind == JsonValueKind.String
+                    && property.Value.GetString()?.Trim() is "compaction_trigger" or "compaction" or "compaction_summary")
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Итог относится к lifecycle ответа, не upstream identity; logger не меняет результат/primary.</summary>

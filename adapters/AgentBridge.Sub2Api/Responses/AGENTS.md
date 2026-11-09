@@ -2,6 +2,7 @@
 
 - Canonical гарантия принадлежит границе AgentBridge: полный request и полученный output/envelope сохраняются; existing server reasoning normalization/recovery допустимы по плану Б. Успех не доказывает upstream identity или сохранность opaque внутри сервера.
 - Один dispatch через HttpClientLibrary читает JSON либо SSE по Content-Type, также для non-stream приложения. Никаких retries, previous_response_id, legacy turn-state, returned continuation или business tool execution здесь нет.
+- Gateway до writer/transport отклоняет compact trigger и compact-окна даже с родным provenance. Обычный SSE reader не является native v2 compact reader; запрет сохраняется после restart.
 - Shared writer/accumulator/framing подключены source link. Накопитель получает null continuation; response.id/model/headers остаются только raw envelope, без local provenance04.
 - Callbacks последовательны и awaited. Terminal confirmation, partial output, caller/deadline, identity callback/read primary и все cleanup failures сохраняются. Raw body/key/headers/error text не логировать.
 - Compact ограждён до подтверждения пригодности окна для generation, независимо от requested model echo. Mapping сам по себе не доказывает несовместимость. Gateway отключает automatic compact до dispatch; separate full guard и явный Unsupported ручного/force compact сохраняются. Не подменять compact генерацией или guessed flag.
