@@ -8,7 +8,6 @@ using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Repositories;
 using AgentBridge.Persistence.EfCore.UnitOfWork;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -16,7 +15,7 @@ using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Реальные persistence границы этапов 06–11 на SQLite и PostgreSQL, без приложения и HTTP.</summary>
+/// <summary>Реальные persistence границы этапов 06–11 на PostgreSQL, без приложения и HTTP.</summary>
 [Trait("Dependency", "Database")]
 [Collection("DatabaseIntegration")]
 public class PersistenceIntegrationTests
@@ -35,10 +34,6 @@ public class PersistenceIntegrationTests
 
     /// <summary>После нового root-container сохраняются все lifecycle, opaque payload, версии и fixed expiry.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, ModelResponseStatus.Completed)]
-    [InlineData(DatabaseProvider.SQLite, ModelResponseStatus.Incomplete)]
-    [InlineData(DatabaseProvider.SQLite, ModelResponseStatus.Failed)]
-    [InlineData(DatabaseProvider.SQLite, ModelResponseStatus.Canceled)]
     [InlineData(DatabaseProvider.PostgreSql, ModelResponseStatus.Completed)]
     [InlineData(DatabaseProvider.PostgreSql, ModelResponseStatus.Incomplete)]
     [InlineData(DatabaseProvider.PostgreSql, ModelResponseStatus.Failed)]
@@ -105,7 +100,6 @@ public class PersistenceIntegrationTests
 
     /// <summary>Guards на сохранённом root не принимают чужого владельца, истёкший срок и старую жизнь ID.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task GuardsAndDeleteRecreateRejectLateWrites(DatabaseProvider provider)
     {
@@ -137,7 +131,6 @@ public class PersistenceIntegrationTests
 
     /// <summary>Одинаковые локальные IDs не смешивают детей; каскад удаляет все четыре вида детей только своего root.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task LocalIdsAndCascadeAreIsolated(DatabaseProvider provider)
     {
@@ -162,7 +155,6 @@ public class PersistenceIntegrationTests
 
     /// <summary>Срок сравнивается с точностью ticks, сортировка/limit происходят в настоящем provider.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ExpiredCandidatesUseTicksAndLimitAfterSorting(DatabaseProvider provider)
     {
@@ -182,7 +174,6 @@ public class PersistenceIntegrationTests
 
     /// <summary>Реальный optimistic UPDATE со старым original revision откатывает подготовленных детей.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActualCasFailureRollsBackChildWrites(DatabaseProvider provider)
     {
@@ -212,7 +203,6 @@ public class PersistenceIntegrationTests
 
     /// <summary>Настоящий root-PK collision распознаётся как Conflict, fixed поля не допускают изменение после загрузки.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task RootCollisionAndFixedFieldsAreEnforced(DatabaseProvider provider)
     {
@@ -249,7 +239,6 @@ public class PersistenceIntegrationTests
 
     /// <summary>Ошибка после действительного SQL-save откатывает root и детей, а scope очищает tracker.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task FailureAfterRealSaveRollsBackWholeScenario(DatabaseProvider provider)
     {
@@ -268,10 +257,10 @@ public class PersistenceIntegrationTests
 
     /// <summary>Два независимых Serializable сценария одного token сохраняют только одного победителя без retry.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task SimultaneousWritersCannotBothCommit(DatabaseProvider provider)
     {
+        // Arrange
         await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
@@ -284,19 +273,21 @@ public class PersistenceIntegrationTests
             }
         });
         using IServiceScope first = raceRoot.CreateScope();
+
+        // Act
         using IServiceScope second = raceRoot.CreateScope();
         Task<(ServiceResult<DialogWriteToken>? Result, Exception? Error)> left = Task.Run(() => AttemptAsync(first));
         Task<(ServiceResult<DialogWriteToken>? Result, Exception? Error)> right = Task.Run(() => AttemptAsync(second));
         (ServiceResult<DialogWriteToken>? Result, Exception? Error)[] outcomes = await Task.WhenAll(left, right);
+
+        // Assert
         Assert.Single(outcomes, item => item.Result?.Success == true);
         (ServiceResult<DialogWriteToken>? Result, Exception? Error) loser = Assert.Single(outcomes, item => item.Result?.Success != true);
         if (loser.Error is not null)
         {
             Exception driver = loser.Error;
             while (driver.InnerException is not null) { driver = driver.InnerException; }
-            Assert.True(provider == DatabaseProvider.SQLite
-                ? driver is SqliteException { SqliteErrorCode: 5 or 6 }
-                : driver is PostgresException { SqlState: "40001" }, loser.Error.ToString());
+            Assert.True(driver is PostgresException { SqlState: "40001" }, loser.Error.ToString());
         }
         else { Assert.Equal(ServiceErrorType.Conflict, loser.Result!.Error!.Type); }
         DialogSnapshot final = await ReadAsync(database, token);
@@ -316,16 +307,18 @@ public class PersistenceIntegrationTests
 
     /// <summary>Реальные FK, unique и check constraints отвергают неправильные записи без изменения сохранённых данных.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task RelationalConstraintsRejectInvalidRows(DatabaseProvider provider)
     {
+        // Arrange
         await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await CreateAsync(database);
         Guid turn = Guid.NewGuid();
         token = await FillAsync(database, token, turn, Guid.NewGuid(), "valid");
         string before = await database.FingerprintAsync();
+
+        // Act
         List<object> invalid =
         [
             RootRecord(revision: -1), RootRecord(bytes: -1), RootRecord(owner: ""), RootRecord(identity: Guid.Empty),
@@ -360,9 +353,9 @@ public class PersistenceIntegrationTests
                 }
                 return Task.FromResult(ServiceResult.Ok());
             }, default));
-            Assert.True(provider == DatabaseProvider.SQLite
-                ? error.InnerException is SqliteException { SqliteErrorCode: 19 }
-                : error.InnerException is PostgresException { SqlState: "23502" or "23503" or "23505" or "23514" });
+
+            // Assert
+            Assert.True(error.InnerException is PostgresException { SqlState: "23502" or "23503" or "23505" or "23514" });
             Assert.Empty(scope.ServiceProvider.GetRequiredService<AgentBridgeDbContext>().ChangeTracker.Entries());
             Assert.Equal(before, await database.FingerprintAsync());
         }

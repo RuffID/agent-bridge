@@ -1,3 +1,5 @@
+using AgentBridge.Persistence.Migrations.PostgreSql;
+using AgentBridge.Persistence.PostgreSql;
 using System.Data;
 using System.Linq.Expressions;
 using AgentBridge.Application.Models;
@@ -7,8 +9,6 @@ using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Reading;
 using AgentBridge.Persistence.EfCore.UnitOfWork;
-using AgentBridge.Persistence.Migrations.SqlServer;
-using AgentBridge.Persistence.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -20,9 +20,12 @@ public class BoundedHistoryQueryTests
 {
     /// <summary>SQL содержит server byte predicate/Take; scalar preflight не выбирает canonical payload/owned report.</summary>
     [Fact]
-    public void EveryMappedTableTranslatesSizeAndPayloadBoundsIncludingBinaryOwner()
+    public void EveryMappedTableTranslatesSizeAndPayloadBounds()
     {
-        using AgentBridgeDbContext context = new SqlServerAgentBridgeDbContextFactory().CreateDbContext([]);
+        // Arrange
+        using AgentBridgeDbContext context = new PostgreSqlAgentBridgeDbContextFactory().CreateDbContext([]);
+
+        // Act
         Verify<DialogRecord>(context, "OwnerId", "RuntimeJson");
         Verify<DialogTurnRecord>(context, "SettingsJson");
         Verify<CanonicalItemRecord>(context, "ContentJson");
@@ -32,28 +35,31 @@ public class BoundedHistoryQueryTests
         Verify<DialogCatalogRecord>(context, "ProfileJson", "PolicyJson", "Title", "Snippet", "OwnerId", "SiteId", "AgentId");
         Verify<DialogCatalogClockRecord>(context, "Id");
         Verify<DialogCatalogChangeRecord>(context, "StateJson", "Kind");
+
         Verify<DialogRecoveryOperationRecord>(context, "ResultJson", "PairsJson", "PayloadHash", "Kind");
+
+        // Assert
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
     }
 
     /// <summary>Проверяет обе server query формы, а не только размер уже materialized DTO.</summary>
     private static void Verify<T>(AgentBridgeDbContext context, params string[] columns) where T : class
     {
-        Expression<Func<T, long>> size = new SqlServerHistoryRecordSizeProvider().Size<T>();
+        Expression<Func<T, long>> size = new PostgreSqlHistoryRecordSizeProvider().Size<T>();
         string preflight = context.Set<T>().Select(size).Take(12).ToQueryString();
         Expression<Func<T, bool>> fits = Expression.Lambda<Func<T, bool>>(
             Expression.LessThanOrEqual(size.Body, Expression.Constant(8192L)), size.Parameters);
         string payload = context.Set<T>().Where(fits).Take(11).ToQueryString();
-        Assert.Contains("TOP(", preflight);
-        Assert.Contains("TOP(", payload);
+        Assert.Contains("LIMIT", preflight);
+        Assert.Contains("LIMIT", payload);
         Assert.Contains("WHERE", payload);
         Assert.Contains("<=", payload);
-        Assert.DoesNotContain("LEN(", preflight);
+        Assert.Contains("length(", preflight);
         foreach (string column in columns)
         {
-            Assert.Contains($"DATALENGTH([", preflight);
-            Assert.Contains($"[{column}]", preflight);
-            Assert.Contains($"[{column}]", payload);
+            Assert.Contains("length(", preflight);
+            Assert.Contains($"\"{column}\"", preflight);
+            Assert.Contains($"\"{column}\"", payload);
         }
     }
 
@@ -64,6 +70,7 @@ public class BoundedHistoryQueryTests
     [InlineData(1000, false)]
     public async Task RecordBoundaryStopsBeforePayload(int count, bool success)
     {
+        // Arrange
         List<CanonicalItemRecord> records = Enumerable.Range(1, count).Select(index => new CanonicalItemRecord
         {
             Sequence = index, ContentJson = "{\"type\":\"message\"}"
@@ -71,10 +78,14 @@ public class BoundedHistoryQueryTests
         FakeHistoryQueryRepository<CanonicalItemRecord> repository = new(records);
         HistoryLoadBudget budget = new(new(3, 4096, 1));
         PersistenceOperationGate gate = new(budget);
-        HistoryQueryGuard guard = new(budget, new SqlServerHistoryRecordSizeProvider());
+        HistoryQueryGuard guard = new(budget, new PostgreSqlHistoryRecordSizeProvider());
+
+        // Act
         using IDisposable operation = gate.Enter();
         if (success)
         {
+
+            // Assert
             Assert.Equal(3, (await guard.ReadAsync(repository.Query(true).OrderBy(row => row.Sequence), TestContext.Current.CancellationToken)).Count);
             Assert.Equal(3, repository.PayloadRows);
             Assert.Contains("Take(3)", Assert.Single(repository.PayloadQueries).ToString());
@@ -93,18 +104,23 @@ public class BoundedHistoryQueryTests
     [Theory]
     [InlineData("ASCII", true)]
     [InlineData("ASCII", false)]
-    [InlineData("Ж😀\0   ", true)]
+    [InlineData("Ж😀   ", true)]
     [InlineData("Ж😀\0   ", false)]
     public async Task ByteBoundaryPreservesTrailingSpacesAndUnicode(string text, bool atBoundary)
     {
+        // Arrange
         CanonicalItemRecord row = new() { ContentJson = text };
         long size = FakeHistoryQueryRepository<CanonicalItemRecord>.Size(row);
         FakeHistoryQueryRepository<CanonicalItemRecord> repository = new([row]);
         HistoryLoadBudget budget = new(new(1, atBoundary ? size : size - 1, 1));
         using IDisposable operation = new PersistenceOperationGate(budget).Enter();
-        HistoryQueryGuard guard = new(budget, new SqlServerHistoryRecordSizeProvider());
+
+        // Act
+        HistoryQueryGuard guard = new(budget, new PostgreSqlHistoryRecordSizeProvider());
         if (atBoundary)
         {
+
+            // Assert
             Assert.Same(row, Assert.Single(await guard.ReadAsync(repository.Query(true), TestContext.Current.CancellationToken)));
         }
         else
@@ -120,6 +136,7 @@ public class BoundedHistoryQueryTests
     [InlineData(true)]
     public async Task RaceCannotRemovePayloadBounds(bool growBytes)
     {
+        // Arrange
         List<CanonicalItemRecord> rows = [new() { ContentJson = "{}" }];
         FakeHistoryQueryRepository<CanonicalItemRecord> repository = new(rows);
         repository.BeforeExecute = scalar =>
@@ -138,7 +155,11 @@ public class BoundedHistoryQueryTests
         };
         HistoryLoadBudget budget = new(new(2, 4096, 1));
         using IDisposable operation = new PersistenceOperationGate(budget).Enter();
-        HistoryQueryGuard guard = new(budget, new SqlServerHistoryRecordSizeProvider());
+
+        // Act
+        HistoryQueryGuard guard = new(budget, new PostgreSqlHistoryRecordSizeProvider());
+
+        // Assert
         await Assert.ThrowsAsync<DialogHistoryLoadConflictException>(() => guard.ReadAsync(repository.Query(true), TestContext.Current.CancellationToken));
         Assert.InRange(repository.PayloadRows, 0, 2);
         Assert.Contains("Take(2)", Assert.Single(repository.PayloadQueries).ToString());
@@ -149,13 +170,18 @@ public class BoundedHistoryQueryTests
     [Fact]
     public async Task OperationBudgetDoesNotResetBetweenQueries()
     {
+        // Arrange
         FakeHistoryQueryRepository<CanonicalItemRecord> repository = new([new() { ContentJson = "{}" }]);
         HistoryLoadBudget budget = new(new(1, 4096, 2));
         PersistenceOperationGate gate = new(budget);
-        HistoryQueryGuard guard = new(budget, new SqlServerHistoryRecordSizeProvider());
+        HistoryQueryGuard guard = new(budget, new PostgreSqlHistoryRecordSizeProvider());
+
+        // Act
         using (gate.Enter())
         {
             await guard.ReadAsync(repository.Query(true), TestContext.Current.CancellationToken);
+
+            // Assert
             await Assert.ThrowsAsync<DialogHistoryLoadLimitException>(() => guard.ReadAsync(repository.Query(true), TestContext.Current.CancellationToken));
             Assert.Equal(1, repository.PayloadRows);
         }
@@ -170,10 +196,15 @@ public class BoundedHistoryQueryTests
     [Fact]
     public async Task QueryLimitStopsBeforeNextPreflight()
     {
+        // Arrange
         FakeHistoryQueryRepository<CanonicalItemRecord> repository = new([]);
         HistoryLoadBudget budget = new(new(4, 4096, 1));
-        HistoryQueryGuard guard = new(budget, new SqlServerHistoryRecordSizeProvider());
+        HistoryQueryGuard guard = new(budget, new PostgreSqlHistoryRecordSizeProvider());
+
+        // Act
         using IDisposable operation = new PersistenceOperationGate(budget).Enter();
+
+        // Assert
         Assert.Empty(await guard.ReadAsync(repository.Query(true), TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<DialogHistoryLoadLimitException>(() => guard.ReadAsync(repository.Query(true), TestContext.Current.CancellationToken));
         Assert.Single(repository.ScalarQueries);
@@ -186,13 +217,18 @@ public class BoundedHistoryQueryTests
     [InlineData(true)]
     public async Task CancellationAndErrorsRemainObservable(bool canceled)
     {
+        // Arrange
         FakeHistoryQueryRepository<CanonicalItemRecord> repository = new([new() { ContentJson = "{}" }]);
         using CancellationTokenSource caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         Exception primary = canceled ? new OperationCanceledException(caller.Token) : new IOException("isolated-io");
         repository.Error = primary;
         HistoryLoadBudget budget = new(new(1, 4096, 1));
         using IDisposable operation = new PersistenceOperationGate(budget).Enter();
-        HistoryQueryGuard guard = new(budget, new SqlServerHistoryRecordSizeProvider());
+
+        // Act
+        HistoryQueryGuard guard = new(budget, new PostgreSqlHistoryRecordSizeProvider());
+
+        // Assert
         Assert.Same(primary, await Assert.ThrowsAnyAsync<Exception>(() => guard.ReadAsync(repository.Query(true), caller.Token)));
         Assert.Empty(repository.PayloadQueries);
     }
@@ -201,22 +237,27 @@ public class BoundedHistoryQueryTests
     [Fact]
     public async Task RegistrationUsesSharedGateAndActualBoundedReader()
     {
+        // Arrange
         ServiceCollection services = new();
         DialogHistoryLoadLimits limits = new(128, 1048576, 64);
-        services.AddAgentBridgeSqlServerBoundedHistory(limits);
-        services.AddAgentBridgeSqlServer();
+        services.AddAgentBridgePostgreSqlBoundedHistory(limits);
+        services.AddAgentBridgePostgreSql();
         services.Configure<DatabaseOptions>(options =>
         {
-            options.Provider = DatabaseProvider.SqlServer;
-            options.ConnectionString = "Server=never-open;Database=isolated;Integrated Security=true;Encrypt=false";
+            options.Provider = DatabaseProvider.PostgreSql;
+            options.ConnectionString = "Host=invalid.example;Database=isolated";
         });
         services.AddAgentBridgePersistence();
         await using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
+
+        // Act
         IBoundedDialogReader reader = scope.ServiceProvider.GetRequiredService<IBoundedDialogReader>();
+
+        // Assert
         Assert.Same(limits, reader.LoadLimits);
         Assert.Same(reader, scope.ServiceProvider.GetRequiredService<IDialogReader>());
         Assert.Equal(ConnectionState.Closed, scope.ServiceProvider.GetRequiredService<AgentBridgeDbContext>().Database.GetDbConnection().State);
-        Assert.Throws<InvalidOperationException>(() => services.AddAgentBridgeSqlServerBoundedHistory(limits));
+        Assert.Throws<InvalidOperationException>(() => services.AddAgentBridgePostgreSqlBoundedHistory(limits));
     }
 }

@@ -23,26 +23,24 @@ public class NativeAssetMetadataTests
         }
     }
 
-    /// <summary>Managed PE и ELF не принимаются как Windows native, Windows PE не принимается как Linux asset.</summary>
+    /// <summary>Managed PE и ELF не принимаются как Windows native; неизвестный RID отклоняется.</summary>
     [Fact]
     public void NativeRejectsManagedAndMixedOperatingSystems()
     {
+        // Arrange
         string root = DeliveryTestPaths.SdkRoot;
-        byte[] managed = File.ReadAllBytes(Path.Combine(root, "SqlServer", "win-x64", "lib", "AgentBridge.dll"));
-        byte[] windows = File.ReadAllBytes(Path.Combine(root, "SqlServer", "win-x64", "native", "win-x64", "Microsoft.Data.SqlClient.SNI.dll"));
+
+        // Act
+        byte[] managed = File.ReadAllBytes(Path.Combine(root, "PostgreSql", "win-x64", "lib", "AgentBridge.dll"));
         byte[] linux = ElfHeader("linux-x64");
-        NativeAssetMetadata.Validate(windows, "win-x64");
-        byte[] wrongMachine = (byte[])windows.Clone();
-        int coffOffset = BitConverter.ToInt32(wrongMachine, 0x3c);
-        wrongMachine[coffOffset + 4] = 0;
-        Assert.Throws<InvalidDataException>(() => NativeAssetMetadata.Validate(wrongMachine, "win-x64"));
+
+        // Assert
         Assert.Throws<InvalidDataException>(() => NativeAssetMetadata.Validate(managed, "win-x64"));
-        Assert.Throws<InvalidDataException>(() => NativeAssetMetadata.Validate(windows, "linux-x64"));
         Assert.Throws<BadImageFormatException>(() => NativeAssetMetadata.Validate(linux, "win-x64"));
         Assert.Throws<ArgumentException>(() => NativeAssetMetadata.Validate(linux, "unknown"));
     }
 
-    /// <summary>Создаёт header для negative controls; SqlClient 7 не поставляет прежний libmsalruntime.so.</summary>
+    /// <summary>Создаёт синтетический ELF header для negative controls.</summary>
     private static byte[] ElfHeader(string rid)
     {
         byte[] bytes = new byte[64];

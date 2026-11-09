@@ -8,25 +8,23 @@
 
 | Выбор | DLL / namespace | Регистрация |
 | --- | --- | --- |
-| SQL Server | `AgentBridge.Persistence.SqlServer` | `services.AddAgentBridgeSqlServer()` |
-| SQLite | `AgentBridge.Persistence.Sqlite` | `services.AddAgentBridgeSqlite()` |
 | PostgreSQL | `AgentBridge.Persistence.PostgreSql` | `services.AddAgentBridgePostgreSql()` |
 
-Пример для SQL Server:
+Пример PostgreSQL:
 
 ```csharp
 using AgentBridge.Integration;
-using AgentBridge.Persistence.SqlServer;
+using AgentBridge.Persistence.PostgreSql;
 
-services.AddAgentBridgeSqlServer();
+services.AddAgentBridgePostgreSql();
 services.AddAgentBridge(configuration, appOwnedHttpClientFactory);
 ```
 
-ILoggerFactory и app-owned HTTP factory остаются обязательными. `Database.Provider` должен соответствовать одному из явно зарегистрированных модулей. Missing/wrong/ambiguous module отклоняется проверкой options до операций; повтор того же модуля идемпотентен. Можно явно подключить несколько модулей в универсальном приложении, но его DLL-поставка тогда должна содержать их зависимости.
+ILoggerFactory и app-owned HTTP factory остаются обязательными. `Database.Provider` должен соответствовать одному из явно зарегистрированных модулей. Missing/wrong/ambiguous module отклоняется проверкой options до операций; повтор того же модуля идемпотентен. AgentBridge подключает только PostgreSQL; собственные модификации соседней EFCoreLibrary не входят в эту задачу.
 
-Модули реализуют `IAgentBridgeDatabaseProvider`: настройку общего DbContext, создание existing EFCoreLibrary maintenance provider и точное распознавание provider-specific PK collision. CAS остаётся в общем UoW; SQLite1555 и PostgreSQL23505 с exact table/constraint сохраняют прежнюю классификацию. SQL Server driver failures по-прежнему не маскируются Conflict. При самостоятельном создании UnitOfWorkScope provider-specific classification требует нового конструктора с модулями; прежний двухаргументный конструктор сохранён для бинарной совместимости. DI передаёт модули автоматически.
+Модули реализуют `IAgentBridgeDatabaseProvider`: настройку общего DbContext, создание existing EFCoreLibrary maintenance provider и точное распознавание provider-specific PK collision. CAS остаётся в общем UoW; PostgreSQL23505 классифицируется только по exact table/constraint. При самостоятельном создании UnitOfWorkScope provider-specific classification требует нового конструктора с модулями; прежний двухаргументный конструктор сохранён для бинарной совместимости. DI передаёт модули автоматически.
 
-Отдельные migrations projects зависят от своего модуля, identity/history и generated схема шести таблиц не менялись. Выбранная migrations DLL поставляется вместе с модулем. Регистрация не выполняет соединение, SQL, backup или migrations.
+Отдельные migrations projects зависят от своего модуля, identity/history и generated схема десяти таблиц не менялись. Выбранная migrations DLL поставляется вместе с модулем. Регистрация не выполняет соединение, SQL, backup или migrations.
 
 ## Структура общей поставки
 
@@ -58,14 +56,8 @@ ILoggerFactory и app-owned HTTP factory остаются обязательны
 
 Schema2 manifest каждого RID использует пути относительно корня bundle, включает общие и платформенные файлы, размеры/SHA256 и sourcePath исходного SDK kit. SDK deps и исходный manifest сохраняются как evidence, не как deps приложения. Generated outputs вручную не редактируются; оба упаковщика запускаются только после разрешения точной команды и требуют новый destination.
 
-Полный SQL Server bundle содержит 140 файлов, около81,68 МиБ вместо418 файлов/175,92 МиБ прежних трёх комплектов. XML и локализации сохранены; .NET runtime устанавливается приложением отдельно. Это предыдущая структура поставки TelegramCodexRelayBot; сейчас бот использует [собственные DLL с обязательными NuGet-зависимостями](29-dll-and-nuget-delivery.md), 23 файла/1,03 МиБ. Полная поставка сохранена как альтернативный формат.
+Новая матрица подготовки содержит PostgreSQL win-x64/linux-x64/linux-arm64, один DLL/NuGet bundle и shared bundle. Скрипты обновлены; новые комплекты в этой задаче не создавались. Прежние artifacts и результаты SQL Server/SQLite относятся к историческим поставкам и не подтверждают текущую PostgreSQL-сборку.
 
-## Проверка и ограничения
+## Проверка
 
-Изолированные persistence tests проверяют metadata/runtime-vs-factory, общий scope, maintenance registration, явный модуль/ошибки выбора/idempotency/PK classification. SharedDeliveryTests проверяет source closure, hashes, отсутствие соседних провайдеров, dedup, PE/ELF metadata и переносимые references/output/publish paths. Bot tests используют настоящие DLL с local HTTP/storage doubles.
-
-Проверка 2026-10-08: 357 persistence tests без БД, 28 изолированных Hosting.Tests, 30 delivery metadata tests и 113 bot tests пройдены, без failed/skipped. Соответствующие сборки завершились без предупреждений и ошибок. Пять внешних DLL-only consumers и пять runtime probe variants собраны для SQL Server win-x64/linux-x64/linux-arm64 и SQLite/PostgreSQL win-x64; методы consumers и probes не исполнялись. Hosting.Tests запускали только разрешённый тестовый Generic Host с заглушками.
-
-В выходных папках пяти consumers сверены SHA256 всех DLL/XML/resources/native с manifest: 121/119/118 файлов SQL Server, 73 SQLite и 67 PostgreSQL. Установленный bundle совпадает с manifest, исходными Release DLL и SHA256 обоих упаковщиков; повторных физических managed DLL с одинаковым SHA256 нет.
-
-Сборка и metadata не доказывают native loading, Linux runtime, SQL constraints/atomicity, реальное обслуживание или live API. Бот, БД, SQL, Docker и миграции при изменении структуры поставки не запускаются. Исторические отчёты прежних комплектов сохраняются как evidence на свою дату.
+Source compile-check выполняется отдельно от подготовки комплектов. Metadata tests проверяют manifests/hashes/SDK closure, отсутствие удалённых провайдеров и переносимость путей. Runtime, реальное PostgreSQL/backup/restore и external consumer требуют отдельной проверки свежего целого комплекта.

@@ -15,14 +15,19 @@ public class SharedDeliveryTests
     [InlineData("linux-arm64")]
     public void PlatformMatchesSourceClosureAndPortableBuildItems(string rid)
     {
+        // Arrange
         string root = Root();
         string platform = Path.Combine(root, "platform", rid);
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(platform, "delivery.manifest.json")));
+
+        // Act
         JsonElement document = manifest.RootElement;
+
+        // Assert
         Assert.Equal(2, document.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("shared", document.GetProperty("layout").GetString());
         Assert.Equal("Release", document.GetProperty("configuration").GetString());
-        Assert.Equal("SqlServer", document.GetProperty("provider").GetString());
+        Assert.Equal("PostgreSql", document.GetProperty("provider").GetString());
         Assert.Equal(rid, document.GetProperty("rid").GetString());
         JsonElement[] entries = document.GetProperty("files").EnumerateArray().ToArray();
         foreach (JsonElement entry in entries)
@@ -58,9 +63,9 @@ public class SharedDeliveryTests
         }
         string[] managed = mapped.Values.Where(entry => entry.GetProperty("kind").GetString() == "managed")
             .Select(entry => entry.GetProperty("assemblyName").GetString()!).ToArray();
-        Assert.Contains("AgentBridge.Persistence.SqlServer", managed);
+        Assert.Contains("AgentBridge.Persistence.PostgreSql", managed);
         Assert.DoesNotContain(managed, name => name.Contains("Sqlite", StringComparison.OrdinalIgnoreCase)
-            || name.Contains("PostgreSql", StringComparison.OrdinalIgnoreCase) || name.Contains("Npgsql", StringComparison.OrdinalIgnoreCase));
+            || name.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) || name.Contains("SqlClient", StringComparison.OrdinalIgnoreCase));
 
         XDocument props = XDocument.Load(Path.Combine(platform, "AgentBridge.Delivery.variant.props"));
         Assert.Equal(rid, props.Descendants("AgentBridgeDeliveryRid").Single().Value);

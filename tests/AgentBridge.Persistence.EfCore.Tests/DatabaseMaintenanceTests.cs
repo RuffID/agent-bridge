@@ -5,8 +5,6 @@ using EFCoreLibrary.Maintenance.Errors;
 using EFCoreLibrary.Maintenance.Models;
 using EFCoreLibrary.Maintenance.EfCore;
 using EFCoreLibrary.Maintenance.Processes;
-using EFCoreLibrary.Maintenance.Sqlite.Abstractions;
-using EFCoreLibrary.Maintenance.Sqlite.Backup;
 using EFCoreLibrary.EfCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,43 +17,43 @@ namespace AgentBridge.Persistence.EfCore.Tests;
 /// <summary>Явный API AgentBridge с настоящим библиотечным coordinator и fake provider/migration boundaries.</summary>
 public class DatabaseMaintenanceTests
 {
-    /// <summary>Public AB registration проецирует actual process/native primary и secondary без готовой fake ошибки.</summary>
-    [Theory][InlineData("process")][InlineData("native-unknown")][InlineData("native-code")]
-    public async Task ActualBackupCleanupProjectsSafePrimary(string path)
+    /// <summary>Public AB registration проецирует actual process primary и secondary без готовой fake ошибки.</summary>
+    [Fact]
+    public async Task ActualBackupCleanupProjectsSafePrimary()
     {
+        // Arrange
         ProcessBoundary process = new();
         BackupProcessRunner runner = new(process);
-        BackupSession session = new(path == "native-unknown");
         FakeMaintenanceBoundary fake = new()
         {
             BackupAction = async budget =>
             {
-                if (path == "process") await runner.RunAsync(new ProcessCommand(Path.GetFullPath("never-executed"), [], new Dictionary<string, string>()), budget, TimeSpan.FromMilliseconds(10));
-                else await SqliteBackupStepper.CopyAsync(session, budget);
+                await runner.RunAsync(new ProcessCommand(Path.GetFullPath("never-executed"), [], new Dictionary<string, string>()), budget, TimeSpan.FromMilliseconds(10));
             }
         };
         using ServiceProvider root = Root(fake);
+
+        // Act
         using IServiceScope scope = root.CreateScope();
         try
         {
             MaintenanceException error = await Assert.ThrowsAsync<MaintenanceException>(() => Service(scope).UpdateExistingAsync(Timeout, ct: TestContext.Current.CancellationToken));
-            Assert.Equal(path == "native-code" ? MaintenanceError.BackupNotConfirmed : MaintenanceError.CleanupUnconfirmed, error.Code);
+
+            // Assert
+            Assert.Equal(MaintenanceError.CleanupUnconfirmed, error.Code);
             Assert.Equal(MaintenanceError.BackupFailed, error.PrimaryError);
             Assert.DoesNotContain("synthetic-secret", error.ToString());
             Assert.Null(error.InnerException);
             Assert.DoesNotContain("migrate", fake.Calls);
             Assert.Single(fake.Calls, call => call == "backup");
             Assert.Equal("unpin", fake.Calls.Last());
-            if (path == "process") { Assert.Equal(1, process.Starts); Assert.Equal(1, runner.UnconfirmedCount); Assert.Equal(0, process.Disposals); }
-            else { Assert.Equal(1, session.Steps); Assert.Equal(1, session.Finishes); }
+            Assert.Equal(1, process.Starts);
+            Assert.Equal(1, runner.UnconfirmedCount);
+            Assert.Equal(0, process.Disposals);
             using IServiceScope next = root.CreateScope();
-            if (path != "native-code")
-            {
-                string[] calls = fake.Calls.ToArray();
-                Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken))).Code);
-                Assert.Equal(calls, fake.Calls);
-            }
-            else await Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
+            string[] calls = fake.Calls.ToArray();
+            Assert.Equal(MaintenanceError.GatePoisoned, (await Assert.ThrowsAsync<MaintenanceException>(() => Service(next).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken))).Code);
+            Assert.Equal(calls, fake.Calls);
         }
         finally
         {
@@ -85,17 +83,6 @@ public class DatabaseMaintenanceTests
         public void Dispose() { Assert.True(StopConfirmed); Disposals++; }
     }
 
-    /// <inheritdoc/>
-    private class BackupSession(bool unknown) : ISqliteBackupSession
-    {
-        public int Steps { get; private set; }
-        public int Finishes { get; private set; }
-        /// <inheritdoc/>
-        public int Step(int pages) { Steps++; return 10; }
-        /// <inheritdoc/>
-        public int Finish() { Finishes++; if (unknown) throw new IOException("synthetic-secret-finish"); return 10; }
-    }
-
     /// <summary>Actual coordinator освобождает заранее подготовленный EF lease и сохраняет primary при ошибке cleanup.</summary>
     [Theory]
     [InlineData("typed", false)][InlineData("typed", true)]
@@ -107,7 +94,7 @@ public class DatabaseMaintenanceTests
         // Arrange
         using CancellationTokenSource caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         using FakePinnedConnection connection = new();
-        using DbContext context = new(new DbContextOptionsBuilder().UseSqlite(connection).Options);
+        using DbContext context = new(new DbContextOptionsBuilder().UseNpgsql(connection).Options);
         EfMigrationOperations<AgentBridgeContextKey> migrations = new(
             new EfDbContextAdapter<DbContext, AgentBridgeContextKey>(context));
 
@@ -609,11 +596,12 @@ public class DatabaseMaintenanceTests
     [Fact]
     public async Task GateSerializesScopesAndCancellationStopsWaiter()
     {
+        // Arrange
         TaskCompletionSource entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
         FakeMaintenanceBoundary firstFake = new() { InspectionAction = async budget => { entered.TrySetResult(); await release.Task.WaitAsync(budget.Token); } };
         FakeMaintenanceBoundary secondFake = new();
-        ServiceCollection services = DatabaseMaintenanceRegistrationTests.Services(DatabaseProvider.SQLite);
+        ServiceCollection services = DatabaseMaintenanceRegistrationTests.Services(DatabaseProvider.PostgreSql);
         services.AddScoped<IDatabaseMaintenanceProvider<AgentBridgeContextKey>>(_ => firstFake);
         services.AddScoped<IRelationalMigrationOperations<AgentBridgeContextKey>>(_ => firstFake);
         using ServiceProvider root = services.BuildServiceProvider();
@@ -624,11 +612,15 @@ public class DatabaseMaintenanceTests
             second.ServiceProvider.GetRequiredService<SingleInitializerGate>(), second.ServiceProvider.GetRequiredService<ILogger<DatabaseMaintenance<AgentBridgeContextKey>>>());
         Task<DatabaseInspection> active = Service(first).InspectAsync(Timeout, ct: TestContext.Current.CancellationToken);
         using CancellationTokenSource waiter = new();
+
+        // Act
         Task<DatabaseInspection>? waiting = null;
         try
         {
             await entered.Task.WaitAsync(Timeout, cancellationToken: TestContext.Current.CancellationToken);
             waiting = secondService.InspectAsync(Timeout, waiter.Token);
+
+            // Assert
             Assert.False(waiting.IsCompleted);
             Assert.Empty(secondFake.Calls);
             waiter.Cancel();
@@ -671,7 +663,7 @@ public class DatabaseMaintenanceTests
     /// <summary>Создаёт production registrations и заменяет только технические I/O-границы.</summary>
     private static ServiceProvider Root(FakeMaintenanceBoundary fake, MaintenanceTestLogger? logger = null)
     {
-        ServiceCollection services = DatabaseMaintenanceRegistrationTests.Services(DatabaseProvider.SQLite);
+        ServiceCollection services = DatabaseMaintenanceRegistrationTests.Services(DatabaseProvider.PostgreSql);
         services.RemoveAll<IDatabaseMaintenanceProvider<AgentBridgeContextKey>>();
         services.RemoveAll<IRelationalMigrationOperations<AgentBridgeContextKey>>();
         services.AddScoped<IDatabaseMaintenanceProvider<AgentBridgeContextKey>>(_ => fake);

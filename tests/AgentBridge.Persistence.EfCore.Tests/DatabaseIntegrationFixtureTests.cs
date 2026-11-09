@@ -5,7 +5,7 @@ using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests;
 
-/// <summary>Проверяет lifecycle fixture без Docker, процессов, SQL и открытия SQLite.</summary>
+/// <summary>Проверяет lifecycle fixture без Docker, процессов, SQL и открытия БД.</summary>
 public class DatabaseIntegrationFixtureTests
 {
     /// <summary>Docker metadata публикует только loopback random port и ограничивает временное хранилище.</summary>
@@ -28,9 +28,8 @@ public class DatabaseIntegrationFixtureTests
         Assert.Equal(["postgres", "-c", "fsync=on", "-c", "full_page_writes=on", "-c", "synchronous_commit=on"], parameters.Cmd);
     }
 
-    /// <summary>Неинициализированный fixture отказывает обоим провайдерам до создания ресурсов.</summary>
+    /// <summary>Неинициализированный fixture отказывает до подготовки PostgreSQL до создания ресурсов.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task UninitializedFixtureRejectsDatabaseCreation(DatabaseProvider provider)
     {
@@ -44,58 +43,43 @@ public class DatabaseIntegrationFixtureTests
     [Fact]
     public async Task DisposedFixtureRejectsDatabaseCreation()
     {
+        // Arrange
         DatabaseIntegrationFixture fixture = new();
         await fixture.DisposeAsync();
+
+        // Act
         await fixture.DisposeAsync();
 
+        // Assert
         await Assert.ThrowsAsync<ObjectDisposedException>(() => fixture.CreateDatabaseAsync(DatabaseProvider.PostgreSql));
         Assert.Throws<ObjectDisposedException>(() => { _ = fixture.InitializeAsync(); });
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => fixture.CreateSqlServerDatabaseAsync());
     }
 
-    /// <summary>Неинициализированная коллекция отказывает MSSQL до построения контейнера.</summary>
-    [Fact]
-    public async Task UninitializedFixtureRejectsSqlServerCreation()
+    /// <summary>Удалённые провайдеры отклоняются до запуска контейнера.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(2)]
+    public async Task RemovedProviderCannotStartContainer(int selected)
     {
+        // Arrange
         await using DatabaseIntegrationFixture fixture = new();
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.CreateSqlServerDatabaseAsync());
-    }
-
-    /// <summary>SQLite получает разные собственные каталоги без контейнера и удаляет их при disposal.</summary>
-    [Fact]
-    public async Task SqliteConfigurationOwnsSeparateDirectoriesWithoutDatabaseIo()
-    {
-        DatabaseIntegrationFixture fixture = new();
         if (!OperatingSystem.IsWindows())
         {
-            Assert.Throws<InvalidOperationException>(() => { _ = fixture.InitializeAsync(); });
-            await fixture.DisposeAsync();
+            // Act
+            InvalidOperationException platform = Assert.Throws<InvalidOperationException>(() => fixture.InitializeAsync());
+
+            // Assert
+            Assert.Contains("Windows", platform.Message);
             return;
         }
 
         await fixture.InitializeAsync();
-        string? root = null;
-        try
-        {
-            await using IntegrationDatabase first = await fixture.CreateDatabaseAsync(DatabaseProvider.SQLite);
-            await using IntegrationDatabase second = await fixture.CreateDatabaseAsync(DatabaseProvider.SQLite);
-            root = Path.GetDirectoryName(first.DirectoryPath);
 
-            Assert.NotEqual(first.DirectoryPath, second.DirectoryPath);
-            Assert.Equal(root, Path.GetDirectoryName(second.DirectoryPath));
-            Assert.True(Directory.Exists(first.BackupDirectory));
-            Assert.True(Directory.Exists(second.BackupDirectory));
-            Assert.False(File.Exists(Path.Combine(first.DirectoryPath, "source.db")));
-            Assert.False(File.Exists(Path.Combine(second.DirectoryPath, "source.db")));
-            Assert.Contains("source.db", first.ConnectionString);
-            Assert.NotEqual(first.ConnectionString, second.ConnectionString);
-        }
-        finally
-        {
-            await fixture.DisposeAsync();
-        }
+        // Act
+        ArgumentOutOfRangeException error = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            fixture.CreateDatabaseAsync((DatabaseProvider)selected));
 
-        Assert.False(Directory.Exists(root));
+        // Assert
+        Assert.Equal("provider", error.ParamName);
     }
 }

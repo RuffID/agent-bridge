@@ -48,14 +48,7 @@ public class AgentBridgeDbContext : DbContext
         builder.Property(record => record.CatalogRegistered).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(record => record.RuntimeJson).HasColumnType(mapping.TextType).IsConcurrencyToken();
         PropertyBuilder<string> owner = builder.Property(record => record.OwnerId).IsRequired().IsConcurrencyToken();
-        if (mapping.IsSqlServer)
-        {
-            owner.HasConversion<OrdinalOwnerConverter>().HasColumnType("varbinary(max)");
-        }
-        else
-        {
-            owner.UseCollation(mapping.OwnerCollation);
-        }
+        owner.UseCollation(mapping.OwnerCollation);
         owner
             .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         builder.Property(record => record.CreatedAtUtc).HasConversion<UtcTicksConverter>()

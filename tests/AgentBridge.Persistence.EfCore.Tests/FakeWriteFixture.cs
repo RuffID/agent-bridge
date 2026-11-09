@@ -57,7 +57,7 @@ internal class FakeWriteFixture
                     current.OwnerId != expected.OwnerId || current.ExpiresAtUtc != expected.ExpiresAtUtc)
                 {
                     using AgentBridgeDbContext metadata = new(new DbContextOptionsBuilder<AgentBridgeDbContext>()
-                        .UseSqlite("Data Source=never-open.db").Options);
+                        .UseNpgsql("Host=invalid.example;Database=synthetic").Options);
                     throw new FakeRootConcurrencyException(metadata.Entry(changed));
                 }
             }

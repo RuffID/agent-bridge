@@ -17,8 +17,8 @@ internal static class DeliveryTestPaths
     /// <summary>Матрица поставок собственных DLL с обязательными NuGet-зависимостями.</summary>
     internal static string NuGetRoot => Path.Combine(CurrentRoot, "nuget");
 
-    /// <summary>Общая поставка SQL Server для трёх RID.</summary>
-    internal static string SharedRoot => Path.Combine(CurrentRoot, "shared", "SqlServer");
+    /// <summary>Общая поставка PostgreSQL для трёх RID.</summary>
+    internal static string SharedRoot => Path.Combine(CurrentRoot, "shared", "PostgreSql");
 
     /// <summary>Требует единственный абсолютный проектный путь без поиска старых комплектов.</summary>
     private static string ReadArtifactsRoot()

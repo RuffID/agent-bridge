@@ -1,3 +1,4 @@
+using AgentBridge.Persistence.PostgreSql;
 using System.Text;
 using System.Text.Json;
 using AgentBridge.Application.Models;
@@ -5,7 +6,6 @@ using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Integration;
-using AgentBridge.Persistence.SqlServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -27,7 +27,7 @@ public class Sub2ApiBinaryTests
         using HttpClient client = new(handler);
         ServiceCollection services = new();
         services.AddLogging();
-        services.AddAgentBridgeSqlServer();
+        services.AddAgentBridgePostgreSql();
         services.AddAgentBridgeSub2ApiConnector();
         services.AddAgentBridge(Configuration(), _ => client);
         using ServiceProvider root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
@@ -57,7 +57,7 @@ public class Sub2ApiBinaryTests
         using HttpClient client = new(handler) { Timeout = Timeout.InfiniteTimeSpan };
         ServiceCollection services = new();
         services.AddLogging();
-        services.AddAgentBridgeSqlServer();
+        services.AddAgentBridgePostgreSql();
         services.AddAgentBridgeSub2ApiConnector();
         int factories = 0;
         IConfiguration configuration = Configuration();
@@ -125,7 +125,7 @@ public class Sub2ApiBinaryTests
             ["Sub2Api:BaseAddress"] = "https://binary.invalid/prefix/v1/", ["Sub2Api:Model"] = "gpt-4.1",
             ["Sub2Api:ReasoningEffort"] = "medium", ["Sub2Api:KeySource"] = "Shared",
             ["Sub2Api:SharedApiKey"] = "synthetic-binary-key", ["Sub2Api:GenerationTimeout"] = "00:00:30",
-            ["Sub2Api:CompactTimeout"] = "00:00:30", ["Database:Provider"] = "SqlServer",
+            ["Sub2Api:CompactTimeout"] = "00:00:30", ["Database:Provider"] = "PostgreSql",
             ["Database:ConnectionString"] = "Server=never-open.invalid;Database=synthetic;Integrated Security=true;ConnectRetryCount=0"
         };
 

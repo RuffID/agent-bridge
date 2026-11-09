@@ -1,6 +1,10 @@
 # Собственные DLL и обязательные NuGet-зависимости
 
-Текущая локальная поставка Sub2Api с optional usage от 2026-11-08: `artifacts/delivery-tests/current/nuget/<Provider>` и полные комплекты `sdk/<Provider>/<RID>`. EF 10.0.14, SqlClient 7.1.1, Tokenizers 2.0.1; 11 собственных DLL. Штатный упаковщик подготовил пять Release-вариантов, три DLL/NuGet bundles и shared SqlServer; 42 metadata-теста прошли. Внешняя бинарная компиляция нового usage-примера и live usage ещё не проверены; [результаты usage](../../openspec/changes/sub2api-usage/tasks.md).
+После удаления SQLite/SQL Server действующий исходный контракт — только PostgreSQL. Скрипты подготовки обновлены; готовые комплекты ещё не пересобраны. Старые manifests и проверки ниже являются историческими и не подтверждают текущую поставку.
+
+## Исторические поставки
+
+Прежняя локальная поставка Sub2Api с optional usage от 2026-11-08: `artifacts/delivery-tests/current/nuget/<Provider>` и полные комплекты `sdk/<Provider>/<RID>`. EF 10.0.14, SqlClient 7.1.1, Tokenizers 2.0.1; 11 собственных DLL. Штатный упаковщик подготовил пять Release-вариантов, три DLL/NuGet bundles и shared SqlServer; 42 metadata-теста прошли. Внешняя бинарная компиляция нового usage-примера и live usage ещё не проверены; [результаты usage](../../openspec/changes/sub2api-usage/tasks.md).
 
 Последующая реализация Images доступна в исходниках и изолированной compile-check сборке; этот комплект для неё не обновлялся. Для передачи потребителю требуется отдельно разрешённый штатный упаковщик и проверка binary consumer, без ручной подмены DLL. [Изображения и результаты](../../openspec/changes/sub2api-images/tasks.md).
 
@@ -12,7 +16,7 @@
 
 AgentBridge, выбранный модуль БД и его migrations assembly, EFCoreLibrary с maintenance и HttpClientLibrary поставляются своими DLL. Сторонние Microsoft/System/Azure и другие зависимости подключаются через PackageReference импортируемого файла. Публикация наших библиотек в NuGet не требуется.
 
-Для SQL Server текущий комплект находится в `artifacts/delivery-tests/current/nuget/SqlServer`, для SQLite/PostgreSQL — в соседних одноимённых папках. Это сборочные artifacts, которые не входят в исходники. Скопируйте весь выбранный комплект в приложение и импортируйте его **после** остальных PackageReference:
+После свежей подготовки PostgreSQL DLL/NuGet комплект размещается в `artifacts/delivery-tests/current/nuget/PostgreSql`. Он содержит только PostgreSQL-модуль и миграции. Скопируйте весь комплект и импортируйте его **после** остальных PackageReference:
 
 ```xml
 <PropertyGroup>
@@ -34,7 +38,7 @@ AgentBridge/
 
 Текущая closure включает AgentBridge.Sub2Api.dll через Integration вместе с сохранённой AgentBridge.CodexLb.dll. Выбор DI не исключает второй адаптер из поставки. Sub2Api поддерживает доступ, manifest/settings и JSON/SSE generation с полным контекстом; compact остаётся Unsupported. Новый состав проверен на05.02; результаты прежних датированных поставок учитываются отдельно.
 
-SQL Server поддерживает win-x64/linux-x64/linux-arm64; SQLite/PostgreSQL комплекты проверены для win-x64. Наши DLL одинаковы для RID выбранного комплекта; native-файлы, разные варианты сторонних сборок и локализации выбирает NuGet/SDK. Они не хранятся в libs. Некоторые Microsoft/System сборки web-приложения предоставляет shared framework ASP.NET Core: SDK не копирует их повторно в output. .NET 10 runtime устанавливается отдельно.
+Матрица подготовки — PostgreSQL win-x64/linux-x64/linux-arm64. Собственные DLL совпадают для RID; зависимости выбирает NuGet/SDK. Новые PostgreSQL-комплекты после этой правки не создавались; cross-build не подтверждает runtime.
 
 Текущий импорт требует TargetFramework=net10.0. Он задаёт все поддержанные RuntimeIdentifiers, RestorePackagesWithLockFile и CopyLocalLockFileAssemblies. Central package management требует отдельного варианта поставки и не поддерживается этим импортом. Полные DLL-комплекты остаются альтернативой; их формат описан в [документе28](28-provider-modules-and-shared-delivery.md).
 
@@ -42,7 +46,7 @@ SQL Server поддерживает win-x64/linux-x64/linux-arm64; SQLite/Postgr
 
 [Assemble-NuGetDelivery.ps1](../../tests/Delivery/Build/Assemble-NuGetDelivery.ps1) сначала проверяет полный manifest каждого исходного SDK kit: hashes/size/case/paths/provenance и отсутствие лишних файлов. Наши DLL/XML сохраняются один раз, их bytes должны совпадать между RID. Пакетные roots вычисляются по прямым NuGet-зависимостям всех project libraries в исходном deps; учитывать только AgentBridge.dll недостаточно. Транзитивные зависимости восстанавливает NuGet.
 
-SQL Server имеет 13 обязательных PackageReference: Microsoft.Bcl.Memory, Microsoft.Data.SqlClient, Microsoft.EntityFrameworkCore/Relational/SqlServer, Microsoft.Extensions.DependencyInjection.Abstractions, Logging/Logging.Abstractions, Options.ConfigurationExtensions, три Microsoft.ML.Tokenizers пакета и System.Security.Cryptography.Pkcs. SQLite имеет 13 roots, PostgreSQL — 12. Версии берутся из проверенного source graph, а не выбираются вручную по имени DLL.
+Required PackageReference и exact versions формируются из PostgreSQL SDK graph: EF Core/Relational, Npgsql/provider, Microsoft.Extensions, tokenizer/data и прочие прямые зависимости локальных библиотек. Состав не подбирается вручную по DLL.
 
 Все roots задаются exact диапазоном `[version]`. Если приложение уже указало тот же пакет с minimum version, равной проверенной версии, импорт приводит её к exact без дубликата. Иная версия, удалённый обязательный пакет или повторный PackageReference отклоняются Error-only target до restore/build. Импорт не запускает скрипты, DLL, приложение или SQL.
 

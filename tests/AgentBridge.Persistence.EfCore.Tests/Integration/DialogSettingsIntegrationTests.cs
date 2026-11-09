@@ -14,7 +14,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Microsoft.Data.Sqlite;
 using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
@@ -38,7 +37,6 @@ public class DialogSettingsIntegrationTests
 
     /// <summary>Выбор survives новый root, относится только к диалогу и не меняет token/expiry; stale CAS отклоняется.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task IndependentSelectionSurvivesRestartAndRejectsStaleVersion(DatabaseProvider provider)
     {
@@ -65,7 +63,6 @@ public class DialogSettingsIntegrationTests
 
     /// <summary>Смена выбора в другом scope не инвалидирует активный ход; следующий run и override используют новый snapshot.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActiveRunKeepsSnapshotAndNextRunUsesStoredSelectionWithEffortOverride(DatabaseProvider provider)
     {
@@ -117,8 +114,6 @@ public class DialogSettingsIntegrationTests
 
     /// <summary>SQL SaveChanges выполняется, но отказ до commit откатывает новую/изменённую строку выбора.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, false)]
-    [InlineData(DatabaseProvider.SQLite, true)]
     [InlineData(DatabaseProvider.PostgreSql, false)]
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task ActualRollbackPreservesOriginalSelection(DatabaseProvider provider, bool existing)
@@ -149,7 +144,6 @@ public class DialogSettingsIntegrationTests
 
     /// <summary>Owner/expiry/recreate guards не позволяют late выбору создать состояние новой incarnation; cascade удаляет settings.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task GuardsAndCascadeProtectDialogLifetime(DatabaseProvider provider)
     {
@@ -171,12 +165,11 @@ public class DialogSettingsIntegrationTests
 
     /// <summary>Два actual writers с одной CAS версией не могут оба commit; driver serialization не маскируется retry.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, false)]
-    [InlineData(DatabaseProvider.SQLite, true)]
     [InlineData(DatabaseProvider.PostgreSql, false)]
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task ConcurrentSettingsWritersCannotBothCommit(DatabaseProvider provider, bool existing)
     {
+        // Arrange
         await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
@@ -191,10 +184,14 @@ public class DialogSettingsIntegrationTests
             if (provider == DatabaseProvider.PostgreSql) services.AddDbContext<AgentBridgeDbContext>(options => options.AddInterceptors(barrier));
         });
         using IServiceScope left = root.CreateScope();
+
+        // Act
         using IServiceScope right = root.CreateScope();
         Task<(ServiceResult<DialogModelSelection>? Result, Exception? Error)> a = Task.Run(() => AttemptAsync(left, "gpt-4"));
         Task<(ServiceResult<DialogModelSelection>? Result, Exception? Error)> b = Task.Run(() => AttemptAsync(right, "gpt-5"));
         (ServiceResult<DialogModelSelection>? Result, Exception? Error)[] outcomes = await Task.WhenAll(a, b);
+
+        // Assert
         Assert.Single(outcomes, outcome => outcome.Result?.Success == true);
         (ServiceResult<DialogModelSelection>? Result, Exception? Error) loser = Assert.Single(outcomes, outcome => outcome.Result?.Success != true);
         if (loser.Error is null) Assert.Equal(ServiceErrorType.Conflict, loser.Result!.Error!.Type);
@@ -202,8 +199,7 @@ public class DialogSettingsIntegrationTests
         {
             Exception driver = loser.Error;
             while (driver.InnerException is not null) driver = driver.InnerException;
-            Assert.True(provider == DatabaseProvider.SQLite ? driver is SqliteException { SqliteErrorCode: 5 or 6 }
-                : driver is PostgresException { SqlState: "40001" }, loser.Error.ToString());
+            Assert.True(driver is PostgresException { SqlState: "40001" }, loser.Error.ToString());
         }
         DialogSnapshot saved = await ReadAsync(database.Root, token);
         Assert.Equal(existing ? 2 : 1, saved.Selection!.Version);
@@ -218,10 +214,10 @@ public class DialogSettingsIntegrationTests
 
     /// <summary>Settings/turn snapshot/compact provenance round-trip; Down/Up сохраняют canonical historical rows без выдуманных defaults.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task NewMigrationRoundTripsProvenanceAndKeepsHistoricalRows(DatabaseProvider provider)
     {
+        // Arrange
         await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
@@ -235,11 +231,15 @@ public class DialogSettingsIntegrationTests
                 ModelResponse.Completed([Message()], new(JsonSerializer.SerializeToElement(new { model = "actual-compact", future = "preserved" }))), "gpt-5"));
             Success(await scope.ServiceProvider.GetRequiredService<IDialogSettingsWriter>().SaveAsync(Access(token), token, 0, Settings("gpt-5", "high")));
         }
+
+        // Act
         DialogSnapshot saved = await ReadAsync(database.Root, token);
+
+        // Assert
         Assert.Equal("gpt-5", saved.Turns[0].Settings!.Model);
         Assert.Equal("gpt-5", saved.ActiveContext!.SelectedModel);
         Assert.Equal("actual-compact", saved.ActiveContext.Compaction.Envelope!.Content.GetProperty("model").GetString());
-        string previous = provider == DatabaseProvider.SQLite ? "20261004074344_AddDurableToolAttempts" : "20261004074347_AddDurableToolAttempts";
+        string previous = "20261004074347_AddDurableToolAttempts";
         using (IServiceScope scope = database.Root.CreateScope())
         {
             IUnitOfWorkContext<AgentBridgeContextKey> context = scope.ServiceProvider.GetRequiredService<IUnitOfWorkContext<AgentBridgeContextKey>>();

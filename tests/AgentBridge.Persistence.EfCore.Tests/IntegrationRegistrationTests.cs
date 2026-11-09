@@ -28,12 +28,17 @@ public class IntegrationRegistrationTests
     [Fact]
     public async Task SharedCompositionResolvesFullGraphWithoutBusinessClassesOrIo()
     {
+        // Arrange
         ServiceCollection services = Services();
         IConfiguration configuration = Config();
         int factories = 0;
         using Handler handler = new();
         using HttpClient client = new(handler) { Timeout = Timeout.InfiniteTimeSpan };
+
+        // Act
         services.AddAgentBridge(configuration, _ => { factories++; return client; });
+
+        // Assert
         Assert.Equal(0, factories);
         await using ServiceProvider provider = Build(services);
         provider.GetRequiredService<IStartupValidator>().Validate();
@@ -50,7 +55,7 @@ public class IntegrationRegistrationTests
         Assert.NotNull(scoped.GetRequiredService<IDialogToolAttemptWriter>());
         Assert.Empty(scoped.GetRequiredService<IToolRegistry>().Definitions);
         Assert.Empty(scoped.GetServices<IContextProvider>());
-        Assert.Equal("Microsoft.EntityFrameworkCore.SqlServer", scoped.GetRequiredService<AgentBridgeDbContext>().Database.ProviderName);
+        Assert.Equal("Microsoft.EntityFrameworkCore.PostgreSql", scoped.GetRequiredService<AgentBridgeDbContext>().Database.ProviderName);
         Assert.Null(scoped.GetService<IConfiguration>());
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType.Name.Contains("MaintenanceCoordinator", StringComparison.Ordinal));
         Assert.Equal(0, handler.Calls);
@@ -434,7 +439,7 @@ public class IntegrationRegistrationTests
             ["AgentBridge:Compaction:TokenThreshold"] = "24000", ["AgentBridge:Compaction:InputTokenReserve"] = "0", ["AgentBridge:Compaction:MaxPasses"] = "3",
             ["CodexLb:BaseAddress"] = "https://example.invalid/prefix", ["CodexLb:Model"] = "gpt-4.1", ["CodexLb:ReasoningEffort"] = "medium",
             ["CodexLb:KeySource"] = "Shared", ["CodexLb:SharedApiKey"] = "synthetic-shared-key", ["CodexLb:GenerationTimeout"] = "00:03:00", ["CodexLb:CompactTimeout"] = "00:03:00",
-            ["Database:Provider"] = "SqlServer", ["Database:ConnectionString"] = "Server=example.invalid;Database=synthetic;User Id=synthetic;Password=synthetic-password;Encrypt=True"
+            ["Database:Provider"] = "PostgreSql", ["Database:ConnectionString"] = "Host=invalid.example;Database=synthetic"
         };
         if (changes is not null) foreach (KeyValuePair<string, string?> pair in changes) values[pair.Key] = pair.Value;
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build();

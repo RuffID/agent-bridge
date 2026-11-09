@@ -12,16 +12,19 @@ namespace AgentBridge.Persistence.EfCore.Tests;
 public class DialogSettingsMappingTests
 {
     /// <summary>Версия выбора independent CAS, cascade FK и nullable historical snapshot совпадают для обоих providers.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void IndependentSettingsHaveConcurrencyAndCascadeMetadata(bool postgres)
+    [Fact]
+    public void IndependentSettingsHaveConcurrencyAndCascadeMetadata()
     {
+        // Arrange
         DbContextOptionsBuilder<AgentBridgeDbContext> options = new();
-        if (postgres) options.UseNpgsql("Host=invalid.example;Database=synthetic"); else options.UseSqlite("Data Source=never-open.db");
+        options.UseNpgsql("Host=invalid.example;Database=synthetic");
         using AgentBridgeDbContext context = new(options.Options);
         IModel model = context.GetService<IDesignTimeModel>().Model;
+
+        // Act
         IEntityType settings = model.FindEntityType(typeof(DialogSettingsRecord))!;
+
+        // Assert
         Assert.True(settings.FindProperty("Version")!.IsConcurrencyToken);
         Assert.Equal("Id", Assert.Single(settings.FindPrimaryKey()!.Properties).Name);
         Assert.Equal(DeleteBehavior.Cascade, Assert.Single(settings.GetForeignKeys()).DeleteBehavior);

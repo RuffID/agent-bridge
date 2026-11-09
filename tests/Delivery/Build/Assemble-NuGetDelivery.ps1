@@ -33,7 +33,7 @@ foreach ($rid in $rids) {
     $manifestPath = Join-Path $kitRoot 'delivery.manifest.json'
     $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $manifestPath | ConvertFrom-Json -AsHashtable
     if ($manifest.schemaVersion -ne 1 -or $manifest.rid -cne $rid -or $manifest.framework -cne 'net10.0' -or
-        $manifest.provider -notin @('SqlServer', 'Sqlite', 'PostgreSql')) { throw "Unsupported source kit: $rid" }
+        $manifest.provider -notin @('PostgreSql')) { throw "Unsupported source kit: $rid" }
     foreach ($field in @('provider', 'configuration', 'framework', 'sdkVersion', 'sourceRevision', 'efRevision', 'httpRevision', 'generatorSha256')) {
         if ($null -ne $baseline -and $manifest[$field] -cne $baseline[$field]) { throw "Mixed $field in source kits." }
     }

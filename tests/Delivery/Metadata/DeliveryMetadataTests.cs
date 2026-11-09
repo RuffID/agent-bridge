@@ -12,16 +12,17 @@ public class DeliveryMetadataTests
 {
     /// <summary>Все managed assembly references удовлетворяются комплектом либо .NET runtime; лишний tooling не поставляется.</summary>
     [Theory]
-    [InlineData("SqlServer", "win-x64")]
-    [InlineData("SqlServer", "linux-x64")]
-    [InlineData("SqlServer", "linux-arm64")]
-    [InlineData("Sqlite", "win-x64")]
     [InlineData("PostgreSql", "win-x64")]
+    [InlineData("PostgreSql", "linux-x64")]
+    [InlineData("PostgreSql", "linux-arm64")]
     public void ManagedClosureIsComplete(string provider, string rid)
     {
+        // Arrange
         string directory = Path.Combine(GetRoot(), provider, rid, "lib");
         Dictionary<string, string> files = Directory.GetFiles(directory, "*.dll")
             .ToDictionary(path => Path.GetFileNameWithoutExtension(path), StringComparer.OrdinalIgnoreCase);
+
+        // Act
         Dictionary<string, string> framework = GetFrameworkFiles();
         string resourceDirectory = Path.Combine(GetRoot(), provider, rid, "resources");
         string[] resources = Directory.Exists(resourceDirectory) ? Directory.GetFiles(resourceDirectory, "*.dll", SearchOption.AllDirectories) : [];
@@ -34,6 +35,8 @@ public class DeliveryMetadataTests
             {
                 AssemblyReference reference = metadata.GetAssemblyReference(handle);
                 string name = metadata.GetString(reference.Name);
+
+                // Assert
                 Assert.True(files.ContainsKey(name) || framework.ContainsKey(name), $"{file}: missing {name}");
                 string resolved = files.TryGetValue(name, out string? delivered) ? delivered : framework[name];
                 using FileStream dependencyStream = File.OpenRead(resolved);
@@ -51,7 +54,9 @@ public class DeliveryMetadataTests
         Assert.Contains($"EFCoreLibrary.Maintenance.{provider}", files.Keys);
         Assert.Contains($"AgentBridge.Persistence.{provider}", files.Keys);
         Assert.Single(files.Keys, name => name.StartsWith("EFCoreLibrary.Maintenance.", StringComparison.Ordinal));
-        if (provider == "SqlServer") Assert.Contains("Microsoft.Data.SqlClient", files.Keys);
+        Assert.Contains("Npgsql", files.Keys);
+        Assert.DoesNotContain(files.Keys, name => name.Contains("SqlClient", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) || name.Contains("SqlServer", StringComparison.OrdinalIgnoreCase));
         foreach (string name in new[] { "O200kBase", "Cl100kBase" })
         {
             using FileStream stream = File.OpenRead(files[$"Microsoft.ML.Tokenizers.Data.{name}"]);
@@ -59,7 +64,6 @@ public class DeliveryMetadataTests
             Assert.NotEmpty(pe.GetMetadataReader().ManifestResources);
         }
         string nativeDirectory = Path.Combine(GetRoot(), provider, rid, "native", rid);
-        if (provider == "Sqlite") Assert.True(File.Exists(Path.Combine(nativeDirectory, "e_sqlite3.dll")));
         foreach (string nativeFile in Directory.GetFiles(nativeDirectory))
         {
             NativeAssetMetadata.Validate(File.ReadAllBytes(nativeFile), rid);
@@ -68,11 +72,9 @@ public class DeliveryMetadataTests
 
     /// <summary>Потребитель находит русский summary интерфейса и inheritdoc реализации по metadata без исходников.</summary>
     [Theory]
-    [InlineData("SqlServer", "win-x64")]
-    [InlineData("SqlServer", "linux-x64")]
-    [InlineData("SqlServer", "linux-arm64")]
-    [InlineData("Sqlite", "win-x64")]
     [InlineData("PostgreSql", "win-x64")]
+    [InlineData("PostgreSql", "linux-x64")]
+    [InlineData("PostgreSql", "linux-arm64")]
     public void InheritdocContractIsAvailableFromBinaryMetadata(string provider, string rid)
     {
         string directory = Path.Combine(GetRoot(), provider, rid, "lib");

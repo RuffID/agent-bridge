@@ -10,15 +10,15 @@ namespace AgentBridge.Delivery.Metadata.Tests;
 /// <summary>Проверяет поставку собственных DLL и обязательных NuGet-зависимостей без загрузки сборок.</summary>
 public class NuGetDeliveryTests
 {
-    /// <summary>SQL Server комплект связывает exact требования и реальные assembly references нового драйвера для каждого RID.</summary>
+    /// <summary>PostgreSQL комплект связывает exact требования и реальные assembly references нового драйвера для каждого RID.</summary>
     [Theory]
     [InlineData("win-x64")]
     [InlineData("linux-x64")]
     [InlineData("linux-arm64")]
-    public void SqlServerDeliveryUsesLedgerTargetGraph(string rid)
+    public void PostgreSqlDeliveryUsesLedgerTargetGraph(string rid)
     {
         // Arrange
-        string root = Path.Combine(Root(), "SqlServer");
+        string root = Path.Combine(Root(), "PostgreSql");
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "delivery.manifest.json")));
         Dictionary<string, string> required = manifest.RootElement.GetProperty("requiredPackages").EnumerateArray()
             .ToDictionary(item => item.GetProperty("id").GetString()!, item => item.GetProperty("version").GetString()!, StringComparer.Ordinal);
@@ -29,48 +29,31 @@ public class NuGetDeliveryTests
             .ToDictionary(item => item.GetProperty("id").GetString()!, item => item.GetProperty("version").GetString()!, StringComparer.Ordinal);
 
         // Assert
-        Assert.Equal("7.1.1", required["Microsoft.Data.SqlClient"]);
-        foreach (string name in new[] { "Microsoft.EntityFrameworkCore", "Microsoft.EntityFrameworkCore.Relational", "Microsoft.EntityFrameworkCore.SqlServer",
-            "Microsoft.Extensions.DependencyInjection.Abstractions", "Microsoft.Extensions.Logging", "Microsoft.Extensions.Logging.Abstractions",
-            "Microsoft.Extensions.Options.ConfigurationExtensions", "Microsoft.Bcl.Memory" })
+        Assert.Equal("10.0.3", required["Npgsql.EntityFrameworkCore.PostgreSQL"]);
+        Assert.Contains("Npgsql", packages.Keys);
+        foreach (string name in new[] { "Microsoft.EntityFrameworkCore", "Microsoft.EntityFrameworkCore.Relational",
+            "Microsoft.Extensions.DependencyInjection.Abstractions", "Microsoft.Extensions.Logging",
+            "Microsoft.Extensions.Logging.Abstractions", "Microsoft.Extensions.Options.ConfigurationExtensions" })
         {
             Assert.Equal("10.0.14", required[name]);
         }
 
-        foreach (string name in packages.Keys.Where(name => name.StartsWith("Microsoft.IdentityModel.", StringComparison.Ordinal) || name == "System.IdentityModel.Tokens.Jwt"))
-        {
-            Assert.Equal("8.16.0", packages[name]);
-        }
-
-        Assert.Equal("7.1.1", packages["Microsoft.Data.SqlClient.Extensions.Abstractions"]);
-        Assert.Equal("7.1.1", packages["Microsoft.Data.SqlClient.Internal.Logging"]);
-        if (rid == "win-x64")
-        {
-            Assert.Equal("7.1.0", packages["Microsoft.Data.SqlClient.SNI.runtime"]);
-        }
-        else
-        {
-            Assert.DoesNotContain("Microsoft.Data.SqlClient.SNI.runtime", packages.Keys);
-            string nativeDirectory = Path.Combine(DeliveryTestPaths.SdkRoot, "SqlServer", rid, "native", rid);
-            Assert.Empty(Directory.GetFiles(nativeDirectory));
-        }
-
-        Assert.DoesNotContain("Microsoft.Identity.Client.NativeInterop", packages.Keys);
-        using FileStream stream = File.OpenRead(Path.Combine(root, "lib", "EFCoreLibrary.Maintenance.SqlServer.dll"));
+        Assert.DoesNotContain(packages.Keys, name => name.Contains("SqlClient", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) || name.Contains("SqlServer", StringComparison.OrdinalIgnoreCase));
+        using FileStream stream = File.OpenRead(Path.Combine(root, "lib", "EFCoreLibrary.Maintenance.PostgreSql.dll"));
         using PEReader pe = new(stream);
         MetadataReader metadata = pe.GetMetadataReader();
-        AssemblyReference reference = Assert.Single(metadata.AssemblyReferences.Select(metadata.GetAssemblyReference), item => metadata.GetString(item.Name) == "Microsoft.Data.SqlClient");
+        AssemblyReference reference = Assert.Single(metadata.AssemblyReferences.Select(metadata.GetAssemblyReference),
+            item => metadata.GetString(item.Name) == "Npgsql");
 
-        Assert.Equal(new Version(7, 0, 0, 0), reference.Version);
+        Assert.Equal(new Version(10, 0, 0, 0), reference.Version);
     }
 
     /// <summary>Каждая платформа сохраняет все собственные DLL/XML и прямые пакетные зависимости SDK-графа.</summary>
     [Theory]
-    [InlineData("SqlServer", "win-x64")]
-    [InlineData("SqlServer", "linux-x64")]
-    [InlineData("SqlServer", "linux-arm64")]
-    [InlineData("Sqlite", "win-x64")]
     [InlineData("PostgreSql", "win-x64")]
+    [InlineData("PostgreSql", "linux-x64")]
+    [InlineData("PostgreSql", "linux-arm64")]
     public void LocalClosureAndRequiredPackagesMatchSourceGraph(string provider, string rid)
     {
         string root = Path.Combine(Root(), provider);
@@ -125,8 +108,6 @@ public class NuGetDeliveryTests
 
     /// <summary>Состав комплекта полностью учтён manifest; бинарные ссылки указывают только на собственные сборки.</summary>
     [Theory]
-    [InlineData("SqlServer")]
-    [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     public void BundleContainsOnlyLocalAssetsAndPortableReferences(string provider)
     {

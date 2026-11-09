@@ -19,26 +19,14 @@ public static class DatabaseMaintenanceRegistrationExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddOptions<DatabaseBackupOptions>().BindSafely(configuration, "Backup")
-            .Configure<IOptions<DatabaseOptions>>((options, database) =>
-            {
-                List<string> required = [nameof(DatabaseBackupOptions.BackupRetentionPeriod)];
-                if (database.Value.Provider == DatabaseProvider.SqlServer)
-                {
-                    required.Add(nameof(DatabaseBackupOptions.SqlServerBackupDirectory));
-                }
-                else
-                {
-                    required.Add(nameof(DatabaseBackupOptions.BackupDirectory));
-                }
-
-                if (database.Value.Provider == DatabaseProvider.PostgreSql)
-                {
-                    required.AddRange([nameof(DatabaseBackupOptions.PostgreSqlDumpExecutablePath),
-                        nameof(DatabaseBackupOptions.PostgreSqlServerMajorVersion), nameof(DatabaseBackupOptions.PostgreSqlCleanupTimeout)]);
-                }
-
-                SafeOptionsBindingExtensions.RequireValues<DatabaseBackupOptions>(configuration, "Backup", Options.DefaultName, required.ToArray());
-            }).ValidateOnStart();
+            .Configure(_ => SafeOptionsBindingExtensions.RequireValues<DatabaseBackupOptions>(
+                configuration, "Backup", Options.DefaultName,
+                nameof(DatabaseBackupOptions.BackupDirectory),
+                nameof(DatabaseBackupOptions.BackupRetentionPeriod),
+                nameof(DatabaseBackupOptions.PostgreSqlDumpExecutablePath),
+                nameof(DatabaseBackupOptions.PostgreSqlServerMajorVersion),
+                nameof(DatabaseBackupOptions.PostgreSqlCleanupTimeout)))
+            .ValidateOnStart();
 
         return Register(services);
     }

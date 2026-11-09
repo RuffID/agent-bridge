@@ -7,7 +7,6 @@ using EFCoreLibrary.Maintenance.Coordination;
 using EFCoreLibrary.Maintenance.Errors;
 using EFCoreLibrary.Maintenance.Models;
 using AgentBridge.Persistence.EfCore.Configuration;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -33,14 +32,18 @@ public class MaintenanceIntegrationTests
 
     /// <summary>Missing/initialize/no-pending, настоящий Up/Down/Up и независимость ledger подключающего приложения.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task MigrationsAndHostHistoryAreIsolated(DatabaseProvider provider)
     {
+        // Arrange
         await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
+
+        // Act
         using (IServiceScope scope = database.Root.CreateScope())
         {
             IDatabaseMaintenance<AgentBridgeContextKey> maintenance = scope.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
+
+            // Assert
             Assert.False((await maintenance.InspectAsync(TimeSpan.FromSeconds(30))).Exists);
             Assert.Equal(MaintenanceError.DatabaseMissing, (await Assert.ThrowsAsync<MaintenanceException>(() =>
                 maintenance.UpdateExistingAsync(TimeSpan.FromSeconds(30)))).Code);
@@ -66,9 +69,7 @@ public class MaintenanceIntegrationTests
         Assert.Equal("Host_001", Assert.Single(await database.QueryAsync("SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\""))["MigrationId"]);
         Assert.Empty(await database.QueryAsync("SELECT \"MigrationId\" FROM \"__AgentBridgeMigrationsHistory\""));
         string tableNames = string.Join(", ", IntegrationSchemaExpectations.Tables.Select(name => "'" + name + "'"));
-        string tables = provider == DatabaseProvider.SQLite
-            ? "SELECT name FROM sqlite_schema WHERE type='table' AND name IN (" + tableNames + ")"
-            : "SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_name IN (" + tableNames + ")";
+        string tables = "SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_name IN (" + tableNames + ")";
         Assert.Empty(await database.QueryAsync(tables));
         using (IServiceScope scope = database.Root.CreateScope())
         {
@@ -89,7 +90,6 @@ public class MaintenanceIntegrationTests
 
     /// <summary>Backup существующей БД содержит именно данные/схему до migration; restore выполняется отдельно.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ExistingDatabaseIsBackedUpBeforeInitialMigration(DatabaseProvider provider)
     {
@@ -116,9 +116,8 @@ public class MaintenanceIntegrationTests
         Assert.Empty(Directory.EnumerateDirectories(database.BackupDirectory, ".maintenance-*"));
     }
 
-    /// <summary>Native SQLite/pg_dump backup полного payload восстанавливает все таблицы, ограничения и историю.</summary>
+    /// <summary>pg_dump backup полного payload восстанавливает все таблицы, ограничения и историю.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task FullBackupRestoresSchemaAndDataIntoSeparateDatabase(DatabaseProvider provider)
     {
@@ -156,7 +155,6 @@ public class MaintenanceIntegrationTests
 
     /// <summary>Отсутствующий backup directory останавливает DDL, не портит gate и не меняет исходную БД.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task BackupFailureStopsMigrationsAndLeavesGateUsable(DatabaseProvider provider)
     {
@@ -177,31 +175,27 @@ public class MaintenanceIntegrationTests
 
     /// <summary>Настоящий конфликт DDL после backup сохраняет исходную ошибку и данные, блокируя общий root gate.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActualMigrationFailurePoisonsSharedGateAndPreservesBackup(DatabaseProvider provider)
     {
+        // Arrange
         await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.CreateEmptyAsync();
         await SeedSentinelAsync(database);
         await database.ExecuteAsync("CREATE TABLE \"Dialogs\" (\"Legacy\" text NOT NULL)");
         await database.ExecuteAsync("INSERT INTO \"Dialogs\" VALUES ('existing')");
         string before = await database.FingerprintAsync();
+
+        // Act
         using (IServiceScope scope = database.Root.CreateScope())
         {
             MaintenanceException failure = await Assert.ThrowsAsync<MaintenanceException>(() => scope.ServiceProvider
                 .GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>().UpdateExistingAsync(TimeSpan.FromSeconds(45)));
+
+            // Assert
             Assert.Equal(MaintenanceError.MigrationFailed, failure.Code);
-            if (provider == DatabaseProvider.SQLite)
-            {
-                SqliteException cause = Assert.IsType<SqliteException>(failure.InnerException);
-                Assert.Equal(1, cause.SqliteErrorCode);
-            }
-            else
-            {
                 PostgresException cause = Assert.IsType<PostgresException>(failure.InnerException);
                 Assert.Equal(PostgresErrorCodes.DuplicateTable, cause.SqlState);
-            }
         }
         using (IServiceScope another = database.Root.CreateScope())
         {
@@ -220,7 +214,6 @@ public class MaintenanceIntegrationTests
 
     /// <summary>Caller cancellation до I/O сохраняет исходный token и не запускает первую установку.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task CancelledInitializationDoesNotCreateDatabase(DatabaseProvider provider)
     {

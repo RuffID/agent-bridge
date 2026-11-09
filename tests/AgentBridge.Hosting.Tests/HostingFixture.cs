@@ -1,3 +1,4 @@
+using AgentBridge.Persistence.PostgreSql;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Domain.Dialogs;
@@ -5,7 +6,6 @@ using AgentBridge.Integration;
 using AgentBridge.Persistence.EfCore;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Tests;
-using AgentBridge.Persistence.SqlServer;
 using EFCoreLibrary.Abstractions.Database.Repository.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -51,8 +51,8 @@ internal class HostingFixture
             ["AgentBridge:Compaction:MaxPasses"] = "3", ["CodexLb:BaseAddress"] = "https://example.invalid/prefix",
             ["CodexLb:Model"] = "gpt-4.1", ["CodexLb:ReasoningEffort"] = "medium", ["CodexLb:KeySource"] = "Shared",
             ["CodexLb:SharedApiKey"] = "synthetic-shared-key", ["CodexLb:GenerationTimeout"] = "00:03:00",
-            ["CodexLb:CompactTimeout"] = "00:03:00", ["Database:Provider"] = "SqlServer",
-            ["Database:ConnectionString"] = "Server=example.invalid;Database=synthetic;User Id=synthetic;Password=synthetic-password;Encrypt=True"
+            ["CodexLb:CompactTimeout"] = "00:03:00", ["Database:Provider"] = "PostgreSql",
+            ["Database:ConnectionString"] = "Host=invalid.example;Database=synthetic"
         };
         if (changes is not null)
             foreach (KeyValuePair<string, string?> pair in changes) values[pair.Key] = pair.Value;
@@ -61,7 +61,7 @@ internal class HostingFixture
         builder.UseDefaultServiceProvider(options => { options.ValidateScopes = true; options.ValidateOnBuild = true; });
         builder.ConfigureServices(services =>
         {
-            services.AddAgentBridgeSqlServer();
+            services.AddAgentBridgePostgreSql();
             services.AddSingleton<ILoggerFactory>(Logger);
             if (source) services.AddScoped<IIndividualModelKeySource>(_ =>
             {

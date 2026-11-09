@@ -10,7 +10,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**;**\bin\**;**\obj\**;**\artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../Delivery/Consumer/SqlServerRegistration.cs" Link="Consumer/SqlServerRegistration.cs" />
+    <Compile Include="../Delivery/Consumer/BoundedHistoryRegistration.cs" Link="Consumer/BoundedHistoryRegistration.cs" />
     <Compile Include="../Delivery/Consumer/StrictConfigurationRegistration.cs" Link="Consumer/StrictConfigurationRegistration.cs" />
     <Compile Include="../Delivery/Consumer/SimpleRegistration.cs" Link="Consumer/SimpleRegistration.cs" />
     <Compile Include="../Delivery/Consumer/UsageRegistration.cs" Link="Consumer/UsageRegistration.cs" />
@@ -24,15 +24,10 @@
     <PackageReference Include="xunit.v3" Version="4.0.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" PrivateAssets="all" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
-    <PackageReference Include="Testcontainers.MsSql" Version="4.16.0" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
-    <ProjectReference Include="../../adapters/AgentBridge.Persistence.Sqlite/AgentBridge.Persistence.Sqlite.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.PostgreSql/AgentBridge.Persistence.PostgreSql.csproj" />
-    <ProjectReference Include="../../adapters/AgentBridge.Persistence.SqlServer/AgentBridge.Persistence.SqlServer.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.CodexLb/AgentBridge.CodexLb.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
-    <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.Sqlite/AgentBridge.Persistence.Migrations.Sqlite.csproj" />
     <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj" />
-    <ProjectReference Include="../../adapters/AgentBridge.Persistence.Migrations.SqlServer/AgentBridge.Persistence.Migrations.SqlServer.csproj" />
   </ItemGroup>
 </Project>

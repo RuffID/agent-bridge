@@ -21,24 +21,28 @@ public class PersistenceRegistrationTests
 {
     /// <summary>Каждый scope получает один общий контекст через точный актуальный adapter API EFCoreLibrary.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite, "Microsoft.EntityFrameworkCore.Sqlite")]
     [InlineData(DatabaseProvider.PostgreSql, "Npgsql.EntityFrameworkCore.PostgreSQL")]
     public void RepositoriesUseSelectedProviderAndSharedScopedContext(DatabaseProvider selected, string providerName)
     {
+        // Arrange
         ServiceCollection services = new();
         services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options =>
         {
             options.Provider = selected;
-            options.ConnectionString = selected == DatabaseProvider.SQLite
-                ? "Data Source=metadata-only-never-open.db"
+            options.ConnectionString = selected == DatabaseProvider.PostgreSql
+                ? "Host=invalid.example;Database=synthetic"
                 : "Host=invalid.example;Database=synthetic;Username=synthetic;Password=synthetic";
         });
         services.AddAgentBridgePersistence();
         using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         using IServiceScope scope = provider.CreateScope();
         AgentBridgeDbContext context = scope.ServiceProvider.GetRequiredService<AgentBridgeDbContext>();
+
+        // Act
         IAppDbContext<AgentBridgeContextKey> adapter = scope.ServiceProvider.GetRequiredService<IAppDbContext<AgentBridgeContextKey>>();
+
+        // Assert
         Assert.IsType<EfDbContextAdapter<AgentBridgeDbContext, AgentBridgeContextKey>>(adapter);
         Assert.Same(context.Database, adapter.Database);
         Assert.Same(adapter, scope.ServiceProvider.GetRequiredService<IAppDbContext<AgentBridgeContextKey>>());
@@ -81,8 +85,9 @@ public class PersistenceRegistrationTests
     [Fact]
     public void BaseUpdatePreservesOriginalConcurrencyAndFixedFields()
     {
+        // Arrange
         using AgentBridgeDbContext context = new(new DbContextOptionsBuilder<AgentBridgeDbContext>()
-            .UseSqlite("Data Source=metadata-only-never-open.db").Options);
+            .UseNpgsql("Host=invalid.example;Database=synthetic").Options);
         DialogRecord root = new()
         {
             Id = Guid.NewGuid(), IncarnationId = Guid.NewGuid(), OwnerId = " owner ", Revision = 7,
@@ -95,8 +100,12 @@ public class PersistenceRegistrationTests
         RecordStaging<DialogRecord> staging = new(new CreateItemRepository<DialogRecord, AgentBridgeContextKey>(adapter),
             repository, new DeleteItemRepository<DialogRecord, AgentBridgeContextKey>(adapter));
         root.Revision = 8;
+
+        // Act
         root.ContentBytes = 42;
         staging.StageUpdate(root);
+
+        // Assert
         Assert.Equal(7, context.Entry(root).Property(row => row.Revision).OriginalValue);
         Assert.Equal(8, context.Entry(root).Property(row => row.Revision).CurrentValue);
         Assert.Equal(root.IncarnationId, context.Entry(root).Property(row => row.IncarnationId).OriginalValue);
@@ -109,7 +118,7 @@ public class PersistenceRegistrationTests
         Assert.False(context.Entry(root).Property(row => row.CreatedAtUtc).IsModified);
     }
 
-    /// <summary>Отсутствующий провайдер не превращается в SQLite даже при разрешении контекста без startup.</summary>
+    /// <summary>Отсутствующий провайдер не выбирает PostgreSQL автоматически даже при разрешении контекста без startup.</summary>
     [Fact]
     public void ResolvingContextWithoutProviderFailsBeforeDatabase()
     {

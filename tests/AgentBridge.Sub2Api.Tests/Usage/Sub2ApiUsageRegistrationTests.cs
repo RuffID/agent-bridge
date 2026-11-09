@@ -1,10 +1,10 @@
+using AgentBridge.Persistence.PostgreSql;
 using System.Reflection;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
 using AgentBridge.Application.Results;
 using AgentBridge.CodexLb.Configuration;
 using AgentBridge.Integration;
-using AgentBridge.Persistence.SqlServer;
 using AgentBridge.Sub2Api.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -216,7 +216,7 @@ public class Sub2ApiUsageRegistrationTests
     {
         ServiceCollection services = new();
         services.AddLogging();
-        services.AddAgentBridgeSqlServer();
+        services.AddAgentBridgePostgreSql();
 
         return services;
     }
@@ -239,8 +239,8 @@ public class Sub2ApiUsageRegistrationTests
             ["Sub2Api:BaseAddress"] = "https://gateway.invalid/prefix/v1/", ["Sub2Api:Model"] = "model",
             ["Sub2Api:ReasoningEffort"] = "medium", ["Sub2Api:KeySource"] = "Shared",
             ["Sub2Api:SharedApiKey"] = "synthetic-key", ["Sub2Api:GenerationTimeout"] = "00:00:30",
-            ["Sub2Api:CompactTimeout"] = "00:00:30", ["Database:Provider"] = "SqlServer",
-            ["Database:ConnectionString"] = "Server=example.invalid;Database=synthetic;Integrated Security=True;Encrypt=True"
+            ["Sub2Api:CompactTimeout"] = "00:00:30", ["Database:Provider"] = "PostgreSql",
+            ["Database:ConnectionString"] = "Host=invalid.example;Database=synthetic"
         }).Build();
     }
 }

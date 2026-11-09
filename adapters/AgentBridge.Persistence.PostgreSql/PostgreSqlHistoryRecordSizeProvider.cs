@@ -2,15 +2,13 @@ using System.Linq.Expressions;
 using System.Reflection;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Reading;
-using Microsoft.EntityFrameworkCore;
 
-namespace AgentBridge.Persistence.SqlServer;
+namespace AgentBridge.Persistence.PostgreSql;
 
-/// <summary>Полный server size expression для десяти mapped таблиц, включая owned reports и binary owner.</summary>
-/// <remarks>Accounting = 256 + 2 × сумма DATALENGTH всех текстовых/binary-owner колонок.
-/// DATALENGTH сохраняет trailing spaces и Unicode; коэффициент 2 ограничивает UTF-8 для UTF-16 storage.
-/// Это консервативная граница payload, не физический размер БД или точный managed heap.</remarks>
-public class SqlServerHistoryRecordSizeProvider : IHistoryRecordSizeProvider
+/// <summary>Консервативная оценка payload десяти таблиц до materialization в PostgreSQL.</summary>
+/// <remarks>256 + 4 × сумма length текстовых колонок. Один Unicode-символ занимает до четырёх байт
+/// UTF-8 или UTF-16; null даёт ноль, trailing spaces сохраняются. Это не размер БД или managed heap.</remarks>
+public class PostgreSqlHistoryRecordSizeProvider : IHistoryRecordSizeProvider
 {
     private const long FIXED_RECORD_BYTES = 256;
     private static readonly HashSet<Type> RECORD_TYPES =
@@ -20,7 +18,7 @@ public class SqlServerHistoryRecordSizeProvider : IHistoryRecordSizeProvider
         typeof(DialogCatalogClockRecord), typeof(DialogCatalogChangeRecord), typeof(DialogRecoveryOperationRecord)
     ];
     private static readonly Expression<Func<string, long>> TEXT_SIZE =
-        value => 2L * (long)(EF.Functions.DataLength(value) ?? 0);
+        value => 4L * (long)(value == null ? 0 : value.Length);
 
     /// <inheritdoc/>
     public Expression<Func<TEntity, long>> Size<TEntity>() where TEntity : class
@@ -68,6 +66,9 @@ public class SqlServerHistoryRecordSizeProvider : IHistoryRecordSizeProvider
     /// <summary>Подставляет mapped member без Invoke/client evaluation.</summary>
     private class ReplaceText(Expression value) : ExpressionVisitor
     {
-        protected override Expression VisitParameter(ParameterExpression node) => value;
+        protected override Expression VisitParameter(ParameterExpression node)
+        {
+            return value;
+        }
     }
 }

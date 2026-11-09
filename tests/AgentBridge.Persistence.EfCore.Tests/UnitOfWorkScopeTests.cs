@@ -110,15 +110,20 @@ public class UnitOfWorkScopeTests
     [InlineData(false)]
     public async Task OnlyProvenRootConcurrencyIsExpected(bool hasRoot)
     {
+        // Arrange
         using AgentBridgeDbContext metadata = new(new DbContextOptionsBuilder<AgentBridgeDbContext>()
-            .UseSqlite("Data Source=never-open.db").Options);
+            .UseNpgsql("Host=invalid.example;Database=synthetic").Options);
         DbUpdateConcurrencyException error = hasRoot
             ? new FakeRootConcurrencyException(metadata.Entry(new DialogRecord()))
             : new DbUpdateConcurrencyException("synthetic");
         FakeUnitOfWorkSession session = new() { OnSave = () => throw error };
+
+        // Act
         Task<ServiceResult> operation = new UnitOfWorkScope(session, new()).ExecuteAsync(_ => Task.FromResult(ServiceResult.Ok()), TestContext.Current.CancellationToken);
         if (hasRoot) { Assert.Equal(ServiceErrorType.Conflict, (await operation).Error!.Type); }
         else { Assert.Same(error, await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => operation)); }
+
+        // Assert
         Assert.Equal(["begin", "save", "rollback", "dispose", "clear"], session.Events);
     }
 

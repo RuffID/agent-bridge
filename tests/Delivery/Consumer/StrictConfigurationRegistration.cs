@@ -32,7 +32,7 @@ public static class StrictConfigurationRegistration
         });
         return services.AddDatabaseConfiguration(options =>
         {
-            options.Provider = DatabaseProvider.SqlServer; options.ConnectionString = connectionString;
+            options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = connectionString;
         });
     }
 }

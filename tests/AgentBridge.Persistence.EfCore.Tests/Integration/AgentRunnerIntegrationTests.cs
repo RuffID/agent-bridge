@@ -19,7 +19,7 @@ using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Адресные durable/runner20 проверки настоящих SQLite/PostgreSQL через EFCoreLibrary0.0.5.</summary>
+/// <summary>Адресные durable/runner20 проверки настоящих PostgreSQL через EFCoreLibrary0.0.5.</summary>
 [Trait("Dependency", "Database")]
 [Collection("DatabaseIntegration")]
 public class AgentRunnerIntegrationTests
@@ -38,7 +38,6 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Start виден новому scope до handler; repeated call_id и full payload восстанавливаются новым root.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task PublicRunnerCommitsStartsBeforeActionsAndRoundTripsRepeatedCalls(DatabaseProvider provider)
     {
@@ -72,8 +71,6 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Восстановленный Started и legacy null запрещают повтор всего turn/model независимо от call_id.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, false)]
-    [InlineData(DatabaseProvider.SQLite, true)]
     [InlineData(DatabaseProvider.PostgreSql, false)]
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task RestartDoesNotReplayStartedOrLegacyTurn(DatabaseProvider provider, bool durable)
@@ -107,7 +104,6 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Ошибка после реального SQL-save outcomes откатывает journal и canonical outputs вместе.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task OutcomeSaveFailureRollsBackOutputsAndJournalTogether(DatabaseProvider provider)
     {
@@ -131,7 +127,6 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Реальный start commit с потерянным подтверждением не запускает handler и не refresh/retry после restart.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task UnknownStartCommitPersistsBarrierWithoutExecutingAction(DatabaseProvider provider)
     {
@@ -156,11 +151,6 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Каждый Start проверяет actual owner/incarnation/revision/expiry/duplicate parent-aware identity.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, "owner", ServiceErrorType.Forbidden)]
-    [InlineData(DatabaseProvider.SQLite, "incarnation", ServiceErrorType.Conflict)]
-    [InlineData(DatabaseProvider.SQLite, "revision", ServiceErrorType.Conflict)]
-    [InlineData(DatabaseProvider.SQLite, "expiry", ServiceErrorType.Expired)]
-    [InlineData(DatabaseProvider.SQLite, "duplicate", ServiceErrorType.Conflict)]
     [InlineData(DatabaseProvider.PostgreSql, "owner", ServiceErrorType.Forbidden)]
     [InlineData(DatabaseProvider.PostgreSql, "incarnation", ServiceErrorType.Conflict)]
     [InlineData(DatabaseProvider.PostgreSql, "revision", ServiceErrorType.Conflict)]
@@ -197,9 +187,6 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Delete/cleanup/expiry после действия отклоняют late outcomes и не восстанавливают удалённые строки.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, "delete", ServiceErrorType.NotFound)]
-    [InlineData(DatabaseProvider.SQLite, "cleanup", ServiceErrorType.NotFound)]
-    [InlineData(DatabaseProvider.SQLite, "expiry", ServiceErrorType.Expired)]
     [InlineData(DatabaseProvider.PostgreSql, "delete", ServiceErrorType.NotFound)]
     [InlineData(DatabaseProvider.PostgreSql, "cleanup", ServiceErrorType.NotFound)]
     [InlineData(DatabaseProvider.PostgreSql, "expiry", ServiceErrorType.Expired)]
@@ -237,7 +224,6 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Parallel checkpoint scopes сериализуются; Unknown соседа и confirmed output сохраняются до exception.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ParallelPartialFailurePersistsConfirmedNeighbor(DatabaseProvider provider)
     {
@@ -264,10 +250,10 @@ public class AgentRunnerIntegrationTests
 
     /// <summary>Предыдущая схема с историческими steps проходит Up; Down/Up сохраняет canonical rows, null не даёт replay.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task MigrationDownAndUpgradePreserveHistoricalRows(DatabaseProvider provider)
     {
+        // Arrange
         await using IntegrationDatabase database = await environment.CreateDatabaseAsync(provider);
         await database.InitializeAsync();
         DialogWriteToken token = await PersistenceIntegrationTests.CreateAsync(database);
@@ -277,10 +263,14 @@ public class AgentRunnerIntegrationTests
         ToolExecutionIdentity identity = await CaptureAsync(database.Root, probe.Call, token, step);
         using (IServiceScope start = database.Root.CreateScope())
             token = Success(await start.ServiceProvider.GetRequiredService<IDialogToolAttemptWriter>().StartAsync(Access(probe.Call), token, identity));
-        string initial = provider == DatabaseProvider.SQLite ? "20261003155233_InitialAgentBridgeSchema" : "20261003155235_InitialAgentBridgeSchema";
+        string initial = "20261003155235_InitialAgentBridgeSchema";
         using (IServiceScope down = database.Root.CreateScope())
             await down.ServiceProvider.GetRequiredService<IUnitOfWorkContext<AgentBridgeContextKey>>().Database.GetService<IMigrator>().MigrateAsync(initial);
+
+        // Act
         IReadOnlyDictionary<string, object?> legacy = Assert.Single(await database.QueryAsync("SELECT \"ResponseOutputJson\" FROM \"ModelSteps\""));
+
+        // Assert
         Assert.Contains("legacy", (string)legacy["ResponseOutputJson"]!);
         using (IServiceScope upgrade = database.Root.CreateScope())
         {

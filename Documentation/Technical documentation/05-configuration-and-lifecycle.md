@@ -1,6 +1,6 @@
 # Конфигурация, жизненный цикл и проверка
 
-SQL Server добавлен Audit Remediation12 как явный Database.Provider=SqlServer без default/fallback. Backup.SqlServerBackupDirectory задаёт серверный absolute path, Backup.BackupRetentionPeriod — положительный app-owned retention; host BackupDirectory не требуется для MSSQL. Строгая configuration boundary Audit Remediation13 описана ниже; [отдельная facade14](26-integration-registration.md) предоставляет стандартную composition. [Provider API](12-sql-server-provider.md).
+PostgreSQL выбирается явно через Database.Provider=PostgreSql. Поддержка SQLite/SQL Server удалена. Backup требует локальный абсолютный каталог, pg_dump, major сервера, timeout и app-owned retention. [Provider API](12-postgresql-provider.md).
 
 ## Конфигурация
 
@@ -28,10 +28,9 @@ SQL Server добавлен Audit Remediation12 как явный Database.Provi
 | CodexLb.SharedApiKey | Secret, непустая строка без whitespace/control chars | Shared: обязательно; Individual: необязательно, не fallback; required / invalid_key |
 | CodexLb.GenerationTimeout | TimeSpan > 0, <=4294967294 ms | Всегда; required / ошибка диапазона таймера |
 | CodexLb.CompactTimeout | TimeSpan > 0, <=4294967294 ms | Всегда; required / ошибка диапазона таймера |
-| Database.Provider | DatabaseProvider?: SQLite / PostgreSql / SqlServer | Всегда; required / ошибка неизвестного провайдера |
+| Database.Provider | DatabaseProvider?: PostgreSql | Всегда; required / ошибка неизвестного провайдера |
 | Database.ConnectionString | Secret, непустая строка с синтаксисом DbConnectionStringBuilder | Всегда; required / invalid_format; provider keys/server/auth/TLS этой границей не проверяются |
-| Backup.BackupDirectory | Абсолютный локальный путь | Включённое SQLite/PostgreSQL maintenance; ошибка абсолютного пути |
-| Backup.SqlServerBackupDirectory | Абсолютный серверный Unix/Windows/UNC путь | Включённое SQL Server maintenance; ошибка серверного пути |
+| Backup.BackupDirectory | Абсолютный локальный путь | Включённое PostgreSQL maintenance; ошибка абсолютного пути |
 | Backup.BackupRetentionPeriod | TimeSpan > 0 | Любое включённое maintenance; ошибка required/положительного retention |
 | Backup.PostgreSqlDumpExecutablePath | Абсолютный локальный путь | Включённое PostgreSQL maintenance; ошибка абсолютного пути |
 | Backup.PostgreSqlServerMajorVersion | int >= 10 | Включённое PostgreSQL maintenance; ошибка required/major диапазона |
@@ -146,4 +145,4 @@ HTTP-клиент и его handlers управляются приложение
 - Сохранение результата, одновременно с которым диалог был удалён или очищен.
 - Изоляция диалогов разных пользователей.
 
-Проверки реальных SQLite/PostgreSQL и живого codex-lb требуют отдельного разрешения. На этапе документации сборка, приложения, тесты и подключение к БД не выполнялись.
+Проверки реальных PostgreSQL и живого codex-lb требуют отдельного разрешения. На этапе документации сборка, приложения, тесты и подключение к БД не выполнялись.

@@ -1,14 +1,14 @@
 # Проверка БД, бэкап, миграции и очистка
 
-## Текущее подключение SQL Server
+## Текущее подключение PostgreSQL
 
-Audit Remediation12 подключает Microsoft SQL Server вместе с сохранёнными SQLite/PostgreSQL. AddAgentBridgeDatabaseMaintenance выбирает existing SqlServerMaintenanceProvider/общий coordinator EFCoreLibrary; runtime DI не выполняет операции. Для MSSQL обязательны SqlServerBackupDirectory на сервере БД и положительный BackupRetentionPeriod; локальный app BackupDirectory не используется. EngineEdition2/3/4, ConnectRetryCount=0/direct endpoint, native COPY_ONLY/CHECKSUM/HEADERONLY/VERIFYONLY и server receipt остаются библиотечным контрактом. Приложение явно задаёт SingleInitializer, TLS/auth и остановку writes/DDL/всех экземпляров, retention и cleanup. [Текущий API и ограничения](12-sql-server-provider.md); actual CRUD/migrations/backup/restore ещё требуют17. Исторические числа тестов ниже не являются evidence MSSQL.
+AgentBridge подключает только PostgreSqlMaintenanceProvider и общий coordinator EFCoreLibrary. Требуются BackupDirectory, pg_dump, major сервера, cleanup timeout и положительный BackupRetentionPeriod. Приложение останавливает writes/DDL/другие экземпляры и явно вызывает maintenance. Регистрация не выполняет I/O; [провайдер](12-postgresql-provider.md).
 
 ## Принятое решение
 
 AgentBridge использует тот же функциональный порядок обслуживания, что AquaByte-Ledger: проверить подключение, определить pending migrations, создать резервную копию существующей БД, применить миграции. Ошибка подключения, backup или migration не маскируется и не превращается в успешный startup.
 
-Пользователь разрешил общий реляционный контракт EFCoreLibrary и четыре optional maintenance-модуля: SQLite, PostgreSQL, SQL Server, MySQL. Этап 05 реализован и принят; запрещённые проверки пропущены. EFCoreLibrary commit: `a1747388ab0eb2be6da3031535fd88e7533b8df1`, семь проектов без warnings/errors, 89 passed/0 failed/0 skipped. AgentBridge подключает только SQLite/PostgreSQL. Этап 12: **Реализован и принят; запрещённые проверки пропущены**. SQL Server backup-код и прямое соединение в обход библиотеки не копируются.
+Пользователь разрешил общий реляционный контракт EFCoreLibrary и четыре optional maintenance-модуля: SQLite, PostgreSQL, SQL Server, MySQL. Этап 05 реализован и принят; запрещённые проверки пропущены. EFCoreLibrary commit: `a1747388ab0eb2be6da3031535fd88e7533b8df1`, семь проектов без warnings/errors, 89 passed/0 failed/0 skipped. AgentBridge подключает только PostgreSQL. Этап 12: **Реализован и принят; запрещённые проверки пропущены**. SQL Server backup-код и прямое соединение в обход библиотеки не копируются.
 
 Подключающее приложение явно вызывает инициализацию/обновление БД перед использованием агента. Очистка истёкших диалогов предоставляется библиотекой и вызывается приложением по расписанию. Подключение DLL само по себе не запускает миграции или фоновую задачу.
 
@@ -21,7 +21,7 @@ AgentBridge использует тот же функциональный пор
 | Класс | Текущее поведение | Применение в AgentBridge |
 | --- | --- | --- |
 | `DataBaseCheckUpService<TContext, TContextKey>` | Использует `IAppDbContext<TContextKey>`, проверяет подключение и pending migrations; backup выполняется до `Database.Migrate()` | Сохранить последовательность и fail-fast через контракт EFCoreLibrary |
-| `BackupService<TContext>` | Открывает `SqlConnection`, выполняет SQL Server `BACKUP DATABASE` | Функциональный образец backup, но не готовая реализация SQLite/PostgreSQL |
+| `BackupService<TContext>` | Открывает `SqlConnection`, выполняет SQL Server `BACKUP DATABASE` | Функциональный образец backup, но не готовая реализация PostgreSQL |
 | `IBackupService<TContext>` | Содержит SQL Server-специфичный `CreateSqlServerBackup()` | Будущий общий контракт обслуживания должен учитывать выбранный provider |
 | `BackupFilePathBuilder` | Формирует `.bak` из entry assembly и timestamp с точностью до секунды | Отдельная обязанность формирования пути, без SQL Server формата по умолчанию |
 | `IBackupFilePathBuilder` | Отделяет формирование пути от создания backup | Сохранить разделение обязанностей |
@@ -48,11 +48,6 @@ AgentBridge использует тот же функциональный пор
 | DumpOptions | `EFCoreLibrary.Maintenance.Options` | [DumpOptions.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Options/DumpOptions.cs) |
 | Coordinator, budget и gate | `EFCoreLibrary.Maintenance.Coordination` | [DatabaseMaintenance.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Coordination/DatabaseMaintenance.cs) |
 | Общая регистрация | `EFCoreLibrary.Maintenance.Extensions` | [MaintenanceRegistration.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Extensions/MaintenanceRegistration.cs) |
-| SQLite регистрация | `EFCoreLibrary.Maintenance.Sqlite.Extensions` | [SqliteMaintenanceRegistration.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Extensions/SqliteMaintenanceRegistration.cs) |
-| SQLite options | `EFCoreLibrary.Maintenance.Sqlite.Options` | [SqliteMaintenanceOptions.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Options/SqliteMaintenanceOptions.cs) |
-| SQLite provider | `EFCoreLibrary.Maintenance.Sqlite.Providers` | [SqliteMaintenanceProvider.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Providers/SqliteMaintenanceProvider.cs) |
-| SQLite native backup контракты | `EFCoreLibrary.Maintenance.Sqlite.Abstractions` | [ISqliteBackupApi.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Abstractions/ISqliteBackupApi.cs) |
-| SQLite native backup API и stepper | `EFCoreLibrary.Maintenance.Sqlite.Backup` | [SqliteBackupApi.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.Sqlite/Backup/SqliteBackupApi.cs) |
 | PostgreSQL регистрация | `EFCoreLibrary.Maintenance.PostgreSql.Extensions` | [PostgreSqlMaintenanceRegistration.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.PostgreSql/Extensions/PostgreSqlMaintenanceRegistration.cs) |
 | PostgreSQL provider | `EFCoreLibrary.Maintenance.PostgreSql.Providers` | [PostgreSqlMaintenanceProvider.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance.PostgreSql/Providers/PostgreSqlMaintenanceProvider.cs) |
 | Workspace | `EFCoreLibrary.Maintenance.Backup` | [BackupWorkspace.cs](../../../work/EFCoreLibrary/maintenance/EFCoreLibrary.Maintenance/Backup/BackupWorkspace.cs) |
@@ -83,10 +78,7 @@ Backup directory задаётся приложением; формат и scope 
 
 | Provider | Реализованный механизм и границы |
 | --- | --- |
-| SQLite | Native backup main порциями 128 страниц с проверкой DONE/finish и ограничением BUSY/LOCKED. App-owned native runtime; обычный файл без memory/URI/custom VFS/encryption/attachments. Inspection проверяет main path; тесты не инициализируют SQLite. |
 | PostgreSQL | Npgsql `10.0.3`, внешний pg_dump custom format выбранной БД, без global roles. Явные endpoint/TLS, совпадающий major (10+), private PGPASSFILE. CREATE через `postgres` с проверкой версии и правами приложения. |
-| SQL Server | SqlClient `6.1.6`, native full COPY_ONLY/CHECKSUM, HEADERONLY + VERIFYONLY. Server directory/locator, set GUID и position вместо локального файла/hash. Только EngineEdition 2/3/4; ConnectRetryCount=0, без failover/ReadOnly routing. 4060 требует admin proof с VIEW ANY DATABASE. |
-| MySQL | MIT MySqlConnector `2.6.2` + mysqldump выбранной InnoDB БД, routines/triggers/events. Доступный partial_revokes должен быть 0, прямые global SELECT/SHOW VIEW/TRIGGER/EVENT доказывают видимость; нужны также права чтения routines. MariaDB/mixed engines не поддержаны; accounts/grants, tablespaces и replication topology исключены. |
 
 PostgreSQL/MySQL допускают только переносимые в dump connection options, явный TLS off либо проверку имени/CA и один TCP endpoint. Executable задаётся абсолютным путём; версия проверяется, shell/произвольных флагов нет. Пароли передаются только через private file. Oracle EF provider не входит в mandatory dependencies: его restore подтвердил лишь EF10 feasibility; выбор EF provider и runtime DLL graph остаётся за приложением.
 
@@ -104,9 +96,9 @@ Backup является отдельной копией данных. Удале
 
 ## Подключение AgentBridge этапа 12
 
-`DatabaseMaintenanceRegistrationExtensions.AddAgentBridgeDatabaseMaintenance` находится в `AgentBridge.Persistence.EfCore.Configuration`. Две перегрузки принимают непосредственно раздел `IConfiguration` либо `Action<DatabaseBackupOptions>` без аргумента режима. При переходе на EFCoreLibrary 0.0.9 потребитель удаляет старый аргумент режима и пересобирается. Единственного исполнителя обеспечивает приложение; singleton gate внутри процесса сохраняется. SQL Server получает имя проекта `AgentBridge` для формирования имени backup-файла. Метод вызывается после `AddDatabaseConfiguration` и `AddAgentBridgePersistence`. Он не вызывает обслуживание и не меняет прежнюю persistence-регистрацию.
+`DatabaseMaintenanceRegistrationExtensions.AddAgentBridgeDatabaseMaintenance` находится в `AgentBridge.Persistence.EfCore.Configuration`. Две перегрузки принимают непосредственно раздел `IConfiguration` либо `Action<DatabaseBackupOptions>` без аргумента режима. При переходе на EFCoreLibrary 0.0.9 потребитель удаляет старый аргумент режима и пересобирается. Единственного исполнителя обеспечивает приложение; singleton gate внутри процесса сохраняется. Метод вызывается после `AddDatabaseConfiguration` и `AddAgentBridgePersistence`. Он не вызывает обслуживание и не меняет прежнюю persistence-регистрацию.
 
-Внутри регистрируется `AddRelationalMaintenance<AgentBridgeContextKey>` EFCoreLibrary. Scoped factory выбирает **библиотечный** SqliteMaintenanceProvider/PostgreSqlMaintenanceProvider по валидированному DatabaseOptions и переводит backup options в неизменяемые SqliteMaintenanceOptions/DumpOptions. Общий singleton SingleInitializerGate не захватывает контекст; provider, coordinator и EfMigrationOperations scoped, используют тот же `IAppDbContext<AgentBridgeContextKey>`. Второй coordinator, собственный SQL/backup/native/process wrapper не добавлены. Модули SQL Server/MySQL не входят в graph AgentBridge.
+Внутри регистрируется `AddRelationalMaintenance<AgentBridgeContextKey>` EFCoreLibrary. Scoped factory выбирает **библиотечный** PostgreSqlMaintenanceProvider по валидированному DatabaseOptions и переводит backup options в неизменяемые DumpOptions. Общий singleton SingleInitializerGate не захватывает контекст; provider, coordinator и EfMigrationOperations scoped, используют тот же `IAppDbContext<AgentBridgeContextKey>`. Второй coordinator, собственный SQL/backup/native/process wrapper не добавлены. Модули SQL Server/MySQL не входят в graph AgentBridge.
 
 | DatabaseBackupOptions | Проверка и обязанность |
 | --- | --- |
@@ -116,7 +108,7 @@ Backup является отдельной копией данных. Удале
 | PostgreSqlServerMajorVersion | Для PostgreSQL: явно заданный int 10+. Provider проверяет совпадение с сервером и pg_dump. |
 | PostgreSqlCleanupTimeout | Для PostgreSQL: положительный TimeSpan не более 4 294 967 294 мс, отдельный budget cleanup библиотеки. |
 
-Все свойства изначально null. SQLite не требует PostgreSQL-полей. `DatabaseBackupOptionsValidator` проверяет форму без I/O и выдаёт OptionsValidationException с именами полей без значений. Bind/Configure используют ValidateOnStart; приложение без host может вызвать IStartupValidator.Validate(), либо получить IOptions.Value. BuildServiceProvider не запускает операции. Maintenance resolution валидирует backup options **до** создания контекста. IOptions фиксируют настройки контейнера; изменять их объекты во время работы нельзя — новую конфигурацию обслуживает приложение через новый контейнер после остановки операций.
+Все свойства изначально null; все PostgreSQL backup-настройки обязательны при подключении maintenance. `DatabaseBackupOptionsValidator` проверяет форму без I/O и выдаёт OptionsValidationException с именами полей без значений. Bind/Configure используют ValidateOnStart; приложение без host может вызвать IStartupValidator.Validate(), либо получить IOptions.Value. BuildServiceProvider не запускает операции. Maintenance resolution валидирует backup options **до** создания контекста. IOptions фиксируют настройки контейнера; изменять их объекты во время работы нельзя — новую конфигурацию обслуживает приложение через новый контейнер после остановки операций.
 
 Конкретный production срок хранения backup не выбран библиотекой. До первого рабочего использования приложение обязано выбрать его явно; без выбора API не разрешает обслуживание. DialogRetentionOptions и фиксированный ExpiresAtUtc к этой политике не относятся. Регистрируемый retention — обязательная декларация приложения, а не обещание автоматического удаления копий.
 
@@ -125,14 +117,14 @@ Backup является отдельной копией данных. Удале
 ```csharp
 using AgentBridge.Persistence.EfCore;
 using AgentBridge.Persistence.EfCore.Configuration;
-using AgentBridge.Persistence.SqlServer;
+using AgentBridge.Persistence.PostgreSql;
 using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 services.AddDatabaseConfiguration(configuration.GetSection("AgentBridge:Database"));
-services.AddAgentBridgeSqlServer(); // для выбранного Database.Provider=SqlServer
+services.AddAgentBridgePostgreSql(); // для выбранного Database.Provider=PostgreSql
 services.AddAgentBridgePersistence();
 services.AddAgentBridgeDatabaseMaintenance(
     configuration.GetSection("AgentBridge:Backup"));
@@ -148,7 +140,7 @@ DatabaseInspection inspection = await maintenance.InspectAsync(timeout, ct);
 DatabaseMaintenanceResult updated = await maintenance.UpdateExistingAsync(timeout, ct);
 ```
 
-Для отдельной первой установки приложение вместо UpdateExistingAsync вызывает InitializeNewAsync(timeout, ct); автоматически выбирать этот метод по исключению нельзя. Inspect не разрешает последующую запись по устаревшему результату: оба изменяющих метода заново проверяют существование и target внутри библиотечного gate. Scope полностью принадлежит обслуживанию, concurrent CRUD запрещён приложением. Приложение поставляет выбранную migrations DLL и SQLite native runtime либо pg_dump; compile graph не является готовой поставкой DLL.
+Для отдельной первой установки приложение вместо UpdateExistingAsync вызывает InitializeNewAsync(timeout, ct); автоматически выбирать этот метод по исключению нельзя. Inspect не разрешает последующую запись по устаревшему результату: оба изменяющих метода заново проверяют существование и target внутри библиотечного gate. Scope полностью принадлежит обслуживанию, concurrent CRUD запрещён приложением. Приложение поставляет выбранную migrations DLL и pg_dump; compile graph не является готовой поставкой DLL.
 
 Результаты остаются библиотечными: DatabaseInspection (Exists/TargetIdentity/PendingMigrations), DatabaseMaintenanceResult (Outcome/AppliedMigrations/Backup) и Capabilities. Успешный update даёт Migrated с receipt; без pending — Unchanged без receipt; initialization — Initialized без receipt. Receipt и target содержат технические данные, local artifact — путь: их не следует логировать или отдавать пользовательскому UI целиком.
 

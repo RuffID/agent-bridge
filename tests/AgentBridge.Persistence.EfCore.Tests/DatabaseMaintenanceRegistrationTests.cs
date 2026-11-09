@@ -5,7 +5,6 @@ using EFCoreLibrary.Maintenance.Coordination;
 using EFCoreLibrary.Maintenance.Errors;
 using EFCoreLibrary.Maintenance.Models;
 using EFCoreLibrary.Maintenance.PostgreSql.Providers;
-using EFCoreLibrary.Maintenance.Sqlite.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,20 +18,24 @@ public class DatabaseMaintenanceRegistrationTests
 {
     /// <summary>DI выбирает библиотечный provider и общий gate, сохраняет scoped context и закрытый connection.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite, "sqlite", "sqlite database", "file main only", false)]
     [InlineData(DatabaseProvider.PostgreSql, "postgresql", "custom", "selected database; excludes global roles", true)]
     public void RegistrationAndResolutionDoNotStartMaintenance(DatabaseProvider selected, string name, string format, string scopeName, bool external)
     {
+        // Arrange
         ServiceCollection services = Services(selected);
         using ServiceProvider root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         root.GetRequiredService<IStartupValidator>().Validate();
         using IServiceScope first = root.CreateScope();
         using IServiceScope second = root.CreateScope();
+
+        // Act
         IDatabaseMaintenance<AgentBridgeContextKey> maintenance = first.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
+
+        // Assert
         Assert.IsType<DatabaseMaintenance<AgentBridgeContextKey>>(maintenance);
         Assert.Equal(new DatabaseMaintenanceCapabilities(name, format, scopeName, external, false), maintenance.Capabilities);
         object provider = first.ServiceProvider.GetRequiredService<IDatabaseMaintenanceProvider<AgentBridgeContextKey>>();
-        Assert.Equal(selected == DatabaseProvider.SQLite ? typeof(SqliteMaintenanceProvider<AgentBridgeContextKey>) : typeof(PostgreSqlMaintenanceProvider<AgentBridgeContextKey>), provider.GetType());
+        Assert.Equal(typeof(PostgreSqlMaintenanceProvider<AgentBridgeContextKey>), provider.GetType());
         Assert.Same(maintenance, first.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>());
         Assert.NotSame(maintenance, second.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>());
         Assert.Same(first.ServiceProvider.GetRequiredService<SingleInitializerGate>(), second.ServiceProvider.GetRequiredService<SingleInitializerGate>());
@@ -51,10 +54,15 @@ public class DatabaseMaintenanceRegistrationTests
     [Fact]
     public void PersistenceRegistrationAloneDoesNotAddMaintenance()
     {
+        // Arrange
         ServiceCollection services = new();
         services.AddTestDatabaseProviders();
-        services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.SQLite; options.ConnectionString = "Data Source=never-open.db"; });
+        services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = "Host=invalid.example;Database=synthetic"; });
+
+        // Act
         services.AddAgentBridgePersistence();
+
+        // Assert
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IDatabaseMaintenance<AgentBridgeContextKey>));
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(SingleInitializerGate));
     }
@@ -120,23 +128,6 @@ public class DatabaseMaintenanceRegistrationTests
         Assert.Null(error.InnerException);
     }
 
-    /// <summary>Срок хранения не берётся из expiry диалогов; SQLite не требует pg_dump.</summary>
-    [Fact]
-    public void SqliteRequiresExplicitRetentionButNoPostgreSqlFields()
-    {
-        ServiceCollection services = Services(DatabaseProvider.SQLite, options =>
-        {
-            options.PostgreSqlDumpExecutablePath = null;
-            options.PostgreSqlServerMajorVersion = null;
-            options.PostgreSqlCleanupTimeout = null;
-            options.BackupRetentionPeriod = TimeSpan.FromTicks(1);
-        });
-        using ServiceProvider root = services.BuildServiceProvider();
-        root.GetRequiredService<IStartupValidator>().Validate();
-        Assert.Equal(TimeSpan.FromTicks(1), root.GetRequiredService<IOptions<DatabaseBackupOptions>>().Value.BackupRetentionPeriod);
-        Assert.Null(new DatabaseBackupOptions().BackupRetentionPeriod);
-    }
-
     /// <summary>Binding получает ровно раздел backup и не использует host или I/O.</summary>
     [Fact]
     public void ConfigurationBindingUsesExplicitSection()
@@ -151,8 +142,8 @@ public class DatabaseMaintenanceRegistrationTests
         services.AddTestDatabaseProviders();
         services.AddDatabaseConfiguration(options =>
         {
-            options.Provider = DatabaseProvider.SQLite;
-            options.ConnectionString = "Data Source=never-open.db";
+            options.Provider = DatabaseProvider.PostgreSql;
+            options.ConnectionString = "Host=invalid.example;Database=synthetic";
         });
         services.AddAgentBridgePersistence();
 
@@ -167,15 +158,11 @@ public class DatabaseMaintenanceRegistrationTests
 
     /// <summary>Проверяет каждый условно обязательный ключ maintenance через configuration без context/DB/process.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite, "BackupDirectory")]
-    [InlineData(DatabaseProvider.SQLite, "BackupRetentionPeriod")]
     [InlineData(DatabaseProvider.PostgreSql, "BackupDirectory")]
     [InlineData(DatabaseProvider.PostgreSql, "BackupRetentionPeriod")]
     [InlineData(DatabaseProvider.PostgreSql, "PostgreSqlDumpExecutablePath")]
     [InlineData(DatabaseProvider.PostgreSql, "PostgreSqlServerMajorVersion")]
     [InlineData(DatabaseProvider.PostgreSql, "PostgreSqlCleanupTimeout")]
-    [InlineData(DatabaseProvider.SqlServer, "SqlServerBackupDirectory")]
-    [InlineData(DatabaseProvider.SqlServer, "BackupRetentionPeriod")]
     public void EachConditionalMaintenanceFieldIsRequired(DatabaseProvider selected, string field)
     {
         foreach (string? value in new string?[] { null, "", " " })
@@ -188,7 +175,6 @@ public class DatabaseMaintenanceRegistrationTests
             services.Configure<DatabaseBackupOptions>(options =>
             {
                 options.BackupDirectory = Path.GetFullPath("prior-backups");
-                options.SqlServerBackupDirectory = "/prior-backups";
                 options.BackupRetentionPeriod = TimeSpan.FromDays(30);
                 options.PostgreSqlDumpExecutablePath = Path.GetFullPath("prior-pg-dump");
                 options.PostgreSqlServerMajorVersion = 17;
@@ -245,7 +231,7 @@ public class DatabaseMaintenanceRegistrationTests
     /// <summary>Значения принадлежат тесту; пути никогда не открываются и процессы не запускаются.</summary>
     private static IConfigurationRoot BackupConfiguration() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
     {
-        ["BackupDirectory"] = Path.GetFullPath("never-created-backups"), ["SqlServerBackupDirectory"] = "/server/backups",
+        ["BackupDirectory"] = Path.GetFullPath("never-created-backups"),
         ["BackupRetentionPeriod"] = "30.00:00:00", ["PostgreSqlDumpExecutablePath"] = Path.GetFullPath("never-run-pg-dump"),
         ["PostgreSqlServerMajorVersion"] = "17", ["PostgreSqlCleanupTimeout"] = "00:00:05"
     }).Build();
@@ -258,14 +244,7 @@ public class DatabaseMaintenanceRegistrationTests
         services.AddDatabaseConfiguration(options =>
         {
             options.Provider = provider;
-            if (provider == DatabaseProvider.SQLite)
-            {
-                options.ConnectionString = "Data Source=never-open.db";
-            }
-            else
-            {
-                options.ConnectionString = "Host=127.0.0.1;Port=5432;Database=synthetic;Username=synthetic;Password=synthetic;SSL Mode=Disable";
-            }
+            options.ConnectionString = "Host=127.0.0.1;Port=5432;Database=synthetic;Username=synthetic;Password=synthetic;SSL Mode=Disable";
         });
         services.AddAgentBridgePersistence();
         services.AddAgentBridgeDatabaseMaintenance(options =>

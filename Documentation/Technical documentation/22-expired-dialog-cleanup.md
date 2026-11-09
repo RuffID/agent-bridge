@@ -4,7 +4,7 @@
 
 ## Подключение и вызов
 
-После конфигурации выбранного SQLite/PostgreSQL и `AddAgentBridgePersistence()` приложение явно регистрирует:
+После конфигурации выбранного PostgreSQL и `AddAgentBridgePersistence()` приложение явно регистрирует:
 
 ```csharp
 services.AddAgentBridgeDialogCleanup();
@@ -52,8 +52,8 @@ ExpiredDialogCleanupResult result = await cleanup.CleanupAsync(100, cancellation
 
 ## Проверки и ограничения
 
-19 новых isolated cases проверяют public DI/limits/time/scopes, partial/unknown/cancel, fail-fast port contract, primary+Dispose failures, read failure и concurrent call. Они не доказывают БД. Actual SQLite/PostgreSQL16 проверяют equality, ограниченность нескольких app calls, каскад шести таблиц, неожиданный отказ/отмену после настоящего SQL SaveChanges до commit, новые scopes/restart и delete-vs-active-run.
+19 новых isolated cases проверяют public DI/limits/time/scopes, partial/unknown/cancel, fail-fast port contract, primary+Dispose failures, read failure и concurrent call. Они не доказывают БД. Actual PostgreSQL16 проверяют equality, ограниченность нескольких app calls, каскад шести таблиц, неожиданный отказ/отмену после настоящего SQL SaveChanges до commit, новые scopes/restart и delete-vs-active-run.
 
-Stale-revision case использует исторический NOW до expiry как контролируемую принятую мутацию между read и delete. Это проверяет отказ старому token, а не реальную запись после истечения. Реальные тесты используют управляемую local gateway response, actual AgentRunner и offline BPE; HTTP/server не запускаются. SQLite/PostgreSQL evidence не распространяется на SQL Server/MySQL. Backup/restore maintenance не повторялся без нового риска.
+Stale-revision case использует исторический NOW до expiry как контролируемую принятую мутацию между read и delete. Это проверяет отказ старому token, а не реальную запись после истечения. Реальные тесты используют управляемую local gateway response, actual AgentRunner и offline BPE; HTTP/server не запускаются. PostgreSQL evidence не распространяется на SQL Server/MySQL. Backup/restore maintenance не повторялся без нового риска.
 
 Нормативный SSOT: [agent-runtime](../../openspec/specs/agent-runtime/spec.md), [контекст](../../openspec/specs/agent-runtime/context.md), [change22](../../openspec/changes/expired-dialog-cleanup/proposal.md). Полный отчёт и команды22 (история Git).

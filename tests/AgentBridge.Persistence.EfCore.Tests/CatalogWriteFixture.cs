@@ -76,7 +76,7 @@ internal class CatalogWriteFixture
         _changes = new(Committed.Changes, row => $"{row.ScopeKey}/{row.Sequence}");
         _operations = new(Committed.Operations, row => $"{row.DialogId}/{row.Id}");
         HistoryLoadBudget? budget = loadLimits is null ? null : new(loadLimits);
-        HistoryQueryGuard? history = budget is null ? null : new(budget, new Persistence.SqlServer.SqlServerHistoryRecordSizeProvider());
+        HistoryQueryGuard? history = budget is null ? null : new(budget, new Persistence.PostgreSql.PostgreSqlHistoryRecordSizeProvider());
         Gate = budget is null ? new() : new(budget);
         DialogRetentionPolicy retention = new(new() { RetentionPeriod = TimeSpan.FromDays(1) });
         UnitOfWorkScope scope = new(Session, Gate);
@@ -207,7 +207,7 @@ internal class CatalogWriteFixture
         type = "function_call", call_id = id, name, arguments = "{}"
     }));
     private static T Clone<T>(T value) => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value))!;
-    private static AgentBridgeDbContext Metadata() => new(new DbContextOptionsBuilder<AgentBridgeDbContext>().UseSqlite("Data Source=never-open.db").Options);
+    private static AgentBridgeDbContext Metadata() => new(new DbContextOptionsBuilder<AgentBridgeDbContext>().UseNpgsql("Host=invalid.example;Database=synthetic").Options);
 
     internal class Clock : TimeProvider
     {

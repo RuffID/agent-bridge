@@ -1,3 +1,4 @@
+using AgentBridge.Persistence.PostgreSql;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AgentBridge.Application;
@@ -7,7 +8,6 @@ using AgentBridge.Application.Results;
 using AgentBridge.Configuration;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Integration;
-using AgentBridge.Persistence.SqlServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -54,8 +54,8 @@ internal class Sub2ApiRunFixture : IAsyncDisposable
             ["Sub2Api:KeySource"] = "Individual",
             ["Sub2Api:GenerationTimeout"] = "00:00:05",
             ["Sub2Api:CompactTimeout"] = "00:00:05",
-            ["Database:Provider"] = "SqlServer",
-            ["Database:ConnectionString"] = "Server=never-open.invalid;Database=synthetic;Integrated Security=True;Encrypt=True"
+            ["Database:Provider"] = "PostgreSql",
+            ["Database:ConnectionString"] = "Host=invalid.example;Database=synthetic"
         }).Build();
         ServiceCollection services = new();
         services.AddLogging();
@@ -70,7 +70,7 @@ internal class Sub2ApiRunFixture : IAsyncDisposable
         services.AddScoped<IIndividualModelKeySource, KeySource>();
         services.AddScoped<IContextProvider, Provider>();
         services.AddAgentBridgeTool<Handler, Validator>(TOOL);
-        services.AddAgentBridgeSqlServer();
+        services.AddAgentBridgePostgreSql();
         services.AddAgentBridgeSub2ApiConnector();
         services.AddAgentBridge(Configuration, _ =>
         {

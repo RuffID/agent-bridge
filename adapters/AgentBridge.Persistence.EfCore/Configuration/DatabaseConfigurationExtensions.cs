@@ -29,14 +29,17 @@ public static class DatabaseConfigurationExtensions
     }
 
     /// <summary>Регистрирует проверки обязательных полей и локально поддержанных провайдеров.</summary>
-    private static void Validate(OptionsBuilder<DatabaseOptions> builder) => builder
-        .Validate(options => options.Provider.HasValue, "Database.Provider обязателен; провайдер выбирает приложение.")
-        .Validate(options => !options.Provider.HasValue || Enum.IsDefined(options.Provider.Value),
-            "Database.Provider не поддержан локальным контрактом SQLite/PostgreSQL/SQL Server.")
-        .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "Database.ConnectionString обязателен.")
-        .Validate(options => string.IsNullOrWhiteSpace(options.ConnectionString) || IsConnectionString(options.ConnectionString),
-            "Database.ConnectionString: invalid_format — некорректная форма строки подключения.")
-        .ValidateOnStart();
+    private static void Validate(OptionsBuilder<DatabaseOptions> builder)
+    {
+        builder
+            .Validate(options => options.Provider.HasValue, "Database.Provider обязателен; провайдер выбирает приложение.")
+            .Validate(options => !options.Provider.HasValue || Enum.IsDefined(options.Provider.Value),
+                "Database.Provider не поддержан локальным контрактом PostgreSQL.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "Database.ConnectionString обязателен.")
+            .Validate(options => string.IsNullOrWhiteSpace(options.ConnectionString) || IsConnectionString(options.ConnectionString),
+                "Database.ConnectionString: invalid_format — некорректная форма строки подключения.")
+            .ValidateOnStart();
+    }
 
     /// <summary>Проверяет только синтаксис без provider, подключения и вывода секрета; серверные свойства проверяются отдельно.</summary>
     private static bool IsConnectionString(string connection)

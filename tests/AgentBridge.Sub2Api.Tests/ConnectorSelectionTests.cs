@@ -1,3 +1,4 @@
+using AgentBridge.Persistence.PostgreSql;
 using System.Reflection;
 using AgentBridge.Application.Models;
 using AgentBridge.Application.Ports;
@@ -6,7 +7,6 @@ using AgentBridge.CodexLb.Configuration;
 using AgentBridge.CodexLb.Responses;
 using AgentBridge.Domain.Dialogs;
 using AgentBridge.Integration;
-using AgentBridge.Persistence.SqlServer;
 using AgentBridge.Sub2Api.Configuration;
 using HttpClientLibrary.Clients;
 using Microsoft.Extensions.Configuration;
@@ -322,12 +322,12 @@ public class ConnectorSelectionTests
         }
     }
 
-    /// <summary>Подключает только app logging и disconnected SQL Server metadata, без соединения.</summary>
+    /// <summary>Подключает только app logging и disconnected PostgreSQL metadata, без соединения.</summary>
     private static ServiceCollection Services()
     {
         ServiceCollection services = new();
         services.AddLogging();
-        services.AddAgentBridgeSqlServer();
+        services.AddAgentBridgePostgreSql();
         return services;
     }
 
@@ -355,8 +355,8 @@ public class ConnectorSelectionTests
             [$"{section}:BaseAddress"] = "https://example.invalid/prefix", [$"{section}:Model"] = "model",
             [$"{section}:ReasoningEffort"] = "medium", [$"{section}:KeySource"] = "Shared",
             [$"{section}:SharedApiKey"] = "synthetic-key", [$"{section}:GenerationTimeout"] = "00:03:00",
-            [$"{section}:CompactTimeout"] = "00:03:00", ["Database:Provider"] = "SqlServer",
-            ["Database:ConnectionString"] = "Server=example.invalid;Database=synthetic;Integrated Security=True;Encrypt=True"
+            [$"{section}:CompactTimeout"] = "00:03:00", ["Database:Provider"] = "PostgreSql",
+            ["Database:ConnectionString"] = "Host=invalid.example;Database=synthetic"
         };
         if (changes is not null)
         {

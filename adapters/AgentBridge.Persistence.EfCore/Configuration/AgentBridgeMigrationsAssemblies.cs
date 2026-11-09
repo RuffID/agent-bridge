@@ -1,14 +1,8 @@
 namespace AgentBridge.Persistence.EfCore.Configuration;
 
-/// <summary>Устойчивые имена отдельных сборок схемы для общего контекста AgentBridge.</summary>
+/// <summary>Устойчивое имя сборки схемы общего контекста AgentBridge.</summary>
 public static class AgentBridgeMigrationsAssemblies
 {
-    /// <summary>Сборка миграций SQLite; приложение поставляет её для обслуживания выбранной БД.</summary>
-    public const string SQLITE = "AgentBridge.Persistence.Migrations.Sqlite";
-
-    /// <summary>Сборка миграций PostgreSQL; не используется при выборе SQLite.</summary>
+    /// <summary>Сборка миграций PostgreSQL, поставляемая приложением для обслуживания.</summary>
     public const string POSTGRESQL = "AgentBridge.Persistence.Migrations.PostgreSql";
-
-    /// <summary>Отдельная сборка миграций Microsoft SQL Server.</summary>
-    public const string SQLSERVER = "AgentBridge.Persistence.Migrations.SqlServer";
 }

@@ -7,21 +7,24 @@ using Xunit;
 
 namespace AgentBridge.Delivery.Metadata.Tests;
 
-/// <summary>Проверяет immutable состав, portable paths и одинаковый AgentBridge API в MSSQL комплектах.</summary>
+/// <summary>Проверяет immutable состав, portable paths и одинаковый AgentBridge API в PostgreSQL комплектах.</summary>
 public class DeliveryManifestTests
 {
     /// <summary>Все файлы и SDK runtime/native entries имеют точный case, размер, hash и выбранный RID.</summary>
     [Theory]
-    [InlineData("SqlServer", "win-x64")]
-    [InlineData("SqlServer", "linux-x64")]
-    [InlineData("SqlServer", "linux-arm64")]
-    [InlineData("Sqlite", "win-x64")]
     [InlineData("PostgreSql", "win-x64")]
+    [InlineData("PostgreSql", "linux-x64")]
+    [InlineData("PostgreSql", "linux-arm64")]
     public void ManifestMatchesCompleteSdkClosure(string provider, string rid)
     {
+        // Arrange
         string root = GetKit(provider, rid);
         using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "delivery.manifest.json")));
+
+        // Act
         JsonElement document = manifest.RootElement;
+
+        // Assert
         Assert.Equal(rid, document.GetProperty("rid").GetString());
         Assert.Equal(provider, document.GetProperty("provider").GetString());
         Assert.True(document.GetProperty("frameworkDependent").GetBoolean());
@@ -82,20 +85,20 @@ public class DeliveryManifestTests
                 }
             }
         }
-        Assert.Equal(provider == "SqlServer" ? 13 : 0, entries.Values.Count(entry => entry.GetProperty("kind").GetString() == "resource"));
+        Assert.Equal(0, entries.Values.Count(entry => entry.GetProperty("kind").GetString() == "resource"));
     }
 
     /// <summary>Cross-build сохраняет public types/method signatures и generated XML всех AgentBridge assembly выбранного провайдера.</summary>
     [Fact]
-    public void SqlServerManagedApiAndXmlAreIdenticalAcrossRids()
+    public void PostgreSqlManagedApiAndXmlAreIdenticalAcrossRids()
     {
         // Arrange
-        string baseline = Path.Combine(GetKit("SqlServer", "win-x64"), "lib");
+        string baseline = Path.Combine(GetKit("PostgreSql", "win-x64"), "lib");
         string[] expectedNames =
         [
             "AgentBridge.dll", "AgentBridge.Integration.dll", "AgentBridge.CodexLb.dll", "AgentBridge.Sub2Api.dll",
-            "AgentBridge.Persistence.EfCore.dll", "AgentBridge.Persistence.SqlServer.dll",
-            "AgentBridge.Persistence.Migrations.SqlServer.dll"
+            "AgentBridge.Persistence.EfCore.dll", "AgentBridge.Persistence.PostgreSql.dll",
+            "AgentBridge.Persistence.Migrations.PostgreSql.dll"
         ];
 
         // Act
@@ -105,7 +108,7 @@ public class DeliveryManifestTests
         Assert.Equal(expectedNames.Order(StringComparer.Ordinal), names);
         foreach (string rid in new[] { "linux-x64", "linux-arm64" })
         {
-            string other = Path.Combine(GetKit("SqlServer", rid), "lib");
+            string other = Path.Combine(GetKit("PostgreSql", rid), "lib");
             Assert.Equal(names, Directory.GetFiles(other, "AgentBridge*.dll").Select(Path.GetFileName).OfType<string>().Order(StringComparer.Ordinal));
             foreach (string name in names)
             {
@@ -117,38 +120,25 @@ public class DeliveryManifestTests
 
     /// <summary>Обнаруживает escape/absolute paths без изменения actual kit.</summary>
     [Theory]
-    [InlineData("../e_sqlite3.dll")]
-    [InlineData("native\\win-x64\\e_sqlite3.dll")]
-    [InlineData("C:/native/e_sqlite3.dll")]
-    [InlineData("/native/e_sqlite3.dll")]
+    [InlineData("../native_asset.dll")]
+    [InlineData("native\\win-x64\\native_asset.dll")]
+    [InlineData("C:/native/native_asset.dll")]
+    [InlineData("/native/native_asset.dll")]
     public void NonPortablePathsAreRejected(string path) => Assert.Throws<InvalidDataException>(() => ValidateRelativePath(path));
 
-    /// <summary>Missing native и неверный filename case отклоняются и на нечувствительном к регистру filesystem.</summary>
+    /// <summary>Missing asset и неверный filename case отклоняются и на нечувствительном к регистру filesystem.</summary>
     [Fact]
-    public void RequiredNativeAssetUsesExactCaseAndCannotBeMissing()
+    public void RequiredAssetUsesExactCaseAndCannotBeMissing()
     {
-        string root = GetKit("SqlServer", "win-x64");
-        RequireExactFile(root, "native/win-x64/Microsoft.Data.SqlClient.SNI.dll");
-        Assert.Throws<InvalidDataException>(() => RequireExactFile(root, "native/win-x64/MICROSOFT.DATA.SQLCLIENT.SNI.DLL"));
-        Assert.Throws<InvalidDataException>(() => RequireExactFile(root, "native/win-x64/missing.dll"));
-    }
+        // Arrange
+        string root = GetKit("PostgreSql", "win-x64");
 
-    /// <summary>Ресурс сохраняет culture/case; missing asset и неверный SHA отклоняются без изменения комплекта.</summary>
-    [Theory]
-    [InlineData("ru")]
-    [InlineData("pt-BR")]
-    [InlineData("zh-Hans")]
-    public void ResourceRejectsMissingCaseAndHashMismatch(string culture)
-    {
-        string root = GetKit("SqlServer", "win-x64");
-        string relative = $"resources/{culture}/Microsoft.Data.SqlClient.resources.dll";
-        string file = Path.Combine(root, relative);
-        long size = new FileInfo(file).Length;
-        string hash = Hash(file);
-        VerifyFile(root, relative, size, hash);
-        Assert.Throws<InvalidDataException>(() => VerifyFile(root, relative.Replace("Microsoft", "MICROSOFT", StringComparison.Ordinal), size, hash));
-        Assert.Throws<InvalidDataException>(() => VerifyFile(root, $"resources/{culture}/missing.dll", size, hash));
-        Assert.Throws<InvalidDataException>(() => VerifyFile(root, relative, size, new string('0', 64)));
+        // Act
+        RequireExactFile(root, "lib/Npgsql.dll");
+
+        // Assert
+        Assert.Throws<InvalidDataException>(() => RequireExactFile(root, "lib/NPGSQL.DLL"));
+        Assert.Throws<InvalidDataException>(() => RequireExactFile(root, "lib/missing.dll"));
     }
 
     /// <summary>Читает public metadata signatures без загрузки типов.</summary>

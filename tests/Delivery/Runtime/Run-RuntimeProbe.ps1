@@ -42,7 +42,7 @@ function Test-Output([string]$Output, $Manifest) {
     }
 }
 
-$variants = @(@('SqlServer','win-x64'), @('SqlServer','linux-x64'), @('SqlServer','linux-arm64'), @('Sqlite','win-x64'), @('PostgreSql','win-x64'))
+$variants = @(@('PostgreSql','win-x64'), @('PostgreSql','linux-x64'), @('PostgreSql','linux-arm64'))
 foreach ($variant in $variants) {
     $provider = $variant[0]; $rid = $variant[1]; $label = "$provider-$rid"
     $original = Join-Path $DeliveryRoot "$provider/$rid"
@@ -74,8 +74,8 @@ foreach ($variant in $variants) {
 $kits | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 (Join-Path $Evidence 'kits.json')
 
 # Negative controls use new disposable copies; original kit/output are preserved.
-$baseKit = Join-Path $Workspace 'SqlServer-win-x64/kit'
-$baseOutput = Join-Path $Workspace 'SqlServer-win-x64/output'
+$baseKit = Join-Path $Workspace 'PostgreSql-win-x64/kit'
+$baseOutput = Join-Path $Workspace 'PostgreSql-win-x64/output'
 $baseManifest = Test-Kit $baseKit
 $negative = Join-Path $Workspace 'negative-missing-kit'
 New-Item -ItemType Directory -Path $negative | Out-Null
@@ -87,7 +87,7 @@ try { $null = Test-Kit $negative } catch { if ($_.Exception.Message -like 'Missi
 if (!$missingRejected) { throw 'Missing dependency accepted.' }
 $mixed = Join-Path $Workspace 'negative-mixed-kit'
 Copy-Item -LiteralPath $baseKit -Destination $mixed -Recurse
-$foreignNative = Get-ChildItem -LiteralPath (Join-Path $DeliveryRoot 'SqlServer/linux-arm64/native/linux-arm64') -File | Select-Object -First 1
+$foreignNative = Get-ChildItem -LiteralPath (Join-Path $DeliveryRoot 'PostgreSql/linux-arm64/native/linux-arm64') -File | Select-Object -First 1
 $targetNative = Get-ChildItem -LiteralPath (Join-Path $mixed 'native/win-x64') -File | Select-Object -First 1
 Copy-Item -LiteralPath $foreignNative.FullName -Destination $targetNative.FullName
 $mixedRejected = $false
@@ -98,16 +98,16 @@ if (!$mixedRejected) { throw 'Mixed native dependency accepted.' }
 $missingOutput = Join-Path $Workspace 'negative-missing-output'
 New-Item -ItemType Directory -Path $missingOutput | Out-Null
 Get-ChildItem -LiteralPath $baseOutput | Where-Object { $_.Name -ne 'Microsoft.ML.Tokenizers.Data.O200kBase.dll' } | Copy-Item -Destination $missingOutput -Recurse
-Invoke-Check 'missing-resource-runtime' @((Join-Path $missingOutput 'AgentBridge.RuntimeProbe.dll'), 'SqlServer', 'win-x64') $false
+Invoke-Check 'missing-resource-runtime' @((Join-Path $missingOutput 'AgentBridge.RuntimeProbe.dll'), 'PostgreSql', 'win-x64') $false
 $failureText = Get-Content -Raw (Join-Path $Evidence 'missing-resource-runtime.log')
 if ($failureText -notmatch 'FileNotFoundException' -or $failureText -notmatch 'Microsoft.ML.Tokenizers.Data.O200kBase') { throw 'Unexpected missing-resource failure.' }
-Invoke-Check 'wrong-rid-runtime' @((Join-Path $baseOutput 'AgentBridge.RuntimeProbe.dll'), 'SqlServer', 'linux-arm64') $false
+Invoke-Check 'wrong-rid-runtime' @((Join-Path $baseOutput 'AgentBridge.RuntimeProbe.dll'), 'PostgreSql', 'linux-arm64') $false
 if ((Get-Content -Raw (Join-Path $Evidence 'wrong-rid-runtime.log')) -notmatch 'Runtime RID win-x64 does not match linux-arm64') { throw 'Unexpected RID failure.' }
 Invoke-Check 'wrong-provider-runtime' @((Join-Path $baseOutput 'AgentBridge.RuntimeProbe.dll'), 'Sqlite', 'win-x64') $false
 if ((Get-Content -Raw (Join-Path $Evidence 'wrong-provider-runtime.log')) -notmatch 'Manifest schema/framework/provider/RID does not match') { throw 'Unexpected provider failure.' }
 $mixedOutput = Join-Path $Workspace 'negative-mixed-output'
 Copy-Item -LiteralPath $baseOutput -Destination $mixedOutput -Recurse
 Copy-Item -LiteralPath $foreignNative.FullName -Destination (Join-Path $mixedOutput $targetNative.Name)
-Invoke-Check 'mixed-native-runtime' @((Join-Path $mixedOutput 'AgentBridge.RuntimeProbe.dll'), 'SqlServer', 'win-x64') $false
+Invoke-Check 'mixed-native-runtime' @((Join-Path $mixedOutput 'AgentBridge.RuntimeProbe.dll'), 'PostgreSql', 'win-x64') $false
 if ((Get-Content -Raw (Join-Path $Evidence 'mixed-native-runtime.log')) -notmatch 'Output hash mismatch') { throw 'Unexpected mixed-native failure.' }
 @{ missingKitRejected = $missingRejected; mixedNativeRejected = $mixedRejected; missingResourceRuntimeFailed = $true; wrongRidRuntimeFailed = $true; wrongProviderRuntimeFailed = $true; mixedNativeRuntimeFailed = $true; nativePositiveLoadFree = $true } | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $Evidence 'negative-controls.json')

@@ -1,14 +1,8 @@
 namespace AgentBridge.Persistence.EfCore.Configuration;
 
-/// <summary>Локально поддерживаемые варианты настройки будущего EF-хранилища.</summary>
+/// <summary>Поддерживаемый провайдер EF-хранилища AgentBridge.</summary>
 public enum DatabaseProvider
 {
-    /// <summary>SQLite, только при явном выборе приложения.</summary>
-    SQLite = 0,
-
-    /// <summary>PostgreSQL, только при явном выборе приложения.</summary>
-    PostgreSql = 1,
-
-    /// <summary>Microsoft SQL Server, только при явном выборе приложения.</summary>
-    SqlServer = 2
+    /// <summary>PostgreSQL, только при явном выборе приложения; числовая identity сохранена.</summary>
+    PostgreSql = 1
 }

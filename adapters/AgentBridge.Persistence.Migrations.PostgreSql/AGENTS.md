@@ -13,3 +13,5 @@
 - Design/runtime EF 10.0.12 и Npgsql provider 10.0.3 согласованы. Tools/PMC не подключать для CLI. GenerateRuntimeConfigurationFiles позволяет штатному dotnet-ef использовать library startup без executable entry point.
 - Generated Migrations/designer/snapshot создавать только штатным tooling после согласования точной команды; вручную не редактировать. Только собственные таблицы AgentBridge, включая library-owned scope catalogue, без чужих сущностей.
 - Restore/build/test требуют GeneratePackageOnBuild=false и outputs artifacts/compile-check. Изолированные factory/metadata проверки находятся в persistence-тестах. SQL, БД, Up/Down/apply, приложение и процессы не запускать.
+
+- Все migrations, designers и snapshot размещаются в Migrations непосредственно под проектом. Полный namespace не повторяется деревом папок. Для будущей генерации явно задавать --output-dir Migrations и --namespace AgentBridge.Persistence.Migrations.PostgreSql.Migrations; перенос snapshot сохраняет его bytes, namespace и migration IDs.

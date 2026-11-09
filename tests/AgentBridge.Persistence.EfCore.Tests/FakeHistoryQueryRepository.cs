@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
 using EFCoreLibrary.Abstractions.Database.Repository.Base;
 
 namespace AgentBridge.Persistence.EfCore.Tests;
@@ -20,11 +19,11 @@ internal class FakeHistoryQueryRepository<TEntity>(List<TEntity> records) : ICon
     /// <inheritdoc/>
     public IQueryable<TEntity> Query(bool asNoTracking = false) => new Queryable<TEntity>(_records.AsQueryable().Expression, this);
 
-    /// <summary>Измеряет byte-accounting через тот же SQL expression с изолированным DATALENGTH evaluator.</summary>
+    /// <summary>Измеряет byte-accounting через выражение PostgreSQL policy на локальных DTO.</summary>
     internal static long Size(TEntity row)
     {
-        Expression<Func<TEntity, long>> expression = new Persistence.SqlServer.SqlServerHistoryRecordSizeProvider().Size<TEntity>();
-        return Expression.Lambda<Func<TEntity, long>>(new DataLengthVisitor().Visit(expression.Body), expression.Parameters).Compile()(row);
+        Expression<Func<TEntity, long>> expression = new Persistence.PostgreSql.PostgreSqlHistoryRecordSizeProvider().Size<TEntity>();
+        return expression.Compile()(row);
     }
 
     /// <summary>Создаёт deferred LINQ query с наблюдаемой async materialization.</summary>
@@ -50,7 +49,7 @@ internal class FakeHistoryQueryRepository<TEntity>(List<TEntity> records) : ICon
             }
 
             (scalar ? owner.ScalarQueries : owner.PayloadQueries).Add(expression);
-            Expression evaluated = new DataLengthVisitor().Visit(expression);
+            Expression evaluated = expression;
             List<T> rows = owner._records.AsQueryable().Provider.CreateQuery<T>(evaluated).ToList();
             if (scalar)
             {
@@ -91,20 +90,4 @@ internal class FakeHistoryQueryRepository<TEntity>(List<TEntity> records) : ICon
         }
     }
 
-    /// <summary>Только I/O double вычисляет SQL DATALENGTH как UTF-16 storage bytes; production expression неизменён.</summary>
-    private class DataLengthVisitor : ExpressionVisitor
-    {
-        protected override Expression VisitMethodCall(MethodCallExpression node)
-        {
-            if (node.Method.DeclaringType == typeof(SqlServerDbFunctionsExtensions) && node.Method.Name == "DataLength")
-            {
-                return Expression.Call(typeof(FakeHistoryQueryRepository<TEntity>), nameof(StorageLength), [], Visit(node.Arguments[1]));
-            }
-
-            return base.VisitMethodCall(node);
-        }
-    }
-
-    /// <summary>Учитывает NUL, trailing spaces и непарные UTF-16 code units без нормализации.</summary>
-    public static int? StorageLength(string? value) => value is null ? null : checked(value.Length * 2);
 }

@@ -8,8 +8,6 @@ using EFCoreLibrary.Maintenance.Coordination;
 using EFCoreLibrary.Maintenance.Database;
 using EFCoreLibrary.Maintenance.Models;
 using EFCoreLibrary.Maintenance.PostgreSql.Providers;
-using EFCoreLibrary.Maintenance.Sqlite.Backup;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Xunit;
@@ -26,7 +24,7 @@ public class IntegrationDatabase : IAsyncDisposable
     /// <summary>Создаёт только локальную конфигурацию; соединение и схема ещё не открываются.</summary>
     internal IntegrationDatabase(DatabaseProvider provider, string configuredRoot, string? postgresConnection, PostgreSqlIntegrationTools? tools)
     {
-        if (provider is not (DatabaseProvider.SQLite or DatabaseProvider.PostgreSql))
+        if (provider != DatabaseProvider.PostgreSql)
         {
             throw new ArgumentOutOfRangeException(nameof(provider));
         }
@@ -37,32 +35,30 @@ public class IntegrationDatabase : IAsyncDisposable
         {
             throw new InvalidOperationException("Требуется существующий абсолютный тестовый каталог.");
         }
+
         DirectoryPath = Path.Combine(configuredRoot, "abverify_" + Guid.NewGuid().ToString("N"));
         BackupDirectory = Path.Combine(DirectoryPath, "backups");
-        if (provider == DatabaseProvider.SQLite)
-        {
-            ConnectionString = SqliteSettings(Path.Combine(DirectoryPath, "source.db"));
-        }
-        else
-        {
-            if (tools is null || postgresConnection is null)
-            {
-                throw new InvalidOperationException("Требуется PostgreSQL-контейнер и проверенные клиентские утилиты fixture.");
-            }
 
-            NpgsqlConnectionStringBuilder configured = new(postgresConnection);
-            if (configured.Host != "127.0.0.1" || configured.Database != "postgres" ||
-                configured.Username is null || !configured.Username.StartsWith("abverify_", StringComparison.Ordinal) ||
-                configured.Port == 5432 || configured.SslMode != SslMode.Disable)
-            {
-                throw new InvalidOperationException("Разрешён только отдельный loopback PostgreSQL тестового пользователя и порта.");
-            }
-            configured.Pooling = false;
-            adminConnection = configured.ConnectionString;
-            configured.Database = NewDatabaseName();
-            ConnectionString = configured.ConnectionString;
+        if (tools is null || postgresConnection is null)
+        {
+            throw new InvalidOperationException("Требуется PostgreSQL-контейнер и проверенные клиентские утилиты fixture.");
         }
+
+        NpgsqlConnectionStringBuilder configured = new(postgresConnection);
+        if (configured.Host != "127.0.0.1" || configured.Database != "postgres" ||
+            configured.Username is null || !configured.Username.StartsWith("abverify_", StringComparison.Ordinal) ||
+            configured.Port == 5432 || configured.SslMode != SslMode.Disable)
+        {
+            throw new InvalidOperationException("Разрешён только отдельный loopback PostgreSQL тестового пользователя и порта.");
+        }
+
+        configured.Pooling = false;
+        adminConnection = configured.ConnectionString;
+        configured.Database = NewDatabaseName();
+        ConnectionString = configured.ConnectionString;
+
         Directory.CreateDirectory(BackupDirectory);
+
         try
         {
             Root = BuildRoot();
@@ -107,12 +103,9 @@ public class IntegrationDatabase : IAsyncDisposable
         {
             options.BackupDirectory = BackupDirectory;
             options.BackupRetentionPeriod = TimeSpan.FromDays(1);
-            if (Provider == DatabaseProvider.PostgreSql)
-            {
-                options.PostgreSqlDumpExecutablePath = PostgreSqlTools.DumpPath;
-                options.PostgreSqlServerMajorVersion = PostgreSqlIntegrationTools.SERVER_MAJOR;
-                options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(10);
-            }
+            options.PostgreSqlDumpExecutablePath = PostgreSqlTools.DumpPath;
+            options.PostgreSqlServerMajorVersion = PostgreSqlIntegrationTools.SERVER_MAJOR;
+            options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(10);
             backup?.Invoke(options);
         });
         customize?.Invoke(services);
@@ -161,13 +154,9 @@ public class IntegrationDatabase : IAsyncDisposable
     /// <summary>Сопоставляет каталоги таблиц, колонок, индексов, ограничений и данные всех таблиц между source/restore.</summary>
     public async Task<string> FingerprintAsync(string? connection = null)
     {
-        string schemaSql = Provider == DatabaseProvider.SQLite
-            ? "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-            : "SELECT 'column' AS kind, table_name AS parent, column_name AS name, data_type || ':' || is_nullable || ':' || coalesce(collation_name, '') AS definition FROM information_schema.columns WHERE table_schema='public' UNION ALL SELECT 'index', tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' UNION ALL SELECT 'constraint', c.relname, con.conname, pg_get_constraintdef(con.oid) FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' ORDER BY kind, parent, name";
+        string schemaSql = "SELECT 'column' AS kind, table_name AS parent, column_name AS name, data_type || ':' || is_nullable || ':' || coalesce(collation_name, '') AS definition FROM information_schema.columns WHERE table_schema='public' UNION ALL SELECT 'index', tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' UNION ALL SELECT 'constraint', c.relname, con.conname, pg_get_constraintdef(con.oid) FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' ORDER BY kind, parent, name";
         List<string> parts = [JsonSerializer.Serialize(await QueryAsync(schemaSql, connection))];
-        string tablesSql = Provider == DatabaseProvider.SQLite
-            ? "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
-            : "SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name";
+        string tablesSql = "SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name";
         foreach (IReadOnlyDictionary<string, object?> table in await QueryAsync(tablesSql, connection))
         {
             string name = (string)table["name"]!;
@@ -178,16 +167,9 @@ public class IntegrationDatabase : IAsyncDisposable
         return string.Join("\n", parts);
     }
 
-    /// <summary>Восстанавливает реальный артефакт в отдельную тестовую БД через native API либо штатный pg_restore.</summary>
+    /// <summary>Восстанавливает реальный артефакт в отдельную тестовую БД через штатный pg_restore.</summary>
     public async Task<string> RestoreAsync(LocalBackupArtifact artifact, bool expectSuccess = true)
     {
-        if (Provider == DatabaseProvider.SQLite)
-        {
-            string restoredPath = Path.Combine(DirectoryPath, "restored_" + Guid.NewGuid().ToString("N") + ".db");
-            using MaintenanceBudget budget = new(TimeSpan.FromSeconds(30), default);
-            await SqliteBackupStepper.CopyAsync(new SqliteBackupApi().Open(artifact.Path, restoredPath), budget);
-            return SqliteSettings(restoredPath);
-        }
         NpgsqlConnectionStringBuilder restored = new(adminConnection!) { Database = NewDatabaseName() };
         await using (NpgsqlConnection admin = new(adminConnection))
         {
@@ -247,12 +229,6 @@ public class IntegrationDatabase : IAsyncDisposable
         }
     }
 
-    /// <summary>Формирует локальное непулируемое подключение с включёнными FK.</summary>
-    private static string SqliteSettings(string path) => new SqliteConnectionStringBuilder
-    {
-        DataSource = path, Pooling = false, ForeignKeys = true, DefaultTimeout = 2
-    }.ConnectionString;
-
     /// <summary>Создаёт и сразу регистрирует собственное имя для cleanup даже после отказа CREATE.</summary>
     private string NewDatabaseName()
     {
@@ -262,7 +238,9 @@ public class IntegrationDatabase : IAsyncDisposable
     }
 
     /// <summary>Создаёт connection выбранного provider только для библиотечных commands.</summary>
-    private DbConnection OpenConnection(string connection) => Provider == DatabaseProvider.SQLite
-        ? new SqliteConnection(connection) : new NpgsqlConnection(connection);
+    private DbConnection OpenConnection(string connection)
+    {
+        return new NpgsqlConnection(connection);
+    }
 
 }

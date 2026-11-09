@@ -4,7 +4,7 @@ Bounded каталог диалогов, durable lifecycle/fencing и append-onl
 
 AgentBridge — C#-библиотека для приложений на **.NET 10**. Она ведёт диалог с моделью через **codex-lb**, сохраняет историю в БД, собирает и сжимает рабочий контекст, а при необходимости вызывает инструменты вашего приложения.
 
-Библиотека подключается обычными DLL. Основной провайдер хранения — **SQL Server**; также доступны **SQLite** и **PostgreSQL**. Её можно использовать в ASP.NET Core, настольном приложении или другом SDK-style проекте: интерфейс пользователя и запуск приложения остаются у вас.
+Библиотека подключается обычными DLL. Единственный провайдер хранения — **PostgreSQL**. Её можно использовать в ASP.NET Core, настольном приложении или другом SDK-style проекте: интерфейс пользователя и запуск приложения остаются у вас.
 
 Обычный путь работы: **подключить DLL → настроить зависимости → подготовить БД → создать диалог → отправлять сообщения**.
 
@@ -22,7 +22,7 @@ AgentBridge — C#-библиотека для приложений на **.NET 
 
 ## 1. Подключите DLL к проекту
 
-Для SDK-style net10.0 рекомендуется [поставка собственных DLL с NuGet](<Documentation/Technical documentation/29-dll-and-nuget-delivery.md>). Комплекты находятся в `artifacts/nuget-delivery/{Provider}`: в lib только наши DLL/XML, сторонние пакеты автоматически добавляет импорт. Скопируйте весь комплект и импортируйте его после остальных PackageReference:
+Для SDK-style net10.0 рекомендуется [поставка собственных DLL с NuGet](<Documentation/Technical documentation/29-dll-and-nuget-delivery.md>). После отдельной подготовки новый PostgreSQL-комплект будет находиться в `artifacts/delivery-tests/current/nuget/PostgreSql`: в lib только наши DLL/XML, сторонние пакеты автоматически добавляет импорт. Скопируйте весь комплект и импортируйте его после остальных PackageReference:
 
 ```xml
 <PropertyGroup>
@@ -32,25 +32,23 @@ AgentBridge — C#-библиотека для приложений на **.NET 
 <Import Project="vendor/AgentBridge/AgentBridge.Delivery.props" />
 ```
 
-Restore создаёт packages.lock.json; при существующем lock импорт включает locked mode. SQL Server kit поддерживает три RID, SQLite/PostgreSQL — win-x64. Native/resources выбирает SDK. Вариант с полным DLL-комплектом описан ниже.
+Restore создаёт packages.lock.json; при существующем lock импорт включает locked mode. Подготовка PostgreSQL-комплекта настроена для win-x64/linux-x64/linux-arm64; новая поставка после удаления остальных провайдеров ещё не собрана. Native/resources выбирает SDK. Вариант с полным DLL-комплектом описан ниже.
 
-Выберите комплект, соответствующий **машине приложения**, и скопируйте его целиком, например в `vendor/AgentBridge/SqlServer/win-x64`.
+Выберите комплект, соответствующий **машине приложения**, и скопируйте его целиком, например в `vendor/AgentBridge/PostgreSql/win-x64`.
 
 | База данных | Подготовленные варианты |
 | --- | --- |
-| SQL Server | `win-x64`, `linux-x64`, `linux-arm64` |
-| SQLite | `win-x64` |
-| PostgreSQL | `win-x64` |
+| PostgreSQL | `win-x64`, `linux-x64`, `linux-arm64` (матрица подготовки; runtime проверяется отдельно) |
 
-Свежие Release-комплекты с отдельным модулем выбранного провайдера находятся в `artifacts/provider-split-matrix/{Provider}/{RID}`. Общая SQL Server поставка трёх RID — `artifacts/provider-shared-delivery`: совпадающие файлы хранятся один раз, platform выбирается RuntimeIdentifier. Это игнорируемые сборочные артефакты: при клонировании репозитория они не появятся. Состав и подключение описаны в [модулях провайдеров и общей поставке](<Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md>); прежние stage16 kits относятся к историческим отчётам.
+Исходники подготовки находятся в `tests/Delivery/Build`. Новые комплекты после перехода на PostgreSQL в этой задаче не собирались; существующие ignored artifacts относятся к прежним поставкам. Перед бинарным подключением нужна свежая целая поставка. [Форматы и ограничения](<Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md>).
 
-Добавьте в `.csproj` приложения свойства и импорт комплекта. Пример для Windows x64 и SQL Server:
+Добавьте в `.csproj` приложения свойства и импорт комплекта. Пример для Windows x64 и PostgreSQL:
 
 ```xml
 <PropertyGroup>
   <TargetFramework>net10.0</TargetFramework>
   <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-  <AgentBridgeDeliveryRoot>$(MSBuildProjectDirectory)/vendor/AgentBridge/SqlServer/win-x64</AgentBridgeDeliveryRoot>
+  <AgentBridgeDeliveryRoot>$(MSBuildProjectDirectory)/vendor/AgentBridge/PostgreSql/win-x64</AgentBridgeDeliveryRoot>
 </PropertyGroup>
 <Import Project="$(AgentBridgeDeliveryRoot)/AgentBridge.Delivery.props" />
 ```
@@ -59,13 +57,13 @@ Restore создаёт packages.lock.json; при существующем lock 
 
 Импорт подключает DLL и копирует сопутствующие XML-документы, ресурсы и нативные библиотеки. **Не копируйте только `AgentBridge.dll` и не смешивайте файлы разных комплектов.** Бинарное подключение не требует публикации NuGet-пакета; совместимость зависимостей с уже установленными пакетами приложения проверяется отдельно.
 
-Linux ARM64 — вариант клиентского приложения, подключающегося к серверу БД. Запуск SQL Server Engine на ARM64 в этот объём не входит.
+Linux ARM64 — вариант клиентского приложения. Сборка на Windows не подтверждает работу PostgreSQL-потребителя на Linux.
 
 ## 2. Задайте настройки
 
 AgentBridge получает готовый `IConfiguration` вашего приложения. Он должен содержать разделы `AgentBridge`, `CodexLb` и `Database`. Приложение само выбирает источники: JSON, переменные окружения или хранилище секретов.
 
-Пример `appsettings.json` для SQL Server и общего ключа:
+Пример `appsettings.json` для PostgreSQL и общего ключа:
 
 ```json
 {
@@ -93,7 +91,7 @@ AgentBridge получает готовый `IConfiguration` вашего при
     "GenerationTimeout": "00:03:00",
     "CompactTimeout": "00:03:00"
   },
-  "Database": { "Provider": "SqlServer" }
+  "Database": { "Provider": "PostgreSql" }
 }
 ```
 
@@ -154,11 +152,11 @@ public static class ApplicationAgentHttpExtensions
 ```csharp
 using System.Net.Http;
 using AgentBridge.Integration;
-using AgentBridge.Persistence.SqlServer;
+using AgentBridge.Persistence.PostgreSql;
 using Microsoft.Extensions.DependencyInjection;
 
 builder.Services.AddApplicationAgentHttp();
-builder.Services.AddAgentBridgeSqlServer();
+builder.Services.AddAgentBridgePostgreSql();
 builder.Services.AddAgentBridge(builder.Configuration,
     provider => provider.GetRequiredService<HttpClient>());
 ```
@@ -169,7 +167,7 @@ builder.Services.AddAgentBridge(builder.Configuration,
 
 Регистрация подключает хранение, транспорт, работу с контекстом и прикладные сценарии. Она **не обращается к БД или codex-lb и не запускает миграции**. Подробности владения зависимостями — в [руководстве регистрации](<Documentation/Technical documentation/26-integration-registration.md>).
 
-Модуль БД регистрируется явно: для SQLite используйте `AgentBridge.Persistence.Sqlite` / `AddAgentBridgeSqlite`, для PostgreSQL — `AgentBridge.Persistence.PostgreSql` / `AddAgentBridgePostgreSql`. Значение Database.Provider должно соответствовать подключённому модулю; одной строки конфигурации недостаточно.
+Приложение явно вызывает `AddAgentBridgePostgreSql` из `AgentBridge.Persistence.PostgreSql` до facade. `Database.Provider=PostgreSql` обязателен. SQLite/SQL Server удалены; их прежние имена и числовые значения отклоняются без fallback.
 
 ## 4. Подготовьте базу данных
 
@@ -177,7 +175,7 @@ builder.Services.AddAgentBridge(builder.Configuration,
 
 Для этого предусмотрена отдельная регистрация `AddAgentBridgeDatabaseMaintenance` и явные операции инициализации или обновления. Первую установку и обновление существующей БД приложение выбирает самостоятельно. На время обслуживания оно останавливает записи и другие экземпляры, а для обновления задаёт параметры резервного копирования.
 
-[Подготовка SQL Server и ограничения](<Documentation/Technical documentation/12-sql-server-provider.md>) · [Пример регистрации SQL Server](tests/Delivery/Consumer/SqlServerRegistration.cs) · [Порядок обслуживания БД](<Documentation/Technical documentation/06-database-maintenance.md>).
+[Подключение PostgreSQL](<Documentation/Technical documentation/12-postgresql-provider.md>) · [Пример регистрации](tests/Delivery/Consumer/StrictConfigurationRegistration.cs) · [Обслуживание БД](<Documentation/Technical documentation/06-database-maintenance.md>).
 
 ## 5. Создайте диалог и отправьте сообщение
 
@@ -260,9 +258,9 @@ bool completed = result.Status == AgentRunStatus.Completed && result.TerminalSav
 
 ## Текущее состояние проверок
 
-Можно начинать подключение в своём проекте. Проверены изолированные сценарии и сборка бинарных потребителей с пятью комплектами. На Windows также проверены DI, загрузка DLL и нативных библиотек, а также локальная токенизация без HTTP и БД.
+Переход на единственный PostgreSQL изменяет исходный API модулей и состав поставки. PostgreSQL migration IDs и схема сохранены; новые бинарные комплекты и приложения-потребители нужно пересобрать.
 
-Реальные проверки SQL Server, Linux runtime, live codex-lb и восстановления после аварии остаются открытыми. Сборка Linux-комплекта на Windows не подтверждает работу на Linux. Перед рабочим использованием проверьте свой состав зависимостей и реальные интеграции.
+Compile-check исходников не подтверждает PostgreSQL/backup/restore, Linux runtime, live API или совместимость старых комплектов. В этой задаче приложение, БД и Docker не запускались.
 
 ## Документация
 
@@ -270,6 +268,6 @@ bool completed = result.Status == AgentRunStatus.Completed && result.TerminalSav
 - [Регистрация, HTTP-клиент и времена жизни зависимостей](<Documentation/Technical documentation/26-integration-registration.md>)
 - [Конфигурация](<Documentation/Technical documentation/05-configuration-and-lifecycle.md>)
 - [DLL-комплекты и платформы](<Documentation/Technical documentation/24-dll-delivery.md>)
-- [SQL Server](<Documentation/Technical documentation/12-sql-server-provider.md>)
+- [PostgreSQL](<Documentation/Technical documentation/12-postgresql-provider.md>)
 - [Техническая документация](<Documentation/Technical documentation/README.md>) · [Бизнес-логика](<Documentation/Business logic/README.md>)
 - [Действующая спецификация](openspec/specs/agent-runtime/spec.md) · [Решение](agent-bridge.slnx)

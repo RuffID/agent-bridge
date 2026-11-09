@@ -38,8 +38,6 @@ public static class ProbeChecks
             throw new InvalidOperationException("DbContext escaped its scope.");
         string expectedProvider = databaseProvider switch
         {
-            "SqlServer" => "Microsoft.EntityFrameworkCore.SqlServer",
-            "Sqlite" => "Microsoft.EntityFrameworkCore.Sqlite",
             "PostgreSql" => "Npgsql.EntityFrameworkCore.PostgreSQL",
             _ => throw new ArgumentException("Unknown provider.")
         };
@@ -90,8 +88,6 @@ public static class ProbeChecks
             ["CodexLb:KeySource"] = "Shared", ["CodexLb:SharedApiKey"] = "synthetic-key", ["CodexLb:GenerationTimeout"] = "00:03:00", ["CodexLb:CompactTimeout"] = "00:03:00",
             ["Database:Provider"] = provider, ["Database:ConnectionString"] = provider switch
             {
-                "SqlServer" => "Server=example.invalid;Database=synthetic;Encrypt=True",
-                "Sqlite" => "Data Source=never-opened.db",
                 "PostgreSql" => "Host=example.invalid;Database=synthetic;Username=synthetic",
                 _ => throw new ArgumentException("Unknown provider.")
             }

@@ -33,8 +33,6 @@ public class CrossComponentIntegrationTests
 
     /// <summary>JSON/SSE сохраняют полные repeated pairs; Started виден handler, restart не повторяет side effects.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, false)]
-    [InlineData(DatabaseProvider.SQLite, true)]
     [InlineData(DatabaseProvider.PostgreSql, false)]
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task RepeatedPairsRoundTripThroughActualTransportAndRestart(DatabaseProvider provider, bool stream)
@@ -83,7 +81,6 @@ public class CrossComponentIntegrationTests
 
     /// <summary>EOF после partial arguments сохраняет call, запрещает handler/replay/следующий input без fake output.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task PartialSsePersistsAndBlocksNextRequest(DatabaseProvider provider)
     {
@@ -114,7 +111,6 @@ public class CrossComponentIntegrationTests
 
     /// <summary>Порог actual BPE запускает compact только terminal prefix; opaque окно сохраняется, generation запрещена, backup сохраняет новую схему.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task OpaqueCompactAndNewMetadataSurviveActualBackupRestore(DatabaseProvider provider)
     {
@@ -155,7 +151,6 @@ public class CrossComponentIntegrationTests
 
     /// <summary>Принятый text compact используется следующим actual запросом вместе с provider/new input, без envelope или anchor.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task TextCompactContinuesWithExactlyOneWindowProviderAndCurrentTurn(DatabaseProvider provider)
     {
@@ -201,16 +196,21 @@ public class CrossComponentIntegrationTests
     [InlineData(true)]
     public async Task ActualFullBudgetEqualityAndOneTokenExcess(bool excess)
     {
-        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(DatabaseProvider.SQLite);
+        // Arrange
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(DatabaseProvider.PostgreSql);
         await using CrossComponentFixture fixture = new(database);
         await fixture.InitializeAsync();
         fixture.BuildRoot(threshold: 1);
         long estimate;
+
+        // Act
         await using (AsyncServiceScope scope = fixture.Root.CreateAsyncScope())
         {
             ModelRequest prepared = new("gpt-5", "medium", "fixed instructions",
                 [Message("provider text", "developer"), Message("new input")], [TOOL]);
             ServiceResult<ContextTokenCount> count = await scope.ServiceProvider.GetRequiredService<IContextTokenCounter>().CountAsync(prepared);
+
+            // Assert
             Assert.True(count.Success);
             estimate = count.Data!.EstimatedInputTokens!.Value;
         }
@@ -229,7 +229,6 @@ public class CrossComponentIntegrationTests
 
     /// <summary>Independent settings update во время handler не меняет active model/effort/access; новый run видит выбор.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task ActiveRunPinsSettingsAndAccessWhileNextRunUsesSavedSelection(DatabaseProvider provider)
     {
@@ -287,8 +286,11 @@ public class CrossComponentIntegrationTests
     [InlineData("exact-effort")]
     public async Task AccessAndCatalogFailuresStopBeforeDurableBegin(string boundary)
     {
-        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(DatabaseProvider.SQLite);
+        // Arrange
+        await using IntegrationDatabase database = await environment.CreateDatabaseAsync(DatabaseProvider.PostgreSql);
         await using CrossComponentFixture fixture = new(database);
+
+        // Act
         await fixture.InitializeAsync();
         switch (boundary)
         {
@@ -300,6 +302,8 @@ public class CrossComponentIntegrationTests
             case "small-budget": fixture.Handler.InputWindow = 8009; break;
         }
         if (boundary == "source")
+
+            // Assert
             Assert.Same(fixture.Keys.Failure, await Assert.ThrowsAsync<IOException>(() => fixture.RunAsync()));
         else if (boundary == "null")
         {
@@ -333,8 +337,6 @@ public class CrossComponentIntegrationTests
 
     /// <summary>Started виден до ожидания; cancel/expiry cleanup не допускают revival и повторного side effect после restart.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, false)]
-    [InlineData(DatabaseProvider.SQLite, true)]
     [InlineData(DatabaseProvider.PostgreSql, false)]
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task CancellationAndConcurrentCleanupDoNotRepeatActions(DatabaseProvider provider, bool cleanup)
@@ -399,7 +401,6 @@ public class CrossComponentIntegrationTests
 
     /// <summary>Потеря acknowledgement после actual outcome commit сохраняет journal/output, но не разрешает продолжение или replay.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task LostOutcomeAcknowledgementDoesNotRepeatConfirmedAction(DatabaseProvider provider)
     {

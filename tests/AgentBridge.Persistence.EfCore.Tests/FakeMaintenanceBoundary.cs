@@ -40,7 +40,7 @@ public class FakeMaintenanceBoundary : IDatabaseMaintenanceProvider<AgentBridgeC
     public bool KeepPending { get; set; }
 
     /// <inheritdoc/>
-    public DatabaseMaintenanceCapabilities Capabilities => new("sqlite", "sqlite database", "file main only", false, false);
+    public DatabaseMaintenanceCapabilities Capabilities => new("postgresql", "custom", "selected database; excludes global roles", true, false);
     /// <inheritdoc/>
     public string ProviderName => "fake-never-connect";
     /// <inheritdoc/>

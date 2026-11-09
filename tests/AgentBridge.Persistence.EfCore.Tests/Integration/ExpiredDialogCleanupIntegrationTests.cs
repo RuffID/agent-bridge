@@ -15,7 +15,7 @@ using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Public cleanup22 с actual EFCoreLibrary0.0.5, SQLite/PostgreSQL, отдельными scopes и настоящим rollback.</summary>
+/// <summary>Public cleanup22 с actual EFCoreLibrary0.0.5, PostgreSQL, отдельными scopes и настоящим rollback.</summary>
 [Trait("Dependency", "Database")]
 [Collection("DatabaseIntegration")]
 public class ExpiredDialogCleanupIntegrationTests
@@ -36,7 +36,6 @@ public class ExpiredDialogCleanupIntegrationTests
 
     /// <summary>Равенство expiry включено; один пакет bounded, все шесть таблиц cascade, большой живой диалог сохраняется.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public async Task EqualityBoundedBatchAndCascadeIgnoreSoftBytes(DatabaseProvider provider)
     {
@@ -75,11 +74,8 @@ public class ExpiredDialogCleanupIntegrationTests
 
     /// <summary>Изменение root после snapshot даёт individual Conflict/NotFound; остальные удаляются, refresh/retry нет.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, "revision")]
     [InlineData(DatabaseProvider.PostgreSql, "revision")]
-    [InlineData(DatabaseProvider.SQLite, "recreate")]
     [InlineData(DatabaseProvider.PostgreSql, "recreate")]
-    [InlineData(DatabaseProvider.SQLite, "removed")]
     [InlineData(DatabaseProvider.PostgreSql, "removed")]
     public async Task StaleCandidateKeepsPartialResultAndDoesNotDeleteNewIncarnation(DatabaseProvider provider, string mutation)
     {
@@ -130,9 +126,7 @@ public class ExpiredDialogCleanupIntegrationTests
 
     /// <summary>SQL delete выполнен, failure/cancel до commit откатывает второй cascade; первый success не отменяется.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, false)]
     [InlineData(DatabaseProvider.PostgreSql, false)]
-    [InlineData(DatabaseProvider.SQLite, true)]
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task PartialRealRollbackPreservesRemainingChildren(DatabaseProvider provider, bool cancel)
     {
@@ -167,9 +161,7 @@ public class ExpiredDialogCleanupIntegrationTests
 
     /// <summary>Actual AgentRunner ждёт модель вне transaction; cleanup на equality запрещает late save и revival/recreate.</summary>
     [DatabaseIntegrationTheory]
-    [InlineData(DatabaseProvider.SQLite, false)]
     [InlineData(DatabaseProvider.PostgreSql, false)]
-    [InlineData(DatabaseProvider.SQLite, true)]
     [InlineData(DatabaseProvider.PostgreSql, true)]
     public async Task CleanupWhileAgentWaitsRejectsLateResponseAndPreservesReplacement(DatabaseProvider provider, bool recreate)
     {
@@ -286,7 +278,7 @@ public class ExpiredDialogCleanupIntegrationTests
         // Имена из фиксированного списка; GUID создаётся тестом. Только наблюдение через actual библиотечные commands.
         string key = table is "Dialogs" or "DialogSettings" ? "Id" : "DialogId";
         string id = token.DialogId.Value.ToString("D");
-        if (database.Provider == DatabaseProvider.SQLite) id = id.ToUpperInvariant();
+        if (database.Provider == DatabaseProvider.PostgreSql) id = id.ToUpperInvariant();
         return Convert.ToInt64(Assert.Single(await database.QueryAsync($"SELECT count(*) AS count FROM \"{table}\" WHERE \"{key}\" = '{id}'"))["count"]);
     }
 

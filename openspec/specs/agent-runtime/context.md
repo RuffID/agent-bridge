@@ -1,12 +1,18 @@
 # Контекст проекта AgentBridge
 
+## Единственный PostgreSQL
+
+Поддержка SQLite и SQL Server удалена. Приложение явно подключает PostgreSQL; старые имена и числовые значения других провайдеров отклоняются до I/O. Схема и migration IDs PostgreSQL сохранены, snapshot перенесён в обычную папку `Migrations` без изменения содержимого. Новые бинарные комплекты и потребители требуют пересборки; перенос данных из других БД не выполняется.
+
+Например: `AddAgentBridgePostgreSql()` → `Database.Provider=PostgreSql` → `AddAgentBridge(...)`. Ограниченная история подключается через `AddAgentBridgePostgreSqlBoundedHistory(...)`. Ниже сохранены исторические результаты прежних этапов; упоминания других БД в них не означают текущую поддержку. [Изменение](../../changes/postgresql-only/context.md), [актуальное подключение](../../../Documentation/Technical%20documentation/12-postgresql-provider.md).
+
 ## Коннектор sub2api
 
 [Принятый объём, причины ограничений, пример продолжения и evidence](sub2api.md) описывают отдельный connector bundle, явное неизвестное окно, полный JSON/SSE контекст без compact и единственный новый формат сохранённых отчётов. Нормативные требования находятся в [main spec](spec.md).
 
 ## Обновление EFCoreLibrary 0.0.9
 
-Регистрация обслуживания теперь вызывается без аргумента режима: `services.AddAgentBridgeDatabaseMaintenance(backup);`. Прежний enum удалён из зависимости; приложения удаляют его аргумент и пересобираются. Единственного исполнителя, остановку writes/DDL/других экземпляров по-прежнему обеспечивает приложение. SQL Server использует имя проекта `AgentBridge` для имени резервной копии; каталог и retention задаёт приложение. [Требования](spec.md), [текущий API](../../../Documentation/Technical%20documentation/06-database-maintenance.md).
+Регистрация обслуживания вызывается без аргумента режима: `services.AddAgentBridgeDatabaseMaintenance(backup);`. Прежний enum удалён из зависимости; приложения удаляют его аргумент и пересобираются. Единственного исполнителя, остановку writes/DDL/других экземпляров по-прежнему обеспечивает приложение. Для PostgreSQL приложение явно задаёт pg_dump, каталог и retention резервных копий. [Требования](spec.md), [текущий API](../../../Documentation/Technical%20documentation/06-database-maintenance.md).
 
 ## Руководство потребителя и завершение00–25
 

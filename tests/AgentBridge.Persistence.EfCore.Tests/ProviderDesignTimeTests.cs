@@ -3,8 +3,6 @@ using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Tests.Integration;
 using AgentBridge.Persistence.Migrations.PostgreSql;
-using AgentBridge.Persistence.Migrations.Sqlite;
-using AgentBridge.Persistence.Migrations.SqlServer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -20,11 +18,10 @@ public class ProviderDesignTimeTests
 {
     /// <summary>Factory и DI выбирают одну модель и assembly; контекст содержит только собственные таблицы и исходные guards.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite, "Microsoft.EntityFrameworkCore.Sqlite", "BINARY", "INTEGER")]
     [InlineData(DatabaseProvider.PostgreSql, "Npgsql.EntityFrameworkCore.PostgreSQL", "C", "bigint")]
-    [InlineData(DatabaseProvider.SqlServer, "Microsoft.EntityFrameworkCore.SqlServer", null, "bigint")]
     public void RuntimeAndFactoryShareProviderSchema(DatabaseProvider selected, string providerName, string? collation, string ticksType)
     {
+        // Arrange
         IDesignTimeDbContextFactory<AgentBridgeDbContext> factory = CreateFactory(selected);
         using AgentBridgeDbContext design = factory.CreateDbContext([]);
         ServiceCollection services = new();
@@ -37,7 +34,11 @@ public class ProviderDesignTimeTests
         services.AddAgentBridgePersistence();
         using ServiceProvider provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         using IServiceScope scope = provider.CreateScope();
+
+        // Act
         AgentBridgeDbContext runtime = scope.ServiceProvider.GetRequiredService<AgentBridgeDbContext>();
+
+        // Assert
         Assert.Equal(providerName, design.Database.ProviderName);
         Assert.Equal(providerName, runtime.Database.ProviderName);
         Assert.Equal(factory.GetType().Assembly, design.GetService<IMigrationsAssembly>().Assembly);
@@ -47,7 +48,7 @@ public class ProviderDesignTimeTests
             RelationalOptionsExtension relational = RelationalOptionsExtension.Extract(configured.GetService<IDbContextOptions>());
             Assert.Equal("__AgentBridgeMigrationsHistory", relational.MigrationsHistoryTableName);
             Assert.Null(relational.MigrationsHistoryTableSchema);
-            Assert.Equal(selected switch { DatabaseProvider.SQLite => "SqliteHistoryRepository", DatabaseProvider.PostgreSql => "NpgsqlHistoryRepository", DatabaseProvider.SqlServer => "SqlServerHistoryRepository", _ => throw new ArgumentOutOfRangeException(nameof(selected)) },
+            Assert.Equal("NpgsqlHistoryRepository",
                 configured.GetService<IHistoryRepository>().GetType().Name);
         }
         Assert.Equal(typeof(AgentBridgeDbContext), design.GetType());
@@ -78,9 +79,7 @@ public class ProviderDesignTimeTests
 
     /// <summary>Forwarded arguments не могут передать реальное подключение или незаметно изменить provider фабрики.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
-    [InlineData(DatabaseProvider.SqlServer)]
     public void FactoryRejectsForwardedArguments(DatabaseProvider selected)
     {
         IDesignTimeDbContextFactory<AgentBridgeDbContext> factory = CreateFactory(selected);
@@ -92,9 +91,7 @@ public class ProviderDesignTimeTests
 
     /// <summary>Штатные snapshot и designer описывают текущую схему без pending model differences; Up/Down и SQL не исполняются.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
-    [InlineData(DatabaseProvider.SqlServer)]
     public void GeneratedSnapshotAndDesignerMatchCurrentSchema(DatabaseProvider selected)
     {
         using AgentBridgeDbContext context = CreateFactory(selected).CreateDbContext([]);
@@ -115,11 +112,13 @@ public class ProviderDesignTimeTests
     }
 
     /// <summary>Выбирает настоящую factory соответствующего отдельного проекта.</summary>
-    private static IDesignTimeDbContextFactory<AgentBridgeDbContext> CreateFactory(DatabaseProvider selected) => selected switch
+    private static IDesignTimeDbContextFactory<AgentBridgeDbContext> CreateFactory(DatabaseProvider selected)
     {
-        DatabaseProvider.SQLite => new SqliteAgentBridgeDbContextFactory(),
-        DatabaseProvider.PostgreSql => new PostgreSqlAgentBridgeDbContextFactory(),
-        DatabaseProvider.SqlServer => new SqlServerAgentBridgeDbContextFactory(),
-        _ => throw new ArgumentOutOfRangeException(nameof(selected))
-    };
+        if (selected != DatabaseProvider.PostgreSql)
+        {
+            throw new ArgumentOutOfRangeException(nameof(selected));
+        }
+
+        return new PostgreSqlAgentBridgeDbContextFactory();
+    }
 }

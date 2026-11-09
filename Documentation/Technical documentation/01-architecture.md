@@ -19,7 +19,7 @@
 | `adapters/AgentBridge.Sub2Api/AgentBridge.Sub2Api.csproj` | `AgentBridge.Sub2Api.dll`, подготовка options/портов без HTTP операций | Ядро, локальный HttpClientLibrary |
 | `adapters/AgentBridge.Responses/` | Единые internal исходники, отдельной сборки нет | Compile/Link в CodexLb и Sub2Api |
 | `adapters/AgentBridge.Integration/AgentBridge.Integration.csproj` | `AgentBridge.Integration.dll`, [стандартная регистрация](26-integration-registration.md) | Ядро, CodexLb, Sub2Api, EF adapter; ядро не зависит от facade/ASP.NET Core |
-| `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и maintenance SQLite/PostgreSQL |
+| `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и maintenance PostgreSQL |
 | `tests/AgentBridge.Tests/AgentBridge.Tests.csproj` | Проверки ядра | Ядро |
 | `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |
 | `tests/AgentBridge.Sub2Api.Tests/AgentBridge.Sub2Api.Tests.csproj` | Изолированные DI/shared/baseline/API проверки | Integration и disconnected SQL Server module |
@@ -37,9 +37,9 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 
 ## Границы
 
-Этап 08 принят: общий AgentBridgeDbContext, отдельные DTO хранения, полный model response, UTC ticks и явная DI-регистрация SQLite/PostgreSQL через context-key EFCoreLibrary. Этап 09 реализован и принят: base read/staging adapters, `IDialogReader`/`IExpiredDialogReader`, повторная проверка root и полная упорядоченная история; 71 persistence-тест (37 новых) без соединения. На этапе 09 Domain не менялся. Этап 10 добавляет write ports/UoW/валидирующий Restore; migrations/startup остаются этапам 11–12; relational concurrency/restart не доказаны. Запрещённые проверки пропущены. [Фактическая реализация](02-efcorelibrary.md#адаптеры-этапа-09).
+Этап 08 принят: общий AgentBridgeDbContext, отдельные DTO хранения, полный model response, UTC ticks и явная DI-регистрация PostgreSQL через context-key EFCoreLibrary. Этап 09 реализован и принят: base read/staging adapters, `IDialogReader`/`IExpiredDialogReader`, повторная проверка root и полная упорядоченная история; 71 persistence-тест (37 новых) без соединения. На этапе 09 Domain не менялся. Этап 10 добавляет write ports/UoW/валидирующий Restore; migrations/startup остаются этапам 11–12; relational concurrency/restart не доказаны. Запрещённые проверки пропущены. [Фактическая реализация](02-efcorelibrary.md#адаптеры-этапа-09).
 
-На этапе 07 добавлены чистые `Application/Ports`, независимые DTO и ServiceResult. Model gateway получает снимок выбранного ключа на вызов; канонические items, полный envelope и continuation не сокращаются до текста. Результаты шагов и compact сохраняются отдельно от input-items. Короткие storage ports выражают атомарные owner/expiry/incarnation/version checks; реализации scope/UoW и rehydration добавлены этапом 10, на этапе10 relational concurrency не проверялась; последующие actual SQLite/PostgreSQL проверки описаны в карте evidence00–25 (история Git). [Фактический API](09-application-ports.md); этап реализован и принят; запрещённые проверки пропущены, 93 теста ядра, 27 новых.
+На этапе 07 добавлены чистые `Application/Ports`, независимые DTO и ServiceResult. Model gateway получает снимок выбранного ключа на вызов; канонические items, полный envelope и continuation не сокращаются до текста. Результаты шагов и compact сохраняются отдельно от input-items. Короткие storage ports выражают атомарные owner/expiry/incarnation/version checks; реализации scope/UoW и rehydration добавлены этапом 10, на этапе10 relational concurrency не проверялась; последующие actual PostgreSQL проверки описаны в карте evidence00–25 (история Git). [Фактический API](09-application-ports.md); этап реализован и принят; запрещённые проверки пропущены, 93 теста ядра, 27 новых.
 
 На этапе 06 в `Domain/Dialogs/` реализован агрегат `Dialog` с защищёнными идентичностями, фиксированными датами, упорядоченными обращениями и версиями контекста. Все дочерние состояния неизменяемы; время задаётся явно. Снимок версии проверяет актуальность только в памяти; в evidence06 restart/relational concurrency не проверены, canonical cutoff не реализовывался. Актуальные composition16/compact18 и DB проверки00–13/20–23 описаны в карте evidence (история Git). Согласованное покрытие контекста — только terminal prefix, включая 0. [Фактический API](08-dialog-domain-state.md); результаты этапа 06 (история Git): 66 тестов ядра, 30 новых; сборки ядра и тестового проекта без ошибок/предупреждений. Этап принят; запрещённые проверки пропущены.
 
@@ -48,10 +48,10 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 | Ядро/Application | Сценарий агента, контекст, инструменты, чистые порты хранения и модели | Общие контракты, без конкретного HTTP-клиента и EF Core |
 | Адаптер codex-lb | Wire DTO, Responses/SSE, compact, нормализация ошибок | HttpClientLibrary и контракт транспорта ядра |
 | EF-инфраструктура | DbContext, модели хранения, репозитории и сценарные UoW | EFCoreLibrary и контракты хранения ядра |
-| Провайдеры БД | Конфигурация SQLite или PostgreSQL | Соответствующий EF Core provider и общая EF-инфраструктура |
+| Провайдеры БД | Конфигурация PostgreSQL | Соответствующий EF Core provider и общая EF-инфраструктура |
 | Подключающее приложение | DI, конфигурация, права, бизнес-данные, инструменты и UI | Нужные DLL AgentBridge |
 
-Общее EF-хранилище используется с выбранным провайдером. Не требуется дублировать все репозитории отдельно для SQLite и PostgreSQL.
+Общее EF-хранилище используется с выбранным провайдером. Не требуется дублировать все репозитории отдельно для PostgreSQL.
 
 ## Обязанности типов
 

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AgentBridge.Persistence.EfCore.Mapping;
 
-/// <summary>Точное хранение UTC ticks для одинаковой сортировки срока в SQLite/PostgreSQL без timestamp precision loss.</summary>
+/// <summary>Точное хранение UTC ticks для одинаковой сортировки срока в PostgreSQL без timestamp precision loss.</summary>
 public class UtcTicksConverter : ValueConverter<DateTimeOffset, long>
 {
     /// <summary>Настраивает проверку UTC на запись и восстановление нулевого смещения.</summary>

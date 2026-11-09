@@ -15,7 +15,7 @@ internal static class CatalogModelMapping
         catalog.HasKey(row => row.Id);
         catalog.Property(row => row.Id).ValueGeneratedNever();
         catalog.Property(row => row.Revision).IsConcurrencyToken();
-        string collation = mapping.IsSqlServer ? "Latin1_General_100_BIN2" : mapping.OwnerCollation!;
+        string collation = mapping.OwnerCollation;
         catalog.Property(row => row.ScopeKey).HasMaxLength(64).UseCollation(collation).IsRequired()
             .Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Throw);
         catalog.Property(row => row.IdSortKey).HasMaxLength(32).UseCollation(collation).IsRequired()

@@ -9,9 +9,8 @@ namespace AgentBridge.Persistence.EfCore.Tests;
 /// <summary>Проверки выбора БД через публичную DI-границу без провайдера и подключения.</summary>
 public class DatabaseConfigurationTests
 {
-    /// <summary>Оба провайдера выбираются явно, строка подключения только сохраняется в options.</summary>
+    /// <summary>PostgreSQL выбирается явно, строка подключения только сохраняется в options.</summary>
     [Theory]
-    [InlineData(DatabaseProvider.SQLite)]
     [InlineData(DatabaseProvider.PostgreSql)]
     public void ProviderIsExplicitAndCanBeBoundWithoutDatabase(DatabaseProvider selected)
     {
@@ -30,14 +29,19 @@ public class DatabaseConfigurationTests
         Assert.Null(provider.GetService<IConfiguration>());
     }
 
-    /// <summary>Отсутствие раздела не выбирает SQLite по умолчанию и сообщает обе обязательные настройки.</summary>
+    /// <summary>Отсутствие раздела не выбирает провайдер по умолчанию и сообщает обе обязательные настройки.</summary>
     [Fact]
-    public void MissingSectionFailsInsteadOfSelectingSqlite()
+    public void MissingSectionFailsInsteadOfSelectingProvider()
     {
+        // Arrange
         ServiceCollection services = new();
         services.AddDatabaseConfiguration(new ConfigurationBuilder().Build());
         using ServiceProvider provider = services.BuildServiceProvider();
+
+        // Act
         OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+
+        // Assert
         Assert.Contains("Database.Provider обязателен", error.Message);
         Assert.Contains("Database.ConnectionString обязателен", error.Message);
         Assert.DoesNotContain("не поддержан", error.Message);
@@ -46,6 +50,8 @@ public class DatabaseConfigurationTests
     /// <summary>Неизвестное числовое значение отличается от отсутствия провайдера, секрет не попадает в ошибку.</summary>
     [Theory]
     [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(2)]
     [InlineData(99)]
     public void UnsupportedLocalProviderIsRejectedWithoutConnectionSecret(int selected)
     {
@@ -104,17 +110,22 @@ public class DatabaseConfigurationTests
     [InlineData("Provider", "synthetic-secret")]
     [InlineData("Provider", "2147483648")]
     [InlineData("Provider", "99")]
+    [InlineData("Provider", "SQLite")]
+    [InlineData("Provider", "SqlServer")]
     [InlineData("ConnectionString", null)]
     [InlineData("ConnectionString", " ")]
     [InlineData("ConnectionString", "Password=\"synthetic-secret")]
     public void InvalidConfigurationIsSafeInAllOptionsViews(string field, string? value)
     {
+        // Arrange
         IConfigurationRoot config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        { ["Provider"] = "SqlServer", ["ConnectionString"] = "Password=synthetic-secret", [field] = value }).Build();
+        { ["Provider"] = "PostgreSql", ["ConnectionString"] = "Password=synthetic-secret", [field] = value }).Build();
         ServiceCollection services = new();
-        services.Configure<DatabaseOptions>(options => { options.Provider = DatabaseProvider.SqlServer; options.ConnectionString = "Password=prior-secret"; });
+        services.Configure<DatabaseOptions>(options => { options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = "Password=prior-secret"; });
         services.AddDatabaseConfiguration(config);
         using ServiceProvider provider = services.BuildServiceProvider(); using IServiceScope scope = provider.CreateScope();
+
+        // Act
         Action[] reads = [() => { _ = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value; },
             () => { _ = provider.GetRequiredService<IOptionsMonitor<DatabaseOptions>>().CurrentValue; },
             () => { _ = scope.ServiceProvider.GetRequiredService<IOptionsSnapshot<DatabaseOptions>>().Value; },
@@ -122,6 +133,8 @@ public class DatabaseConfigurationTests
         foreach (Action read in reads)
         {
             OptionsValidationException error = Assert.Throws<OptionsValidationException>(read);
+
+            // Assert
             Assert.Contains("Database." + field, error.ToString()); Assert.DoesNotContain("synthetic-secret", error.ToString()); Assert.Null(error.InnerException);
         }
     }

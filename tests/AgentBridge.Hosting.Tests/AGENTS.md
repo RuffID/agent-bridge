@@ -1,6 +1,6 @@
 # Generic Host integration tests
 
-- Fixture явно подключает AgentBridge.Persistence.SqlServer до facade; общий адаптер не подтягивает driver assemblies. Провайдер тестовой композиции остаётся SQL Server, interceptor запрещает соединение.
+- Fixture явно подключает AgentBridge.Persistence.PostgreSql до facade; общий адаптер не подтягивает driver assemblies. Провайдер тестовой композиции использует PostgreSQL, interceptor запрещает соединение.
 
 - Настоящий `HostBuilder`, public `AddAgentBridge`, actual AgentRunner, reader/query/gate, CodexLb/HttpClientLibrary и DI scopes. `Microsoft.Extensions.Hosting` остаётся только в тестовом проекте; production-код не изменять.
 - Пользователь разрешил запуск Generic Host внутри тестового процесса. Нет production приложения/сервера, live HTTP, БД или Docker. `NoDatabaseInterceptor` запрещает попытку подключения; provider metadata/UoW resolution не доказывают SQL и транзакции.

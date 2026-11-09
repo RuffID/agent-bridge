@@ -1,8 +1,6 @@
 using AgentBridge.Persistence.EfCore.Configuration;
-using AgentBridge.Persistence.Sqlite;
-using AgentBridge.Persistence.SqlServer;
+using AgentBridge.Persistence.PostgreSql;
 using EFCoreLibrary.Maintenance.Abstractions;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -15,18 +13,19 @@ namespace AgentBridge.Persistence.EfCore.Tests;
 public class DatabaseProviderModuleTests
 {
     /// <summary>Нужен именно выбранный модуль, а не любой установленный provider.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void MissingSelectedModuleFailsBeforeDatabase(bool wrongModule)
+    [Fact]
+    public void MissingSelectedModuleFailsBeforeDatabase()
     {
+        // Arrange
         ServiceCollection services = new();
-        if (wrongModule) services.AddAgentBridgeSqlite();
-        services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.SqlServer; options.ConnectionString = "Password=private-secret"; });
+        services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = "Password=private-secret"; });
         services.AddAgentBridgePersistence();
         using ServiceProvider root = services.BuildServiceProvider();
 
+        // Act
         OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => root.GetRequiredService<IStartupValidator>().Validate());
+
+        // Assert
         Assert.Contains("явно подключённый модуль", error.Message);
         Assert.DoesNotContain("private-secret", error.ToString());
     }
@@ -35,19 +34,30 @@ public class DatabaseProviderModuleTests
     [Fact]
     public void RepeatedModuleIsIdempotentAndConflictingModuleIsRejected()
     {
+        // Arrange
         ServiceCollection services = new();
-        services.AddAgentBridgeSqlServer().AddAgentBridgeSqlServer();
-        services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.SqlServer; options.ConnectionString = "Server=invalid.example;Database=synthetic"; });
+        services.AddAgentBridgePostgreSql().AddAgentBridgePostgreSql();
+        services.AddDatabaseConfiguration(options => { options.Provider = DatabaseProvider.PostgreSql; options.ConnectionString = "Host=invalid.example;Database=synthetic"; });
         services.AddAgentBridgePersistence();
+
+        // Act
         using (ServiceProvider root = services.BuildServiceProvider())
         {
             root.GetRequiredService<IStartupValidator>().Validate();
+
+            // Assert
             Assert.Single(root.GetServices<IAgentBridgeDatabaseProvider>());
         }
 
-        services.AddAgentBridgeDatabaseProvider<ConflictingSqlServerProvider>();
+        // Arrange
+        services.AddAgentBridgeDatabaseProvider<ConflictingPostgreSqlProvider>();
         using ServiceProvider conflicting = services.BuildServiceProvider();
-        Assert.Throws<OptionsValidationException>(() => conflicting.GetRequiredService<IStartupValidator>().Validate());
+
+        // Act
+        OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => conflicting.GetRequiredService<IStartupValidator>().Validate());
+
+        // Assert
+        Assert.Contains("явно подключённый модуль", error.Message);
     }
 
     /// <summary>Из общей сборки удалены прямые ссылки на драйверы и provider-specific maintenance.</summary>
@@ -60,36 +70,45 @@ public class DatabaseProviderModuleTests
             || name.Contains("PostgreSql", StringComparison.Ordinal));
     }
 
-    /// <summary>SQLite PK и PostgreSQL exact table/constraint сохраняют прежнюю классификацию; unique/FK не становятся PK.</summary>
+    /// <summary>PostgreSQL exact table/constraint сохраняет прежнюю классификацию; unique/FK не становятся PK.</summary>
     [Fact]
     public void PrimaryKeyRecognitionRemainsProviderSpecific()
     {
+        // Arrange
         ServiceCollection services = new();
         services.AddTestDatabaseProviders();
         using ServiceProvider root = services.BuildServiceProvider();
-        IAgentBridgeDatabaseProvider sqlite = root.GetServices<IAgentBridgeDatabaseProvider>().Single(module => module.Provider == DatabaseProvider.SQLite);
         IAgentBridgeDatabaseProvider postgres = root.GetServices<IAgentBridgeDatabaseProvider>().Single(module => module.Provider == DatabaseProvider.PostgreSql);
-        IAgentBridgeDatabaseProvider sqlServer = root.GetServices<IAgentBridgeDatabaseProvider>().Single(module => module.Provider == DatabaseProvider.SqlServer);
-        DbUpdateException primary = new("synthetic", new SqliteException("synthetic", 19, 1555));
-        Assert.True(sqlite.IsPrimaryKeyViolation(primary, "Dialogs", "PK_Dialogs"));
-        Assert.False(sqlite.IsPrimaryKeyViolation(new("synthetic", new SqliteException("synthetic", 19, 2067)), "Dialogs", "PK_Dialogs"));
-        Assert.False(sqlServer.IsPrimaryKeyViolation(primary, "Dialogs", "PK_Dialogs"));
+
+        // Act
         DbUpdateException pgPrimary = new("synthetic", new PostgresException("synthetic", "ERROR", "ERROR", "23505", tableName: "Dialogs", constraintName: "PK_Dialogs"));
-        Assert.True(postgres.IsPrimaryKeyViolation(pgPrimary, "Dialogs", "PK_Dialogs"));
+        bool recognized = postgres.IsPrimaryKeyViolation(pgPrimary, "Dialogs", "PK_Dialogs");
+
+        // Assert
+        Assert.True(recognized);
         Assert.False(postgres.IsPrimaryKeyViolation(pgPrimary, "DialogSettings", "PK_DialogSettings"));
         Assert.False(postgres.IsPrimaryKeyViolation(pgPrimary, "Dialogs", "OtherUnique"));
     }
 
     /// <summary>Несогласованный второй модуль; любые операции должны оставаться недоступными.</summary>
-    private class ConflictingSqlServerProvider : IAgentBridgeDatabaseProvider
+    private class ConflictingPostgreSqlProvider : IAgentBridgeDatabaseProvider
     {
         /// <inheritdoc/>
-        public DatabaseProvider Provider => DatabaseProvider.SqlServer;
+        public DatabaseProvider Provider => DatabaseProvider.PostgreSql;
         /// <inheritdoc/>
-        public void Configure(DbContextOptionsBuilder builder, DatabaseOptions options) => throw new InvalidOperationException("No database operation expected.");
+        public void Configure(DbContextOptionsBuilder builder, DatabaseOptions options)
+        {
+            throw new InvalidOperationException("No database operation expected.");
+        }
         /// <inheritdoc/>
-        public bool IsPrimaryKeyViolation(DbUpdateException error, string table, string constraint) => false;
+        public bool IsPrimaryKeyViolation(DbUpdateException error, string table, string constraint)
+        {
+            return false;
+        }
         /// <inheritdoc/>
-        public IDatabaseMaintenanceProvider<AgentBridgeContextKey> CreateMaintenance(IServiceProvider services, DatabaseBackupOptions backup) => throw new InvalidOperationException("No maintenance expected.");
+        public IDatabaseMaintenanceProvider<AgentBridgeContextKey> CreateMaintenance(IServiceProvider services, DatabaseBackupOptions backup)
+        {
+            throw new InvalidOperationException("No maintenance expected.");
+        }
     }
 }

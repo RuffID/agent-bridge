@@ -1,5 +1,7 @@
 # Поставка DLL для .NET10
 
+Этот документ описывает исторические комплекты. Текущая поддержка — только PostgreSQL; новые комплекты после удаления других провайдеров не собраны. Действующее подключение: [PostgreSQL](12-postgresql-provider.md), [DLL/NuGet](29-dll-and-nuget-delivery.md).
+
 Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Текущий compile/metadata checkpoint — Audit Remediation15 (история Git), 2026-10-06. Первоначальные поставка24 (история Git) и consumer25 (история Git) сохраняются как историческое evidence.
 
 С 2026-10-08 используется [разделение провайдеров и общая поставка](28-provider-modules-and-shared-delivery.md). Текущий комплект содержит шесть AgentBridge DLL, включая модуль выбранной БД; остальные драйверы отсутствуют. Таблица состава и результаты15 ниже описывают исторические комплекты до разделения, а не текущую поставку бота.
@@ -16,7 +18,7 @@
 | Sqlite | win-x64 | 64 | 13 | 57 | 3 PE AMD64 |
 | PostgreSql | win-x64 | 64 | 13 | 57 | 3 PE AMD64 |
 
-Это SDK-style `net10.0`, Debug, framework-dependent DLL. Приложение устанавливает .NET10 runtime и выбирает свой SDK/shared framework; runtime/host, Serilog/sinks, secrets, сервер БД и приложение в комплект не входят. RID описывает приложение-клиент; Linux ARM64 не обещает SQL Server Engine на ARM64. SQLite/PostgreSQL для Linux этим checkpoint не подтверждены. Release, NativeAOT, trimming и single-file не проверялись.
+Это SDK-style `net10.0`, Debug, framework-dependent DLL. Приложение устанавливает .NET10 runtime и выбирает свой SDK/shared framework; runtime/host, Serilog/sinks, secrets, сервер БД и приложение в комплект не входят. RID описывает приложение-клиент; Linux ARM64 не обещает SQL Server Engine на ARM64. PostgreSQL для Linux этим checkpoint не подтверждены. Release, NativeAOT, trimming и single-file не проверялись.
 
 ```text
 <kit>/
@@ -37,7 +39,7 @@ Manifest содержит RID/provider, framework/configuration, провере�
 
 Closure разрешает стандартный SDK Build [Delivery project](../../tests/Delivery/Build/AgentBridge.Delivery.csproj), который ссылается на Integration facade и выбранную migrations library. [Assemble-Delivery.ps1](../../tests/Delivery/Build/Assemble-Delivery.ps1) читает fresh RID-specific deps/assets/output, сверяет package/output hashes и генерирует комплект в новом каталоге; DLL/native не загружаются. Скрипт не запускается автоматически из Build. Перед каждым вариантом выполняется отдельный restore; runtime/native package assets не удаляются вручную.
 
-До разделения общий EF adapter статически ссылался на SQLite/PostgreSQL/SQL Server и их maintenance-модули, поэтому все kits15 содержали эти managed зависимости. Текущие kits разрешают только зависимости выбранного модуля. Основные packages прежнего checkpoint: EF10.0.11, Npgsql10.0.3, SqlClient6.1.6, SQLitePCLRaw2.1.12, tokenizers/data2.0.0, Microsoft.Extensions10.0.11/Configuration Binder и Options.ConfigurationExtensions10.0.3, HttpClientLibrary FileVersion0.0.0.5, EFCoreLibrary0.0.5. Текущие версии и Azure/MSAL/IdentityModel/BCL dependencies фиксируются в actual deps/manifest, а не подбираются вручную.
+До разделения общий EF adapter статически ссылался на PostgreSQL/SQL Server и их maintenance-модули, поэтому все kits15 содержали эти managed зависимости. Текущие kits разрешают только зависимости выбранного модуля. Основные packages прежнего checkpoint: EF10.0.11, Npgsql10.0.3, SqlClient6.1.6, SQLitePCLRaw2.1.12, tokenizers/data2.0.0, Microsoft.Extensions10.0.11/Configuration Binder и Options.ConfigurationExtensions10.0.3, HttpClientLibrary FileVersion0.0.0.5, EFCoreLibrary0.0.5. Текущие версии и Azure/MSAL/IdentityModel/BCL dependencies фиксируются в actual deps/manifest, а не подбираются вручную.
 
 | Native source | win-x64 | linux-x64 | linux-arm64 |
 | --- | --- | --- | --- |
@@ -67,9 +69,9 @@ Culture satellites `Microsoft.Data.SqlClient.resources.dll` копируются
 
 ## Конфигурация и внешние требования
 
-`Database:Provider` и `Database:ConnectionString` обязательны; MSSQL выбирает `SqlServer` и migrations SqlServer. SQLite/PostgreSQL — явные альтернативы со своей migrations assembly, без fallback. Выбранные migrations и `__AgentBridgeMigrationsHistory` задаются runtime adapter. Наличие DLL и `AddAgentBridge` не запускают соединения, SQL, migrations, maintenance или cleanup.
+`Database:Provider` и `Database:ConnectionString` обязательны; MSSQL выбирает `SqlServer` и migrations SqlServer. PostgreSQL — явные альтернативы со своей migrations assembly, без fallback. Выбранные migrations и `__AgentBridgeMigrationsHistory` задаются runtime adapter. Наличие DLL и `AddAgentBridge` не запускают соединения, SQL, migrations, maintenance или cleanup.
 
-Maintenance отдельно подключает `AddAgentBridgeDatabaseMaintenance(backup)` без аргумента режима. App останавливает writes/DDL/другие экземпляры, предоставляет права/secrets/TLS, вызывает операцию и управляет retention. MSSQL backup path доступен **серверу БД**, не обязательно app filesystem. PostgreSQL требует отдельный toolchain/pg_dump с согласованным major, absolute paths и конечным cleanup timeout; для отдельного restore — совместимый pg_restore. SQLite требует обычный файловый main и соответствующие ограничения native backup. Подробности: [SQL Server](12-sql-server-provider.md), [maintenance](06-database-maintenance.md), [migrations](11-provider-migrations.md), [configuration](05-configuration-and-lifecycle.md).
+Maintenance отдельно подключает `AddAgentBridgeDatabaseMaintenance(backup)` без аргумента режима. App останавливает writes/DDL/другие экземпляры, предоставляет права/secrets/TLS, вызывает операцию и управляет retention. MSSQL backup path доступен **серверу БД**, не обязательно app filesystem. PostgreSQL требует отдельный toolchain/pg_dump с согласованным major, absolute paths и конечным cleanup timeout; для отдельного restore — совместимый pg_restore. SQLite требует обычный файловый main и соответствующие ограничения native backup. Подробности: [SQL Server](12-postgresql-provider.md), [maintenance](06-database-maintenance.md), [migrations](11-provider-migrations.md), [configuration](05-configuration-and-lifecycle.md).
 
 ## XML и проверенное поведение
 

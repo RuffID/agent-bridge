@@ -7,11 +7,10 @@ using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Владеет временным каталогом коллекции и независимыми ленивыми PostgreSQL/MSSQL-контейнерами.</summary>
+/// <summary>Владеет временным каталогом коллекции и ленивым PostgreSQL-контейнером.</summary>
 public class DatabaseIntegrationFixture : IAsyncLifetime
 {
     private readonly SemaphoreSlim startupGate = new(1, 1);
-    private readonly SqlServerIntegrationFixture sqlServer = new();
     private PostgreSqlContainer? container;
     private Task? startup;
     private PostgreSqlIntegrationTools? tools;
@@ -29,7 +28,7 @@ public class DatabaseIntegrationFixture : IAsyncLifetime
 
         if (!OperatingSystem.IsWindows())
         {
-            throw new InvalidOperationException("Текущие реальные SQLite/PostgreSQL проверки поддерживают Windows runner.");
+            throw new InvalidOperationException("Текущие реальные PostgreSQL проверки поддерживают Windows runner.");
         }
 
         root = Path.Combine(Path.GetTempPath(), "agentbridge-integration", "abverify_" + Guid.NewGuid().ToString("N"));
@@ -38,8 +37,8 @@ public class DatabaseIntegrationFixture : IAsyncLifetime
         return ValueTask.CompletedTask;
     }
 
-    /// <summary>Выделяет собственную БД; SQLite не запускает Docker, PostgreSQL использует один общий контейнер.</summary>
-    /// <param name="provider">Фактический SQLite либо PostgreSQL.</param>
+    /// <summary>Выделяет собственную БД; PostgreSQL использует один общий контейнер.</summary>
+    /// <param name="provider">Фактический PostgreSQL.</param>
     /// <returns>Владелец БД без применения миграций; тест явно вызывает InitializeAsync.</returns>
     public async Task<IntegrationDatabase> CreateDatabaseAsync(DatabaseProvider provider)
     {
@@ -49,48 +48,30 @@ public class DatabaseIntegrationFixture : IAsyncLifetime
             throw new InvalidOperationException("Требуется инициализированный fixture коллекции.");
         }
 
-        if (provider is not (DatabaseProvider.SQLite or DatabaseProvider.PostgreSql))
+        if (provider != DatabaseProvider.PostgreSql)
         {
             throw new ArgumentOutOfRangeException(nameof(provider));
         }
 
-        string? connection = null;
-        if (provider == DatabaseProvider.PostgreSql)
+        await startupGate.WaitAsync(TestContext.Current.CancellationToken);
+        try
         {
-            await startupGate.WaitAsync(TestContext.Current.CancellationToken);
-            try
-            {
-                startup ??= StartPostgreSqlAsync(TestContext.Current.CancellationToken);
-            }
-            finally
-            {
-                startupGate.Release();
-            }
-
-            // Failed startup остаётся failed: повторный контейнер и скрытый retry не создаются.
-            await startup;
-            PostgreSqlContainer started = container ?? throw new InvalidOperationException("Контейнер не создан.");
-            connection = new NpgsqlConnectionStringBuilder(started.GetConnectionString())
-            {
-                Host = "127.0.0.1", SslMode = SslMode.Disable, Pooling = false
-            }.ConnectionString;
+            startup ??= StartPostgreSqlAsync(TestContext.Current.CancellationToken);
         }
+        finally
+        {
+            startupGate.Release();
+        }
+
+        // Failed startup остаётся failed: повторный контейнер и скрытый retry не создаются.
+        await startup;
+        PostgreSqlContainer started = container ?? throw new InvalidOperationException("Контейнер не создан.");
+        string connection = new NpgsqlConnectionStringBuilder(started.GetConnectionString())
+        {
+            Host = "127.0.0.1", SslMode = SslMode.Disable, Pooling = false
+        }.ConnectionString;
 
         return new IntegrationDatabase(provider, root, connection, tools);
-    }
-
-    /// <summary>Лениво запускает MSSQL и выделяет уникальную БД; SQLite/PostgreSQL этот метод не вызывают.</summary>
-    public async Task<SqlServerIntegrationDatabase> CreateSqlServerDatabaseAsync()
-    {
-        ObjectDisposedException.ThrowIf(disposed, this);
-        if (root is null)
-        {
-            throw new InvalidOperationException("Требуется инициализированный fixture коллекции.");
-        }
-
-        SqlServerIntegrationSettings settings = await sqlServer.GetSettingsAsync(TestContext.Current.CancellationToken);
-
-        return new SqlServerIntegrationDatabase(settings);
     }
 
     /// <summary>Проверяет настоящие утилиты и запускает только собственный контейнер с bounded readiness.</summary>
@@ -143,8 +124,6 @@ public class DatabaseIntegrationFixture : IAsyncLifetime
 
         disposed = true;
         List<Exception> errors = [];
-        try { await sqlServer.DisposeAsync(); }
-        catch (Exception exception) { errors.Add(exception); }
 
         if (startup is not null)
         {

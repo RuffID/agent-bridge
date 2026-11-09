@@ -3,7 +3,7 @@ using Xunit;
 
 namespace AgentBridge.Persistence.EfCore.Tests.Integration;
 
-/// <summary>Обозначает реальные SQLite/PostgreSQL проверки, запускаемые автоматически без переключателя окружения.</summary>
+/// <summary>Обозначает реальные PostgreSQL проверки, запускаемые автоматически без переключателя окружения.</summary>
 public class DatabaseIntegrationTheoryAttribute : TheoryAttribute
 {
     /// <summary>Передаёт xUnit источник теста; отсутствие Docker или утилит не превращает проверку в skip.</summary>

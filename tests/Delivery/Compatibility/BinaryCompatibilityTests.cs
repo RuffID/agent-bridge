@@ -1,17 +1,17 @@
+using AgentBridge.Persistence.PostgreSql;
 using System.Data;
 using System.Net;
 using AgentBridge.Persistence.EfCore;
 using AgentBridge.Persistence.EfCore.Configuration;
 using AgentBridge.Persistence.EfCore.Models;
-using AgentBridge.Persistence.SqlServer;
 using EFCoreLibrary.Abstractions.Database;
 using EFCoreLibrary.Abstractions.Database.Repository.Base;
 using EFCoreLibrary.Maintenance.Abstractions;
 using EFCoreLibrary.Maintenance.Models;
-using EFCoreLibrary.Maintenance.SqlServer.Providers;
+using EFCoreLibrary.Maintenance.PostgreSql.Providers;
 using HttpClientLibrary.Clients;
 using HttpClientLibrary.Exceptions;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,22 +24,25 @@ namespace AgentBridge.BinaryCompatibility.Tests;
 /// <summary>Проверяет реальные DLL нового комплекта без соединения, SQL, host или сети.</summary>
 public class BinaryCompatibilityTests
 {
-    /// <summary>Строгий DI разрешает SQL Server maintenance и общие repository/UoW на одном закрытом контексте.</summary>
+    /// <summary>Строгий DI разрешает PostgreSQL maintenance и общие repository/UoW на одном закрытом контексте.</summary>
     [Fact]
-    public void SqlServerMaintenanceAndRepositoriesShareClosedScopedContext()
+    public void PostgreSqlMaintenanceAndRepositoriesShareClosedScopedContext()
     {
         // Arrange
         ServiceCollection services = new();
-        services.AddAgentBridgeSqlServer();
+        services.AddAgentBridgePostgreSql();
         services.AddDatabaseConfiguration(options =>
         {
-            options.Provider = DatabaseProvider.SqlServer;
-            options.ConnectionString = "Server=never-open.invalid;Database=synthetic;Integrated Security=true;ConnectRetryCount=0";
+            options.Provider = DatabaseProvider.PostgreSql;
+            options.ConnectionString = "Host=invalid.example;Database=synthetic";
         });
         services.AddAgentBridgePersistence();
         services.AddAgentBridgeDatabaseMaintenance(options =>
         {
-            options.SqlServerBackupDirectory = "/server/backups";
+            options.BackupDirectory = Path.GetFullPath("never-created-backups");
+            options.PostgreSqlDumpExecutablePath = Path.GetFullPath("never-run-pg-dump");
+            options.PostgreSqlServerMajorVersion = 18;
+            options.PostgreSqlCleanupTimeout = TimeSpan.FromSeconds(5);
             options.BackupRetentionPeriod = TimeSpan.FromDays(30);
         });
 
@@ -54,15 +57,15 @@ public class BinaryCompatibilityTests
         IDatabaseMaintenance<AgentBridgeContextKey> maintenance = first.ServiceProvider.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>();
 
         // Assert
-        Assert.Equal("Microsoft.EntityFrameworkCore.SqlServer", context.Database.ProviderName);
-        Assert.IsType<SqlConnection>(context.Database.GetDbConnection());
-        Assert.Equal(new Version(7, 0, 0, 0), typeof(SqlConnection).Assembly.GetName().Version);
+        Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName);
+        Assert.IsType<NpgsqlConnection>(context.Database.GetDbConnection());
+        Assert.Equal(new Version(10, 0, 0, 0), typeof(NpgsqlConnection).Assembly.GetName().Version);
         Assert.Equal(new Version(10, 0, 14, 0), typeof(DbContext).Assembly.GetName().Version);
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
         Assert.Same(context.Database, adapter.Database);
         Assert.Same(context.Database, uow.Database);
-        Assert.IsType<SqlServerMaintenanceProvider<AgentBridgeContextKey>>(first.ServiceProvider.GetRequiredService<IDatabaseMaintenanceProvider<AgentBridgeContextKey>>());
-        Assert.Equal("sqlserver", maintenance.Capabilities.Provider);
+        Assert.IsType<PostgreSqlMaintenanceProvider<AgentBridgeContextKey>>(first.ServiceProvider.GetRequiredService<IDatabaseMaintenanceProvider<AgentBridgeContextKey>>());
+        Assert.Equal("postgresql", maintenance.Capabilities.Provider);
         Assert.NotSame(context, second.ServiceProvider.GetRequiredService<AgentBridgeDbContext>());
         Assert.Throws<InvalidOperationException>(() => root.GetRequiredService<IDatabaseMaintenance<AgentBridgeContextKey>>());
         Assert.NotNull(first.ServiceProvider.GetRequiredService<IRepositoryContext<AgentBridgeContextKey>>());

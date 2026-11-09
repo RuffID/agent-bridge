@@ -54,6 +54,6 @@ Timeout — cooperative cancellation, не принудительное убий
 
 ## Проверки и ограничения
 
-Этап20 уже реализует [AgentRunner и durable journal](20-agent-turn-orchestration.md), отдельные Start/outcomes UoW и restart refusal. Ниже границы isolated19 сохранены как исторический отчёт; actual SQLite/PostgreSQL evidence20 находится в его плане. Standalone executor/null checkpoint по-прежнему не защищают restart.
+Этап20 уже реализует [AgentRunner и durable journal](20-agent-turn-orchestration.md), отдельные Start/outcomes UoW и restart refusal. Ниже границы isolated19 сохранены как исторический отчёт; actual PostgreSQL evidence20 находится в его плане. Standalone executor/null checkpoint по-прежнему не защищают restart.
 
 Команды, TRX и manifest19 (история Git). Public DI/registry/executor, actual ContextBuilder и affected tokenizer/guard проверяются изолированно. ScopedState — test double, не настоящий DbContext; real persistence/checkpoint recovery и бизнес-authorizer приложения не проверены. Production persistence/transport, migrations и соседние библиотеки не изменялись. Пропущено по указанию пользователя: live HTTP/codex-lb/OpenAI/Telegram, hosting/application/demo и произвольные scripts. OpenSpec CLI отсутствует; CLI validation не выполнена, change не архивирован. Текущие [runner20](20-agent-turn-orchestration.md), [settings21](21-settings-and-dialog-status.md), [cleanup22](22-expired-dialog-cleanup.md) и [поставка/руководство24–25](25-usage-guide.md) реализованы. Их отдельное evidence не расширяет изолированный набор19.

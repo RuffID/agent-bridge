@@ -4,8 +4,6 @@ using AgentBridge.Application.Models;
 using AgentBridge.Persistence.EfCore.Models;
 using AgentBridge.Persistence.EfCore.Repositories;
 using AgentBridge.Persistence.Migrations.PostgreSql;
-using AgentBridge.Persistence.Migrations.Sqlite;
-using AgentBridge.Persistence.Migrations.SqlServer;
 using EFCoreLibrary.Abstractions.Database.Repository.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -20,20 +18,22 @@ public class DialogCatalogProviderTests
 {
     /// <summary>Production query применяет keyset/order/take на provider query до materialization, без canonical joins.</summary>
     [Theory]
-    [InlineData("SqlServer")]
-    [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     public async Task ProductionCatalogQueryIsBoundedAndTranslatable(string provider)
     {
+        // Arrange
         using AgentBridgeDbContext context = Create(provider);
         QueryProbe<DialogCatalogRecord> catalog = new(context);
         DialogCatalogQueries queries = new(catalog, new QueryProbe<DialogCatalogClockRecord>(context),
             new QueryProbe<DialogCatalogChangeRecord>(context), new QueryProbe<DialogRecoveryOperationRecord>(context));
         DialogCatalogCursor cursor = new(CatalogWriteFixture.SCOPE, CatalogWriteFixture.NOW,
             Guid.Parse("00112233-4455-6677-8899-aabbccddeeff"));
+
+        // Act
         await queries.ReadAsync(new string('A', 64), new(CatalogWriteFixture.SCOPE, cursor, 17,
             CatalogWriteFixture.NOW), TestContext.Current.CancellationToken);
 
+        // Assert
         Assert.Equal(1, catalog.Calls);
         Assert.Equal(17, catalog.Limit);
         string sql = catalog.Sql!;
@@ -41,7 +41,7 @@ public class DialogCatalogProviderTests
         Assert.Contains("ORDER BY", sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("SortTimeUtc", sql, StringComparison.Ordinal);
         Assert.Contains("IdSortKey", sql, StringComparison.Ordinal);
-        Assert.Contains(provider == "SqlServer" ? "TOP(" : "LIMIT", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("LIMIT", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("JOIN", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("CanonicalItems", sql, StringComparison.Ordinal);
         Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State);
@@ -49,8 +49,6 @@ public class DialogCatalogProviderTests
 
     /// <summary>Новая migration сохраняет legacy данные без invented registration/timestamps и не содержит raw SQL.</summary>
     [Theory]
-    [InlineData("SqlServer")]
-    [InlineData("Sqlite")]
     [InlineData("PostgreSql")]
     public void CatalogMigrationKeepsLegacyRootsUnregistered(string provider)
     {
@@ -79,8 +77,6 @@ public class DialogCatalogProviderTests
 
     private static AgentBridgeDbContext Create(string provider) => provider switch
     {
-        "SqlServer" => new SqlServerAgentBridgeDbContextFactory().CreateDbContext([]),
-        "Sqlite" => new SqliteAgentBridgeDbContextFactory().CreateDbContext([]),
         "PostgreSql" => new PostgreSqlAgentBridgeDbContextFactory().CreateDbContext([]),
         _ => throw new ArgumentOutOfRangeException(nameof(provider))
     };
