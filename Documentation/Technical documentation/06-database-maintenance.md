@@ -1,14 +1,14 @@
 # Проверка БД, бэкап, миграции и очистка
 
-## Текущее подключение PostgreSQL
+## Текущее подключение провайдеров
 
-AgentBridge подключает только PostgreSqlMaintenanceProvider и общий coordinator EFCoreLibrary. Требуются BackupDirectory, pg_dump, major сервера, cleanup timeout и положительный BackupRetentionPeriod. Приложение останавливает writes/DDL/другие экземпляры и явно вызывает maintenance. Регистрация не выполняет I/O; [провайдер](12-postgresql-provider.md).
+AgentBridge подключает выбранный PostgreSqlMaintenanceProvider или SqlServerMaintenanceProvider и общий coordinator EFCoreLibrary. PostgreSQL требует BackupDirectory, pg_dump, major сервера, cleanup timeout и положительный BackupRetentionPeriod; SQL Server требует SqlServerBackupDirectory на сервере БД и положительный retention, без PostgreSQL-параметров. Приложение останавливает writes/DDL/другие экземпляры и явно вызывает maintenance. Регистрация не выполняет I/O; [провайдер](12-postgresql-provider.md).
 
 ## Принятое решение
 
 AgentBridge использует тот же функциональный порядок обслуживания, что AquaByte-Ledger: проверить подключение, определить pending migrations, создать резервную копию существующей БД, применить миграции. Ошибка подключения, backup или migration не маскируется и не превращается в успешный startup.
 
-Пользователь разрешил общий реляционный контракт EFCoreLibrary и четыре optional maintenance-модуля: SQLite, PostgreSQL, SQL Server, MySQL. Этап 05 реализован и принят; запрещённые проверки пропущены. EFCoreLibrary commit: `a1747388ab0eb2be6da3031535fd88e7533b8df1`, семь проектов без warnings/errors, 89 passed/0 failed/0 skipped. AgentBridge подключает только PostgreSQL. Этап 12: **Реализован и принят; запрещённые проверки пропущены**. SQL Server backup-код и прямое соединение в обход библиотеки не копируются.
+Пользователь разрешил общий реляционный контракт EFCoreLibrary и четыре optional maintenance-модуля: SQLite, PostgreSQL, SQL Server, MySQL. Этап 05 реализован и принят; запрещённые проверки пропущены. EFCoreLibrary commit: `a1747388ab0eb2be6da3031535fd88e7533b8df1`, семь проектов без warnings/errors, 89 passed/0 failed/0 skipped. AgentBridge подключает PostgreSQL или SQL Server по явному выбору приложения. Этап 12: **Реализован и принят; запрещённые проверки пропущены**. SQL Server backup-код и прямое соединение в обход библиотеки не копируются.
 
 Подключающее приложение явно вызывает инициализацию/обновление БД перед использованием агента. Очистка истёкших диалогов предоставляется библиотекой и вызывается приложением по расписанию. Подключение DLL само по себе не запускает миграции или фоновую задачу.
 

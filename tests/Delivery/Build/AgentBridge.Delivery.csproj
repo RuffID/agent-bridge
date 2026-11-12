@@ -16,6 +16,6 @@
   </ItemGroup>
   <Target Name="ValidateDeliveryVariant" BeforeTargets="PrepareForBuild">
     <Error Condition="'$(RuntimeIdentifier)' != 'win-x64' and '$(RuntimeIdentifier)' != 'linux-x64' and '$(RuntimeIdentifier)' != 'linux-arm64'" Text="RuntimeIdentifier must explicitly select win-x64, linux-x64 or linux-arm64." />
-    <Error Condition="'$(DeliveryProvider)' != 'PostgreSql'" Text="DeliveryProvider must explicitly select PostgreSql." />
+    <Error Condition="'$(DeliveryProvider)' != 'PostgreSql' and '$(DeliveryProvider)' != 'SqlServer'" Text="DeliveryProvider must explicitly select PostgreSql or SqlServer." />
   </Target>
 </Project>

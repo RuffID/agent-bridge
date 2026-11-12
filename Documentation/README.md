@@ -19,7 +19,7 @@ AgentBridge — библиотека ИИ-агентов для .NET10, подк
 
 ## Техническая документация
 
-[Bounded history B03](<Technical documentation/31-bounded-history.md>) описывает opt-in PostgreSQL reader/runner policy.
+[Bounded history B03](<Technical documentation/31-bounded-history.md>) описывает opt-in PostgreSQL/SQL Server reader/runner policy.
 
 [Usage, документы, изображения и явная серверная проверка opaque бюджета](<Technical documentation/27-auxiliary-model-operations.md>) описывают optional расширение для Telegram consumer.
 

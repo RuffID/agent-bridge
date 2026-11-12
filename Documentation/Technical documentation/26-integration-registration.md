@@ -38,7 +38,7 @@ EF сохраняет один новый JSON wrapper отчёта с canonical
 
 ## Обязательные зависимости приложения
 
-До фасада приложение явно подключает модуль выбранной БД: `AddAgentBridgePostgreSql` из соответствующего `AgentBridge.Persistence.<Provider>`. Общий EF-адаптер и facade не подтягивают остальные драйверы. Missing/wrong/ambiguous module отклоняется options validation; [состав и API](28-provider-modules-and-shared-delivery.md).
+До фасада приложение явно подключает модуль выбранной БД: `AddAgentBridgePostgreSql` либо `AddAgentBridgeSqlServer` из соответствующего `AgentBridge.Persistence.<Provider>`. Общий EF-адаптер и facade не подтягивают остальные драйверы. Missing/wrong/ambiguous module отклоняется options validation; [состав и API](28-provider-modules-and-shared-delivery.md).
 
 `ILoggerFactory` регистрируется **до** фасада; отсутствие descriptor немедленно отклоняется без изменений контейнера. `AddLogging` либо logging builder приложения предоставляет factory; sinks/Serilog, levels, redaction, файловый путь/rotation/retention принадлежат приложению. Наличие factory не доказывает наличие sink. Console/custom factory не требует file path. Фасад не создаёт собственный logger.
 

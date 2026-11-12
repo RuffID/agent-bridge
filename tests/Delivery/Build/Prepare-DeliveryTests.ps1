@@ -92,7 +92,9 @@ try {
     $initialFingerprint = Get-SourceFingerprint
     $requiredManifests = @('sdk/PostgreSql/win-x64', 'sdk/PostgreSql/linux-x64', 'sdk/PostgreSql/linux-arm64',
         'nuget/PostgreSql',
-        'shared/PostgreSql/platform/win-x64', 'shared/PostgreSql/platform/linux-x64', 'shared/PostgreSql/platform/linux-arm64')
+        'shared/PostgreSql/platform/win-x64', 'shared/PostgreSql/platform/linux-x64', 'shared/PostgreSql/platform/linux-arm64',
+        'sdk/SqlServer/win-x64', 'sdk/SqlServer/linux-x64', 'sdk/SqlServer/linux-arm64', 'nuget/SqlServer',
+        'shared/SqlServer/platform/win-x64', 'shared/SqlServer/platform/linux-x64', 'shared/SqlServer/platform/linux-arm64')
     if (Test-Path -LiteralPath $readyPath -PathType Leaf) {
         $ready = Get-Content -Raw -Encoding UTF8 -LiteralPath $readyPath | ConvertFrom-Json -AsHashtable
         $missing = @($requiredManifests | Where-Object {
@@ -113,7 +115,10 @@ try {
     $variants = @(
         @{ provider = 'PostgreSql'; rid = 'win-x64' },
         @{ provider = 'PostgreSql'; rid = 'linux-x64' },
-        @{ provider = 'PostgreSql'; rid = 'linux-arm64' }
+        @{ provider = 'PostgreSql'; rid = 'linux-arm64' },
+        @{ provider = 'SqlServer'; rid = 'win-x64' },
+        @{ provider = 'SqlServer'; rid = 'linux-x64' },
+        @{ provider = 'SqlServer'; rid = 'linux-arm64' }
     )
     foreach ($variant in $variants) {
         $provider = $variant.provider
@@ -133,12 +138,14 @@ try {
             -SourceRevision "working-tree-$($initialFingerprint.agentBridge)" -EfRevision "working-tree-$($initialFingerprint.efCoreLibrary)" `
             -HttpRevision "working-tree-$($initialFingerprint.httpClientLibrary)" -SdkVersion $sdkVersion
     }
-    foreach ($provider in @('PostgreSql')) {
+    foreach ($provider in @('PostgreSql', 'SqlServer')) {
         & (Join-Path $PSScriptRoot 'Assemble-NuGetDelivery.ps1') -SourceRoot (Join-Path $preparedRoot "sdk/$provider") `
             -Destination (Join-Path $preparedRoot "nuget/$provider")
     }
-    & (Join-Path $PSScriptRoot 'Assemble-SharedDelivery.ps1') -SourceRoot (Join-Path $preparedRoot 'sdk/PostgreSql') `
-        -Destination (Join-Path $preparedRoot 'shared/PostgreSql')
+    foreach ($provider in @('PostgreSql', 'SqlServer')) {
+        & (Join-Path $PSScriptRoot 'Assemble-SharedDelivery.ps1') -SourceRoot (Join-Path $preparedRoot "sdk/$provider") `
+            -Destination (Join-Path $preparedRoot "shared/$provider")
+    }
 
     $finalInput = Get-SourceFingerprint
     if ($finalInput.fingerprint -cne $initialFingerprint.fingerprint) {

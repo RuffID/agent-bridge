@@ -1,6 +1,6 @@
 # Провайдер PostgreSQL
 
-Действующий контракт: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). PostgreSQL — единственная поддерживаемая БД AgentBridge. Подключение приложения:
+Действующий контракт: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). PostgreSQL и [SQL Server](12-sql-server-provider.md) подключаются отдельными модулями. Подключение PostgreSQL:
 
 ```csharp
 using AgentBridge.Persistence.PostgreSql;

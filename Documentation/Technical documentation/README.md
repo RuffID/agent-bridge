@@ -4,7 +4,7 @@
 
 | Раздел | Содержание |
 | --- | --- |
-| [Bounded history B03](31-bounded-history.md) | Явная PostgreSQL operation policy, scalar preflight/payload bounds, strict reader/runner, safe overflow и границы проверки |
+| [Bounded history B03](31-bounded-history.md) | Явная PostgreSQL/SQL Server operation policy, scalar preflight/payload bounds, strict reader/runner, safe overflow и границы проверки |
 | [Каталог диалогов и durable recovery](30-dialog-catalog-and-recovery.md) | Actual bounded metadata/feed API, epoch-aware runner writes, append-only effective context, trusted evidence и отдельная приёмка Ledger |
 | [Архитектура](01-architecture.md) | Фактические проекты, направления ссылок, DLL и обязанности существующих типов и контрактов |
 | [EFCoreLibrary](02-efcorelibrary.md) | Актуальный API, persistence DTO, scoped DI, base read/staging adapters и границы непроверенной БД |
@@ -17,7 +17,8 @@
 | [Прикладные контракты](09-application-ports.md) | Независимые порты, результаты lifecycle, канонические снимки и короткие сценарии хранения |
 | [Сценарные Unit of Work](10-scenario-unit-of-work.md) | Write ports, общий scope EFCoreLibrary, Domain Restore, guards и ограничения атомарности |
 | [Provider migrations](11-provider-migrations.md) | Отдельные сборки/factories, runtime identity, tooling, подготовленная модель и блокер генерации |
-| [PostgreSQL](12-postgresql-provider.md) | Единственный provider, text/C mapping, migrations/maintenance и ограничения проверки |
+| [PostgreSQL](12-postgresql-provider.md) | PostgreSQL provider, text/C mapping, migrations/maintenance и ограничения проверки |
+| [SQL Server](12-sql-server-provider.md) | Явный MSSQL, binary owner, migrations/maintenance и границы проверки |
 | [Каталог моделей и ключи](13-model-catalog-and-keys.md) | Application source, per-call доступ, dynamic capabilities, проверка model/effort/input budget и безопасные снимки |
 | [JSON Responses](14-responses-json-adapter.md) | Public DI/gateway, canonical controls/items/envelope, bound continuation, safe errors, deadline/caller/disposal |
 | [SSE Responses](15-responses-sse-adapter.md) | Fragmented/multiline framing, partial/terminal canonical state, callback ownership, cancellation/disposal и изолированные проверки |
@@ -31,7 +32,7 @@
 | [Подключение и использование](25-usage-guide.md) | Проверяемые C# примеры DI/config/dialog/tools, ключи/модели, status/expiry/cleanup и обязанности приложения |
 | [Стандартная регистрация](26-integration-registration.md) | Выбор bundle, default codex-lb, Sub2Api generation без compact, локальное происхождение и новый формат истории, required logger/source/factory и lifetimes/overrides без I/O |
 | [Usage, files и images](27-auxiliary-model-operations.md) | Optional gateway, deadlines, snapshots и явный ServerValidation/ручной force compact |
-| [Модули провайдеров и общая поставка](28-provider-modules-and-shared-delivery.md) | Явный PostgreSQL, независимый общий EF-адаптер и DLL dedup по SHA256 |
+| [Модули провайдеров и общая поставка](28-provider-modules-and-shared-delivery.md) | Явный PostgreSQL/SQL Server, независимый общий EF-адаптер и DLL dedup по SHA256 |
 | [Собственные DLL и NuGet](29-dll-and-nuget-delivery.md) | Обязательные PackageReference, exact версии, locks и компактная поставка для приложения |
 
 Связанные документы: [бизнес-логика](<../Business logic/README.md>), [OpenSpec agent-runtime](../../openspec/specs/agent-runtime/spec.md).

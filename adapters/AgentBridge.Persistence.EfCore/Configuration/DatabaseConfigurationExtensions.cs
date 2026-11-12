@@ -34,7 +34,7 @@ public static class DatabaseConfigurationExtensions
         builder
             .Validate(options => options.Provider.HasValue, "Database.Provider обязателен; провайдер выбирает приложение.")
             .Validate(options => !options.Provider.HasValue || Enum.IsDefined(options.Provider.Value),
-                "Database.Provider не поддержан локальным контрактом PostgreSQL.")
+                "Database.Provider не поддержан локальным контрактом PostgreSQL/SQL Server.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), "Database.ConnectionString обязателен.")
             .Validate(options => string.IsNullOrWhiteSpace(options.ConnectionString) || IsConnectionString(options.ConnectionString),
                 "Database.ConnectionString: invalid_format — некорректная форма строки подключения.")

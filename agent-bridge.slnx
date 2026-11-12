@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/Documentation/openspec/changes/restore-sql-server/">
+    <File Path="openspec/changes/restore-sql-server/proposal.md" />
+    <File Path="openspec/changes/restore-sql-server/context.md" />
+    <File Path="openspec/changes/restore-sql-server/tasks.md" />
+  </Folder>
+  <Folder Name="/Documentation/openspec/changes/restore-sql-server/specs/agent-runtime/">
+    <File Path="openspec/changes/restore-sql-server/specs/agent-runtime/spec.md" />
+  </Folder>
   <Folder Name="/Documentation/openspec/changes/postgresql-only/">
     <File Path="openspec/changes/postgresql-only/proposal.md" />
     <File Path="openspec/changes/postgresql-only/context.md" />
@@ -135,6 +143,7 @@
     <File Path="Documentation/Technical documentation/10-scenario-unit-of-work.md" />
     <File Path="Documentation/Technical documentation/11-provider-migrations.md" />
     <File Path="Documentation/Technical documentation/12-postgresql-provider.md" />
+    <File Path="Documentation/Technical documentation/12-sql-server-provider.md" />
     <File Path="Documentation/Technical documentation/13-model-catalog-and-keys.md" />
     <File Path="Documentation/Technical documentation/14-responses-json-adapter.md" />
     <File Path="Documentation/Technical documentation/15-responses-sse-adapter.md" />
@@ -160,6 +169,8 @@
     <Project Path="adapters/AgentBridge.Sub2Api/AgentBridge.Sub2Api.csproj" />
     <Project Path="adapters/AgentBridge.Integration/AgentBridge.Integration.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.SqlServer/AgentBridge.Persistence.SqlServer.csproj" />
+    <Project Path="adapters/AgentBridge.Persistence.Migrations.SqlServer/AgentBridge.Persistence.Migrations.SqlServer.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.PostgreSql/AgentBridge.Persistence.PostgreSql.csproj" />
     <Project Path="adapters/AgentBridge.Persistence.Migrations.PostgreSql/AgentBridge.Persistence.Migrations.PostgreSql.csproj" />
   </Folder>

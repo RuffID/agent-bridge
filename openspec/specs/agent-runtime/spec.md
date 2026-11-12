@@ -124,7 +124,7 @@ Optional sub2api auxiliary MUST реализовать GenerateImageAsync чер
 
 ### Requirement: Автономный комплект DLL
 
-Поставка AgentBridge MUST содержать ядро, Integration facade, CodexLb-адаптер, общее EF-хранилище, PostgreSQL migrations assembly и полную SDK runtime closure для явно указанного RID, включая EFCoreLibrary/HttpClientLibrary, tokenizer data и native assets. Состав MUST фиксироваться manifest с версиями и SHA256. Поставка MUST NOT требовать путей к дереву исходников или NuGet-публикации AgentBridge.
+Поставка AgentBridge MUST содержать ядро, Integration facade, CodexLb-адаптер, общее EF-хранилище, migrations assembly выбранного PostgreSQL или SQL Server и полную SDK runtime closure для явно указанного RID, включая EFCoreLibrary/HttpClientLibrary, tokenizer data и native assets. Состав MUST фиксироваться manifest с версиями и SHA256. Поставка MUST NOT требовать путей к дереву исходников или NuGet-публикации AgentBridge.
 
 #### Scenario: Компиляция бинарного потребителя
 
@@ -134,11 +134,11 @@ Optional sub2api auxiliary MUST реализовать GenerateImageAsync чер
 
 ### Requirement: Платформенная поставка клиента
 
-PostgreSQL комплект MUST поддерживать win-x64/linux-x64/linux-arm64 как RID приложения-клиента с установленным .NET10 runtime. SDK-selected statically referenced managed/native dependencies и culture resources MUST сохраняться целиком без Windows fallback на Linux или flattening satellites.
+PostgreSQL и SQL Server комплекты MUST поддерживать win-x64/linux-x64/linux-arm64 как RID приложения-клиента с установленным .NET10 runtime. SDK-selected statically referenced managed/native dependencies и culture resources MUST сохраняться целиком без Windows fallback на Linux или flattening satellites.
 
 #### Scenario: Linux ARM64 клиент
 
-- **WHEN** комплект PostgreSQL linux-arm64 собирается и consumer компилируется на Windows
+- **WHEN** комплект PostgreSQL или SQL Server linux-arm64 собирается и consumer компилируется на Windows
 - **THEN** selected native assets имеют ELF64 AArch64, Windows assets отсутствуют
 - **AND** actual Linux ARM64 runtime остаётся отдельной проверкой.
 
@@ -153,7 +153,7 @@ Props/manifest/deps MUST использовать переносимые пут�
 
 ### Requirement: Границы compile-only поставки
 
-Compile/metadata checks MUST NOT объявляться runtime/native loading, AOT/trimming/single-file или подтверждением PostgreSQL Linux runtime.
+Compile/metadata checks MUST NOT объявляться runtime/native loading, AOT/trimming/single-file или подтверждением PostgreSQL/SQL Server Linux runtime.
 
 #### Scenario: Проверка ELF заголовка
 
@@ -171,7 +171,7 @@ Compile/metadata checks MUST NOT объявляться runtime/native loading, 
 
 ### Requirement: Явные внешние требования поставки
 
-Документация MUST описывать PostgreSQL, его migrations assembly, RID/native runtime, .NET10 runtime и внешние PostgreSQL dump-утилиты. Она MUST сохранять явную конфигурацию provider, SingleInitializer и отсутствие автоматического обслуживания при подключении DLL.
+Документация MUST описывать PostgreSQL и SQL Server, их отдельные migrations assemblies, RID/native runtime, .NET10 runtime и внешние PostgreSQL dump-утилиты. SQL Server MUST использовать отдельный server backup directory без требования pg_dump. Она MUST сохранять явную конфигурацию provider, SingleInitializer и отсутствие автоматического обслуживания при подключении DLL.
 
 #### Scenario: PostgreSQL backup
 
@@ -950,24 +950,24 @@ AgentBridge MUST проверять точный ID модели, supported_in_a
 
 ### Requirement: Раздельные миграции выбранного провайдера
 
-AgentBridge MUST предоставлять единственную PostgreSQL migrations assembly и snapshot для одного общего AgentBridgeDbContext. Runtime и design-time MUST выбирать одну и ту же устойчивую identity PostgreSQL. Snapshot и migrations MUST размещаться непосредственно в папке Migrations проекта; перенос snapshot MUST сохранять содержимое, namespace и migration IDs. Эти проекты MUST владеть только таблицами AgentBridge и MUST NOT добавлять host или зависимости в Domain/Application. Design-time factory MUST создавать контекст без открытия соединения, SQL, применения схемы или чтения секретов приложения.
+AgentBridge MUST предоставлять отдельные PostgreSQL и SQL Server migrations assemblies и snapshots для одного общего AgentBridgeDbContext. Runtime и design-time MUST выбирать одну и ту же устойчивую identity выбранного provider. Snapshot и migrations MUST размещаться непосредственно в папке Migrations проекта; перенос snapshot MUST сохранять содержимое, namespace и migration IDs. Эти проекты MUST владеть только таблицами AgentBridge и MUST NOT добавлять host или зависимости в Domain/Application. Design-time factory MUST создавать контекст без открытия соединения, SQL, применения схемы или чтения секретов приложения.
 
 #### Scenario: Изолированная история миграций
 
-- **WHEN** PostgreSQL options создаются runtime регистрацией либо design-time factory
+- **WHEN** PostgreSQL или SQL Server options создаются runtime регистрацией либо design-time factory
 - **THEN** provider history repository получает имя __AgentBridgeMigrationsHistory
 - **AND** выбор истории не меняет snapshot или схему mapped таблиц.
 
 #### Scenario: Создание модели для выбранного провайдера
 
-- **WHEN** tooling использует PostgreSQL target/startup проект
+- **WHEN** tooling использует PostgreSQL или SQL Server target/startup проект
 - **THEN** factory создаёт общий AgentBridgeDbContext с выбранным provider и его отдельной migrations assembly
 - **AND** runtime выбирает ту же assembly identity.
 
 #### Scenario: Сохранение принятых границ схемы
 
 - **WHEN** создаётся provider-specific модель
-- **THEN** сохраняются только собственные таблицы, составные keys/FK, единственные cascade paths, UTC ticks, ordinal owner (collation C для PostgreSQL) и expiry/Id index
+- **THEN** сохраняются только собственные таблицы, составные keys/FK, единственные cascade paths, UTC ticks, ordinal owner (collation C для PostgreSQL, varbinary(max) UTF-16 для SQL Server) и expiry/Id index
 - **AND** owner-list index и таблицы подключающего приложения не добавляются.
 
 #### Scenario: Проверка правила — Раздельные миграции выбранного провайдера
@@ -1123,13 +1123,13 @@ AgentBridge MUST предоставлять C#-библиотеку для SDK-s
 
 ### Requirement: Настраиваемое хранение диалогов
 
-AgentBridge MUST сохранять диалоги и необходимое состояние контекста в БД. Провайдер БД и параметры подключения MUST задаваться конфигурацией подключающего приложения. PostgreSQL MUST быть единственным поддерживаемым провайдером. DatabaseProvider.PostgreSql MUST сохранять числовое значение 1. Удалённые имена SQLite/SqlServer и значения 0/2 MUST отклоняться до I/O без fallback. Ядро MUST NOT зависеть от конкретной БД.
+AgentBridge MUST сохранять диалоги и необходимое состояние контекста в БД. Провайдер БД и параметры подключения MUST задаваться конфигурацией подключающего приложения. PostgreSQL и SQL Server MUST поддерживаться отдельными явно подключаемыми модулями. DatabaseProvider.PostgreSql MUST сохранять числовое значение 1, SqlServer — 2. SQLite=0 и неизвестные имена/значения MUST отклоняться до I/O без fallback. Ядро MUST NOT зависеть от конкретной БД.
 
 #### Scenario: Выбор БД
 
-- **WHEN** приложение настраивает PostgreSQL как хранилище AgentBridge
+- **WHEN** приложение настраивает PostgreSQL или SQL Server как хранилище AgentBridge
 - **THEN** диалоги сохраняются через выбранный провайдер
-- **AND** ядро не получает зависимости от PostgreSQL.
+- **AND** ядро не получает зависимости от конкретного provider.
 
 ### Requirement: Формат общего EF-хранилища
 
@@ -1143,7 +1143,7 @@ Persistence-модель MUST отделяться от доменного аг�
 
 #### Scenario: Выбор общего контекста
 
-- **WHEN** приложение явно выбирает PostgreSQL
+- **WHEN** приложение явно выбирает PostgreSQL или SQL Server
 - **THEN** DI регистрирует один scoped-контекст через AddEfCoreContext и AddEfCoreBaseRepositories
 - **AND** регистрация не открывает БД, не запускает migrations и не выбирает провайдер при отсутствии настройки.
 
@@ -1572,7 +1572,7 @@ AgentBridge MUST проверять активное compact окно и неп�
 
 ### Requirement: Явное подключение обслуживания AgentBridge
 
-EF-адаптер AgentBridge MUST регистрировать scoped `IDatabaseMaintenance<AgentBridgeContextKey>` через общий coordinator EFCoreLibrary и подключать PostgreSQL по DatabaseOptions без automatic fallback. Перегрузки AddAgentBridgeDatabaseMaintenance MUST принимать раздел IConfiguration либо Action<DatabaseBackupOptions> без аргумента режима. Приложение MUST обеспечивать единственного исполнителя обслуживания.
+EF-адаптер AgentBridge MUST регистрировать scoped `IDatabaseMaintenance<AgentBridgeContextKey>` через общий coordinator EFCoreLibrary и подключать PostgreSQL либо SQL Server по DatabaseOptions без automatic fallback. Перегрузки AddAgentBridgeDatabaseMaintenance MUST принимать раздел IConfiguration либо Action<DatabaseBackupOptions> без аргумента режима. Приложение MUST обеспечивать единственного исполнителя обслуживания.
 
 #### Scenario: Подключение без обслуживания
 
@@ -1582,7 +1582,7 @@ EF-адаптер AgentBridge MUST регистрировать scoped `IDatabas
 
 #### Scenario: Подключение с текущим API EFCoreLibrary
 
-- **WHEN** приложение выбрало PostgreSQL и передало настройки backup без аргумента режима
+- **WHEN** приложение выбрало PostgreSQL или SQL Server и передало настройки backup без аргумента режима
 - **THEN** scoped maintenance зарегистрирован через общий coordinator с единым gate на root container.
 
 ### Requirement: Регистрация maintenance без побочных операций
@@ -1605,7 +1605,7 @@ EF-адаптер AgentBridge MUST регистрировать scoped `IDatabas
 
 ### Requirement: Явные настройки backup
 
-AgentBridge MUST требовать положительный backup retention без default. PostgreSQL MUST требовать абсолютный локальный backup directory. PostgreSQL MUST требовать абсолютный pg_dump path, server major10+ и конечный положительный cleanup timeout. Настройки MUST проверяться локально до I/O без раскрытия значений.
+AgentBridge MUST требовать положительный backup retention без default. PostgreSQL MUST требовать абсолютный локальный backup directory. SQL Server MUST требовать отдельный абсолютный SqlServerBackupDirectory на сервере БД независимо от ОС приложения и MUST NOT требовать PostgreSQL backup-параметры. PostgreSQL MUST требовать абсолютный pg_dump path, server major10+ и конечный положительный cleanup timeout. Настройки MUST проверяться локально до I/O без раскрытия значений.
 
 #### Scenario: Срок backup не выбран
 
@@ -1629,7 +1629,7 @@ Backup retention MUST оставаться обязанностью прилож
 
 ### Requirement: Backup и migrations через EFCoreLibrary
 
-AgentBridge MUST предоставлять вызываемую приложением операцию обслуживания схемы: check → backup существующей БД при pending migrations → migrate. Backup PostgreSQL MUST строиться на контракте EFCoreLibrary; собственный backup в AgentBridge MUST NOT служить заменой этой зависимости. Ошибка обязательного backup MUST останавливать migration. Подключение DLL MUST NOT само по себе запускать обслуживание.
+AgentBridge MUST предоставлять вызываемую приложением операцию обслуживания схемы: check → backup существующей БД при pending migrations → migrate. Backup выбранного PostgreSQL или SQL Server MUST строиться на контракте EFCoreLibrary; собственный backup в AgentBridge MUST NOT служить заменой этой зависимости. Ошибка обязательного backup MUST останавливать migration. Подключение DLL MUST NOT само по себе запускать обслуживание.
 
 #### Scenario: Обновление существующей БД
 
@@ -1663,7 +1663,7 @@ AgentBridge MUST предоставлять вызываемую приложе�
 
 ### Requirement: Подтверждение backup и владение ресурсами
 
-EFCoreLibrary MUST предоставлять расширяемый реляционный контракт и отдельные optional реализации SQLite, PostgreSQL, SQL Server и MySQL. AgentBridge MUST подключать только PostgreSQL-модуль этой библиотеки.
+EFCoreLibrary MUST предоставлять расширяемый реляционный контракт и отдельные optional реализации SQLite, PostgreSQL, SQL Server и MySQL. AgentBridge MUST подключать выбранный PostgreSQL или SQL Server модуль этой библиотеки.
 
 #### Scenario: Неизвестное завершение backup
 
@@ -1682,7 +1682,7 @@ EFCoreLibrary MUST предоставлять расширяемый реляц�
 #### Scenario: Проверка правила — Подтверждение backup и владение ресурсами
 
 - **WHEN** приложение подключает AgentBridge provider
-- **THEN** явно подключается только PostgreSQL-модуль EFCoreLibrary.
+- **THEN** явно подключается выбранный PostgreSQL или SQL Server модуль EFCoreLibrary.
 
 ### Requirement: Подтверждённый receipt перед migration
 
@@ -2081,7 +2081,7 @@ Recovery MUST проверять owner/incarnation/root/recovery revision/epoch 
 
 ### Requirement: Явная bounded history materialization
 
-Opt-in PostgreSQL history policy MUST задавать явные record/record-byte/query limits без defaults. Supplied reader и внутренние runner/write/lifecycle/recovery/compact loaders MUST применять scalar preflight и server payload predicate/Take до full materialization всех необходимых canonical/provenance rows.
+Opt-in PostgreSQL или SQL Server history policy MUST задавать явные record/record-byte/query limits без defaults. Supplied reader и внутренние runner/write/lifecycle/recovery/compact loaders MUST применять scalar preflight и server payload predicate/Take до full materialization всех необходимых canonical/provenance rows.
 
 #### Scenario: Отказ bounded materialization и strict capability
 

@@ -1,6 +1,6 @@
 # Собственные DLL и обязательные NuGet-зависимости
 
-После удаления SQLite/SQL Server действующий исходный контракт — только PostgreSQL. Скрипты подготовки обновлены; готовые комплекты ещё не пересобраны. Старые manifests и проверки ниже являются историческими и не подтверждают текущую поставку.
+Действующий исходный контракт поддерживает PostgreSQL и восстановленный SQL Server; SQLite не поддерживается. Скрипты подготовки обновлены; готовые комплекты ещё не пересобраны. Старые manifests и проверки ниже являются историческими и не подтверждают текущую поставку.
 
 ## Исторические поставки
 
@@ -17,6 +17,8 @@
 AgentBridge, выбранный модуль БД и его migrations assembly, EFCoreLibrary с maintenance и HttpClientLibrary поставляются своими DLL. Сторонние Microsoft/System/Azure и другие зависимости подключаются через PackageReference импортируемого файла. Публикация наших библиотек в NuGet не требуется.
 
 После свежей подготовки PostgreSQL DLL/NuGet комплект размещается в `artifacts/delivery-tests/current/nuget/PostgreSql`. Он содержит только PostgreSQL-модуль и миграции. Скопируйте весь комплект и импортируйте его **после** остальных PackageReference:
+
+SQL Server комплект готовится отдельно в `artifacts/delivery-tests/current/nuget/SqlServer` с собственными provider/migrations/SqlClient dependencies. Пример ниже показывает PostgreSQL; для MSSQL нужно выбрать целый SqlServer bundle. Смешивать bundles нельзя.
 
 ```xml
 <PropertyGroup>
@@ -38,7 +40,7 @@ AgentBridge/
 
 Текущая closure включает AgentBridge.Sub2Api.dll через Integration вместе с сохранённой AgentBridge.CodexLb.dll. Выбор DI не исключает второй адаптер из поставки. Sub2Api поддерживает доступ, manifest/settings и JSON/SSE generation с полным контекстом; compact остаётся Unsupported. Новый состав проверен на05.02; результаты прежних датированных поставок учитываются отдельно.
 
-Матрица подготовки — PostgreSQL win-x64/linux-x64/linux-arm64. Собственные DLL совпадают для RID; зависимости выбирает NuGet/SDK. Новые PostgreSQL-комплекты после этой правки не создавались; cross-build не подтверждает runtime.
+Матрица подготовки — PostgreSQL и SQL Server win-x64/linux-x64/linux-arm64, с отдельным bundle каждого provider. Собственные DLL совпадают для RID; зависимости выбирает NuGet/SDK. Новые PostgreSQL-комплекты после этой правки не создавались; cross-build не подтверждает runtime.
 
 Текущий импорт требует TargetFramework=net10.0. Он задаёт все поддержанные RuntimeIdentifiers, RestorePackagesWithLockFile и CopyLocalLockFileAssemblies. Central package management требует отдельного варианта поставки и не поддерживается этим импортом. Полные DLL-комплекты остаются альтернативой; их формат описан в [документе28](28-provider-modules-and-shared-delivery.md).
 
@@ -46,7 +48,7 @@ AgentBridge/
 
 [Assemble-NuGetDelivery.ps1](../../tests/Delivery/Build/Assemble-NuGetDelivery.ps1) сначала проверяет полный manifest каждого исходного SDK kit: hashes/size/case/paths/provenance и отсутствие лишних файлов. Наши DLL/XML сохраняются один раз, их bytes должны совпадать между RID. Пакетные roots вычисляются по прямым NuGet-зависимостям всех project libraries в исходном deps; учитывать только AgentBridge.dll недостаточно. Транзитивные зависимости восстанавливает NuGet.
 
-Required PackageReference и exact versions формируются из PostgreSQL SDK graph: EF Core/Relational, Npgsql/provider, Microsoft.Extensions, tokenizer/data и прочие прямые зависимости локальных библиотек. Состав не подбирается вручную по DLL.
+Required PackageReference и exact versions формируются из SDK graph выбранного provider: EF Core/Relational, Npgsql либо SQL Server/SqlClient, Microsoft.Extensions, tokenizer/data и прочие прямые зависимости локальных библиотек. Состав не подбирается вручную по DLL.
 
 Все roots задаются exact диапазоном `[version]`. Если приложение уже указало тот же пакет с minimum version, равной проверенной версии, импорт приводит её к exact без дубликата. Иная версия, удалённый обязательный пакет или повторный PackageReference отклоняются Error-only target до restore/build. Импорт не запускает скрипты, DLL, приложение или SQL.
 

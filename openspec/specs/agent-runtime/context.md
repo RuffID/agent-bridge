@@ -1,10 +1,10 @@
 # Контекст проекта AgentBridge
 
-## Единственный PostgreSQL
+## PostgreSQL и восстановленный SQL Server
 
-Поддержка SQLite и SQL Server удалена. Приложение явно подключает PostgreSQL; старые имена и числовые значения других провайдеров отклоняются до I/O. Схема и migration IDs PostgreSQL сохранены, snapshot перенесён в обычную папку `Migrations` без изменения содержимого. Новые бинарные комплекты и потребители требуют пересборки; перенос данных из других БД не выполняется.
+SQL Server восстановлен выборочно из родителя cbc6a46: отдельный provider, прежние migrations, ordinal owner, backup options и bounded history. PostgreSQL и его bounded policy сохранены; SQLite=0 не поддерживается. Приложение явно подключает нужный модуль и выбирает PostgreSql=1 либо SqlServer=2; отсутствие/неизвестный выбор отклоняется до I/O. Схемы, migration IDs и содержимое generated SQL Server артефактов сохранены; snapshots лежат непосредственно в `Migrations`. Новые бинарные комплекты и потребители требуют пересборки; перенос данных не выполняется.
 
-Например: `AddAgentBridgePostgreSql()` → `Database.Provider=PostgreSql` → `AddAgentBridge(...)`. Ограниченная история подключается через `AddAgentBridgePostgreSqlBoundedHistory(...)`. Ниже сохранены исторические результаты прежних этапов; упоминания других БД в них не означают текущую поддержку. [Изменение](../../changes/postgresql-only/context.md), [актуальное подключение](../../../Documentation/Technical%20documentation/12-postgresql-provider.md).
+Например: `AddAgentBridgeSqlServer()` → `Database.Provider=SqlServer` → `AddAgentBridge(...)`. Ограниченная история подключается через `AddAgentBridgeSqlServerBoundedHistory(...)`; PostgreSQL использует собственную аналогичную регистрацию. SQL Server maintenance требует серверный backup directory и retention без pg_dump; операции запускает приложение. Ниже сохранены исторические результаты прежних этапов; они не подтверждают текущую сборку/БД/runtime. [Восстановление](../../changes/restore-sql-server/context.md), [требования](spec.md), [SQL Server API](../../../Documentation/Technical%20documentation/12-sql-server-provider.md), [PostgreSQL API](../../../Documentation/Technical%20documentation/12-postgresql-provider.md).
 
 ## Коннектор sub2api
 

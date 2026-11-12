@@ -21,6 +21,7 @@ public static class ProbeChecks
         using ILoggerFactory logger = LoggerFactory.Create(builder => builder.AddProvider(sink));
         using BlockingHandler handler = new();
         using HttpClient client = new(handler);
+
         int factoryCalls = 0;
         Func<IServiceProvider, HttpClient> factory = _ => { factoryCalls++; return client; };
         ServiceCollection services = new();
@@ -30,26 +31,46 @@ public static class ProbeChecks
         services.AddAgentBridge(configuration, factory);
         await using ServiceProvider root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         root.GetRequiredService<IStartupValidator>().Validate();
-        if (factoryCalls != 0) throw new InvalidOperationException("Startup invoked HTTP factory.");
+        if (factoryCalls != 0)
+        {
+            throw new InvalidOperationException("Startup invoked HTTP factory.");
+        }
+
         await using AsyncServiceScope first = root.CreateAsyncScope();
         await using AsyncServiceScope second = root.CreateAsyncScope();
         AgentBridgeDbContext context = first.ServiceProvider.GetRequiredService<AgentBridgeDbContext>();
         if (ReferenceEquals(context, second.ServiceProvider.GetRequiredService<AgentBridgeDbContext>()))
+        {
             throw new InvalidOperationException("DbContext escaped its scope.");
+        }
+
         string expectedProvider = databaseProvider switch
         {
+            "SqlServer" => "Microsoft.EntityFrameworkCore.SqlServer",
             "PostgreSql" => "Npgsql.EntityFrameworkCore.PostgreSQL",
             _ => throw new ArgumentException("Unknown provider.")
         };
-        if (context.Database.ProviderName != expectedProvider) throw new InvalidOperationException("Wrong provider.");
+        if (context.Database.ProviderName != expectedProvider)
+        {
+            throw new InvalidOperationException("Wrong provider.");
+        }
+
         _ = first.ServiceProvider.GetRequiredService<AgentRunner>();
         _ = first.ServiceProvider.GetRequiredService<AgentSettingsService>();
         _ = first.ServiceProvider.GetRequiredService<ExpiredDialogCleanup>();
         _ = first.ServiceProvider.GetRequiredService<ContextCompactor>();
         _ = first.ServiceProvider.GetRequiredService<IDialogReader>();
-        if (!ReferenceEquals(logger, root.GetRequiredService<ILoggerFactory>())) throw new InvalidOperationException("App logger replaced.");
+        if (!ReferenceEquals(logger, root.GetRequiredService<ILoggerFactory>()))
+        {
+            throw new InvalidOperationException("App logger replaced.");
+        }
+
         first.ServiceProvider.GetRequiredService<ILogger<AgentRunner>>().LogInformation("Runtime probe marker");
-        if (sink.Messages != 1) throw new InvalidOperationException("App logging did not receive marker.");
+        if (sink.Messages != 1)
+        {
+            throw new InvalidOperationException("App logging did not receive marker.");
+        }
+
         List<object> counts = [];
         foreach ((string model, string encoding) in new[] { ("gpt-4.1", "o200k_base"), ("gpt-4", "cl100k_base") })
         {
@@ -57,9 +78,13 @@ public static class ProbeChecks
                 .CountAsync(new ModelRequest(model, null, "Hello world", [], []));
             if (!result.Success || result.Data is not ContextTokenCount count || count.Encoding != encoding
                 || count.KnownTokens != 2 || count.EstimatedInputTokens is null || count.HasOpaqueContent)
+            {
                 throw new InvalidOperationException("Embedded BPE result mismatch.");
+            }
+
             counts.Add(new { model, count.Encoding, count.KnownTokens, count.EstimatedInputTokens });
         }
+
         bool rejected = false;
         ServiceCollection invalid = new();
         invalid.AddSelectedProvider(databaseProvider);
@@ -70,8 +95,16 @@ public static class ProbeChecks
             await using ServiceProvider invalidRoot = invalid.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
             invalidRoot.GetRequiredService<IStartupValidator>().Validate();
         }
-        catch (OptionsValidationException) { rejected = true; }
-        if (!rejected || handler.Calls != 0) throw new InvalidOperationException("Invalid options accepted or HTTP attempted.");
+        catch (OptionsValidationException)
+        {
+            rejected = true;
+        }
+
+        if (!rejected || handler.Calls != 0)
+        {
+            throw new InvalidOperationException("Invalid options accepted or HTTP attempted.");
+        }
+
         return new { expectedProvider, scopesDistinct = true, appLoggerPreserved = true, messages = sink.Messages,
             invalidConfigurationRejected = rejected, httpFactoryCalls = factoryCalls, httpCalls = handler.Calls, counts };
     }
@@ -88,11 +121,16 @@ public static class ProbeChecks
             ["CodexLb:KeySource"] = "Shared", ["CodexLb:SharedApiKey"] = "synthetic-key", ["CodexLb:GenerationTimeout"] = "00:03:00", ["CodexLb:CompactTimeout"] = "00:03:00",
             ["Database:Provider"] = provider, ["Database:ConnectionString"] = provider switch
             {
+                "SqlServer" => "Server=example.invalid;Database=synthetic;Encrypt=True",
                 "PostgreSql" => "Host=example.invalid;Database=synthetic;Username=synthetic",
                 _ => throw new ArgumentException("Unknown provider.")
             }
         };
-        if (omitMaxSteps) values.Remove("AgentBridge:Agent:MaxToolSteps");
+        if (omitMaxSteps)
+        {
+            values.Remove("AgentBridge:Agent:MaxToolSteps");
+        }
+
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
     }
 }

@@ -14,7 +14,7 @@ Metadata-тесты проверяют реальные файлы компле�
 pwsh -NoLogo -NoProfile -File "tests/Delivery/Build/Prepare-DeliveryTests.ps1"
 ```
 
-Нужны .NET 10 и PowerShell 7. Скрипт выполняет restore/build трёх Release-вариантов PostgreSQL: win-x64/linux-x64/linux-arm64; создаёт DLL/NuGet и shared bundles. Перед заменой current проверяет SHA256 входов, использует отдельный staging и блокировку. При неизменных входах использует ранее подготовленный комплект. Отказ не активирует предыдущую поставку; staging остаётся для диагностики. При недостающих пакетах может потребоваться доступ к настроенным NuGet-источникам.
+Нужны .NET 10 и PowerShell 7. Скрипт выполняет restore/build шести Release-вариантов PostgreSQL и SQL Server: win-x64/linux-x64/linux-arm64 для каждого provider; создаёт отдельные DLL/NuGet и shared bundles. Перед заменой current проверяет SHA256 входов, использует отдельный staging и блокировку. При неизменных входах использует ранее подготовленный комплект. Отказ не активирует предыдущую поставку; staging остаётся для диагностики. При недостающих пакетах может потребоваться доступ к настроенным NuGet-источникам.
 
 После подготовки отдельно восстановить/собрать и запустить конкретный проект:
 
@@ -52,7 +52,7 @@ dotnet test --project tests/Delivery/LegacyBaseline/AgentBridge.LegacyBaseline.T
 
 [Abi](Abi/AgentBridge.Delivery.Abi.Tests.csproj) читает PE metadata без исполнения target DLL. При сборке явно передаются `AgentBridgeLegacyBaselineRoot` и `AgentBridgeCurrentDeliveryRoot` с абсолютными путями к сохранённому baseline и подготовленному `current`. Запуск — `dotnet <test-assembly.dll> -noLogo -longRunning 30` после local restore и compile-check этого проекта с `GeneratePackageOnBuild=false`.
 
-Проверяются pinned hashes старой поставки и semantic public/protected поверхность ядра, Integration и CodexLb на PostgreSQL win-x64/linux-x64/linux-arm64. Frozen SQL Server consumers относятся к удалённому контракту и не проверяются как совместимые с новой поставкой. Synthetic positive/negative controls проверяют сам verifier; unknown metadata shape даёт отказ. Это статическая проверка сохранённой поверхности API, без runtime old consumer или старого формата диалогов.
+Проверяются pinned hashes старой поставки и semantic public/protected поверхность ядра, Integration и CodexLb на PostgreSQL win-x64/linux-x64/linux-arm64. Frozen SQL Server consumers требуют отдельной повторной проверки восстановленной поставки; наличие исходников не подтверждает совместимость старых DLL. Synthetic positive/negative controls проверяют сам verifier; unknown metadata shape даёт отказ. Это статическая проверка сохранённой поверхности API, без runtime old consumer или старого формата диалогов.
 
 Текущие результаты Sub2Api и внешних consumers — [05.01–05.02](../../Documentation/Plans/sub2api-connector-2026-11-06-(completed)/05-acceptance/results.md). Они не заменяют live05.03.
 

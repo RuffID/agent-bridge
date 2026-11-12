@@ -6,4 +6,4 @@
 - Общий DbContext, модели, repositories и UoW остаются в общем адаптере. Схема и generated migrations не изменяются.
 - Проверки — isolated persistence tests и compile-check конкретных проектов с GeneratePackageOnBuild=false. Не открывать БД/HTTP, не запускать приложение/Docker/tooling.
 
-- PostgreSQL — единственный поддерживаемый модуль AgentBridge. AddAgentBridgePostgreSqlBoundedHistory регистрирует opt-in policy с общим gate; PostgreSqlHistoryRecordSizeProvider использует 256 + 4 × сумму length nullable text полей, без изменения модели. Trailing spaces сохраняются; это консервативный payload bound, не CLR heap или размер БД. Translation проверяется через ToQueryString без SQL execution.
+- PostgreSQL и SQL Server подключаются отдельными модулями; этот модуль не зависит от SQL Server. AddAgentBridgePostgreSqlBoundedHistory регистрирует opt-in policy с общим gate; PostgreSqlHistoryRecordSizeProvider использует 256 + 4 × сумму length nullable text полей, без изменения модели. Trailing spaces сохраняются; это консервативный payload bound, не CLR heap или размер БД. Translation проверяется через ToQueryString без SQL execution.

@@ -1,6 +1,6 @@
 # Поставка DLL для .NET10
 
-Этот документ описывает исторические комплекты. Текущая поддержка — только PostgreSQL; новые комплекты после удаления других провайдеров не собраны. Действующее подключение: [PostgreSQL](12-postgresql-provider.md), [DLL/NuGet](29-dll-and-nuget-delivery.md).
+Этот документ описывает исторические комплекты. Текущая поддержка — PostgreSQL и SQL Server; свежие комплекты после восстановления SQL Server ещё не подготовлены. Действующее подключение: [PostgreSQL](12-postgresql-provider.md), [SQL Server](12-sql-server-provider.md), [DLL/NuGet](29-dll-and-nuget-delivery.md).
 
 Нормативный источник: [agent-runtime](../../openspec/specs/agent-runtime/spec.md). Текущий compile/metadata checkpoint — Audit Remediation15 (история Git), 2026-10-06. Первоначальные поставка24 (история Git) и consumer25 (история Git) сохраняются как историческое evidence.
 

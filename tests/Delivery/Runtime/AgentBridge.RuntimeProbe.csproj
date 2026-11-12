@@ -11,4 +11,8 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
   <Import Project="$(AgentBridgeDeliveryRoot)/AgentBridge.Delivery.props" />
+  <PropertyGroup>
+    <DefineConstants Condition="'$(AgentBridgeDeliveryProvider)' == 'SqlServer'">$(DefineConstants);AGENTBRIDGE_SQLSERVER</DefineConstants>
+    <DefineConstants Condition="'$(AgentBridgeDeliveryProvider)' == 'PostgreSql'">$(DefineConstants);AGENTBRIDGE_POSTGRESQL</DefineConstants>
+  </PropertyGroup>
 </Project>

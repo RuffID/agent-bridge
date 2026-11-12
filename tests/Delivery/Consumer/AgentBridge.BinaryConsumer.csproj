@@ -10,4 +10,10 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**;artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
   <Import Project="$(AgentBridgeDeliveryRoot)/AgentBridge.Delivery.props" />
+  <ItemGroup Condition="'$(AgentBridgeDeliveryProvider)' != 'SqlServer'">
+    <Compile Remove="SqlServerRegistration.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(AgentBridgeDeliveryProvider)' != 'PostgreSql'">
+    <Compile Remove="BoundedHistoryRegistration.cs" />
+  </ItemGroup>
 </Project>

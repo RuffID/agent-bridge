@@ -4,4 +4,4 @@
 - SimpleRegistration сохраняет default codex-lb; Sub2ApiRegistration выбирает sub2api до facade. Логгер, HttpClient, конфигурация, источник ключа и явная регистрация модуля БД принадлежат приложению.
 - Sub2ApiAuxiliaryUsage явно подключает optional usage/images и возвращает независимый JSON с выбранным ModelAccess. Images вызываются отдельно от AgentRunner; файл передаётся bytes для multipart. Source-linked compile в Sub2Api tests не подтверждает external binary kit; для обновлённого поведения нужна новая штатная поставка и проверка матрицы.
 - Не добавлять credentials, запуск host/HTTP/SQL или автоматические maintenance operations. Не исполнять методы при compile-check.
-- Новые примеры должны собираться во всей заявленной provider/RID матрице; Все примеры используют PostgreSQL.
+- Новые примеры должны собираться во всей заявленной provider/RID матрице; Provider-specific примеры включаются условно: SqlServerRegistration для SQL Server, BoundedHistoryRegistration для PostgreSQL. Остальные примеры не подключают конкретный модуль; StrictConfigurationRegistration показывает явную PostgreSQL-конфигурацию.

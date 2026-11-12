@@ -55,7 +55,7 @@ public class IntegrationRegistrationTests
         Assert.NotNull(scoped.GetRequiredService<IDialogToolAttemptWriter>());
         Assert.Empty(scoped.GetRequiredService<IToolRegistry>().Definitions);
         Assert.Empty(scoped.GetServices<IContextProvider>());
-        Assert.Equal("Microsoft.EntityFrameworkCore.PostgreSql", scoped.GetRequiredService<AgentBridgeDbContext>().Database.ProviderName);
+        Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", scoped.GetRequiredService<AgentBridgeDbContext>().Database.ProviderName);
         Assert.Null(scoped.GetService<IConfiguration>());
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType.Name.Contains("MaintenanceCoordinator", StringComparison.Ordinal));
         Assert.Equal(0, handler.Calls);

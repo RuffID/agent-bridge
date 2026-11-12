@@ -42,7 +42,8 @@ function Test-Output([string]$Output, $Manifest) {
     }
 }
 
-$variants = @(@('PostgreSql','win-x64'), @('PostgreSql','linux-x64'), @('PostgreSql','linux-arm64'))
+$variants = @(@('PostgreSql','win-x64'), @('PostgreSql','linux-x64'), @('PostgreSql','linux-arm64'),
+    @('SqlServer','win-x64'), @('SqlServer','linux-x64'), @('SqlServer','linux-arm64'))
 foreach ($variant in $variants) {
     $provider = $variant[0]; $rid = $variant[1]; $label = "$provider-$rid"
     $original = Join-Path $DeliveryRoot "$provider/$rid"

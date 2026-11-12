@@ -136,7 +136,10 @@ public class DatabaseMaintenanceRegistrationTests
         IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Backup:BackupDirectory"] = Path.GetFullPath("never-created-backups"),
-            ["Backup:BackupRetentionPeriod"] = "30.00:00:00"
+            ["Backup:BackupRetentionPeriod"] = "30.00:00:00",
+            ["Backup:PostgreSqlDumpExecutablePath"] = Path.GetFullPath("never-run-pg-dump"),
+            ["Backup:PostgreSqlServerMajorVersion"] = "17",
+            ["Backup:PostgreSqlCleanupTimeout"] = "00:00:05"
         }).Build();
         ServiceCollection services = new();
         services.AddTestDatabaseProviders();
@@ -153,7 +156,12 @@ public class DatabaseMaintenanceRegistrationTests
         root.GetRequiredService<IStartupValidator>().Validate();
 
         // Assert
-        Assert.Equal(TimeSpan.FromDays(30), root.GetRequiredService<IOptions<DatabaseBackupOptions>>().Value.BackupRetentionPeriod);
+        DatabaseBackupOptions backup = root.GetRequiredService<IOptions<DatabaseBackupOptions>>().Value;
+        Assert.Equal(Path.GetFullPath("never-created-backups"), backup.BackupDirectory);
+        Assert.Equal(TimeSpan.FromDays(30), backup.BackupRetentionPeriod);
+        Assert.Equal(Path.GetFullPath("never-run-pg-dump"), backup.PostgreSqlDumpExecutablePath);
+        Assert.Equal(17, backup.PostgreSqlServerMajorVersion);
+        Assert.Equal(TimeSpan.FromSeconds(5), backup.PostgreSqlCleanupTimeout);
     }
 
     /// <summary>Проверяет каждый условно обязательный ключ maintenance через configuration без context/DB/process.</summary>

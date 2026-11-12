@@ -1,6 +1,6 @@
 # Конфигурация, жизненный цикл и проверка
 
-PostgreSQL выбирается явно через Database.Provider=PostgreSql. Поддержка SQLite/SQL Server удалена. Backup требует локальный абсолютный каталог, pg_dump, major сервера, timeout и app-owned retention. [Provider API](12-postgresql-provider.md).
+Database.Provider явно выбирает PostgreSql=1 или SqlServer=2. SQLite не поддерживается. PostgreSQL backup требует локальный абсолютный каталог, pg_dump, major сервера и timeout; SQL Server — абсолютный SqlServerBackupDirectory на сервере. Retention задаёт приложение. [PostgreSQL](12-postgresql-provider.md), [SQL Server](12-sql-server-provider.md).
 
 ## Конфигурация
 
@@ -28,9 +28,10 @@ PostgreSQL выбирается явно через Database.Provider=PostgreSql
 | CodexLb.SharedApiKey | Secret, непустая строка без whitespace/control chars | Shared: обязательно; Individual: необязательно, не fallback; required / invalid_key |
 | CodexLb.GenerationTimeout | TimeSpan > 0, <=4294967294 ms | Всегда; required / ошибка диапазона таймера |
 | CodexLb.CompactTimeout | TimeSpan > 0, <=4294967294 ms | Всегда; required / ошибка диапазона таймера |
-| Database.Provider | DatabaseProvider?: PostgreSql | Всегда; required / ошибка неизвестного провайдера |
+| Database.Provider | DatabaseProvider?: PostgreSql / SqlServer | Всегда; required / ошибка неизвестного провайдера |
 | Database.ConnectionString | Secret, непустая строка с синтаксисом DbConnectionStringBuilder | Всегда; required / invalid_format; provider keys/server/auth/TLS этой границей не проверяются |
 | Backup.BackupDirectory | Абсолютный локальный путь | Включённое PostgreSQL maintenance; ошибка абсолютного пути |
+| Backup.SqlServerBackupDirectory | Абсолютный путь на сервере БД | Включённое SQL Server maintenance; Unix, Windows drive или UNC независимо от ОС приложения |
 | Backup.BackupRetentionPeriod | TimeSpan > 0 | Любое включённое maintenance; ошибка required/положительного retention |
 | Backup.PostgreSqlDumpExecutablePath | Абсолютный локальный путь | Включённое PostgreSQL maintenance; ошибка абсолютного пути |
 | Backup.PostgreSqlServerMajorVersion | int >= 10 | Включённое PostgreSQL maintenance; ошибка required/major диапазона |

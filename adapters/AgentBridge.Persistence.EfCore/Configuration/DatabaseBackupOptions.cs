@@ -6,6 +6,9 @@ public class DatabaseBackupOptions
     /// <summary>Обязательный абсолютный каталог локальных копий; доступность проверяет provider при операции.</summary>
     public string? BackupDirectory { get; set; }
 
+    /// <summary>Для SQL Server: обязательный абсолютный каталог на сервере БД, независимо от ОС приложения.</summary>
+    public string? SqlServerBackupDirectory { get; set; }
+
     /// <summary>Обязательный положительный срок, выбранный приложением; применять retention и удалять копии обязано приложение.</summary>
     public TimeSpan? BackupRetentionPeriod { get; set; }
 

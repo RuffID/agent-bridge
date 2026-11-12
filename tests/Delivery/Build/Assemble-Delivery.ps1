@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory)][string] $BuildOutput,
     [Parameter(Mandatory)][string] $AssetsFile,
     [Parameter(Mandatory)][string] $Destination,
-    [Parameter(Mandatory)][ValidateSet('PostgreSql')][string] $Provider,
+    [Parameter(Mandatory)][ValidateSet('PostgreSql', 'SqlServer')][string] $Provider,
     [Parameter(Mandatory)][ValidateSet('win-x64', 'linux-x64', 'linux-arm64')][string] $Rid,
     [ValidateSet('Debug', 'Release')][string] $Configuration = 'Debug',
     [Parameter(Mandatory)][string] $SourceRevision,

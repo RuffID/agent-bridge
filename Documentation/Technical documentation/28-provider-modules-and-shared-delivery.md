@@ -9,6 +9,7 @@
 | Выбор | DLL / namespace | Регистрация |
 | --- | --- | --- |
 | PostgreSQL | `AgentBridge.Persistence.PostgreSql` | `services.AddAgentBridgePostgreSql()` |
+| SQL Server | `AgentBridge.Persistence.SqlServer` | `services.AddAgentBridgeSqlServer()` |
 
 Пример PostgreSQL:
 
@@ -20,7 +21,7 @@ services.AddAgentBridgePostgreSql();
 services.AddAgentBridge(configuration, appOwnedHttpClientFactory);
 ```
 
-ILoggerFactory и app-owned HTTP factory остаются обязательными. `Database.Provider` должен соответствовать одному из явно зарегистрированных модулей. Missing/wrong/ambiguous module отклоняется проверкой options до операций; повтор того же модуля идемпотентен. AgentBridge подключает только PostgreSQL; собственные модификации соседней EFCoreLibrary не входят в эту задачу.
+ILoggerFactory и app-owned HTTP factory остаются обязательными. `Database.Provider` должен соответствовать одному из явно зарегистрированных модулей. Missing/wrong/ambiguous module отклоняется проверкой options до операций; повтор того же модуля идемпотентен. AgentBridge подключает PostgreSQL или SQL Server по явному выбору; собственные модификации соседней EFCoreLibrary не входят в эту задачу.
 
 Модули реализуют `IAgentBridgeDatabaseProvider`: настройку общего DbContext, создание existing EFCoreLibrary maintenance provider и точное распознавание provider-specific PK collision. CAS остаётся в общем UoW; PostgreSQL23505 классифицируется только по exact table/constraint. При самостоятельном создании UnitOfWorkScope provider-specific classification требует нового конструктора с модулями; прежний двухаргументный конструктор сохранён для бинарной совместимости. DI передаёт модули автоматически.
 
@@ -56,8 +57,8 @@ ILoggerFactory и app-owned HTTP factory остаются обязательны
 
 Schema2 manifest каждого RID использует пути относительно корня bundle, включает общие и платформенные файлы, размеры/SHA256 и sourcePath исходного SDK kit. SDK deps и исходный manifest сохраняются как evidence, не как deps приложения. Generated outputs вручную не редактируются; оба упаковщика запускаются только после разрешения точной команды и требуют новый destination.
 
-Новая матрица подготовки содержит PostgreSQL win-x64/linux-x64/linux-arm64, один DLL/NuGet bundle и shared bundle. Скрипты обновлены; новые комплекты в этой задаче не создавались. Прежние artifacts и результаты SQL Server/SQLite относятся к историческим поставкам и не подтверждают текущую PostgreSQL-сборку.
+Матрица подготовки содержит PostgreSQL и SQL Server win-x64/linux-x64/linux-arm64, отдельные DLL/NuGet и shared bundles каждого provider. Скрипты обновлены; новые комплекты в этой задаче не создавались. Прежние artifacts относятся к историческим поставкам и не подтверждают текущую сборку обоих providers.
 
 ## Проверка
 
-Source compile-check выполняется отдельно от подготовки комплектов. Metadata tests проверяют manifests/hashes/SDK closure, отсутствие удалённых провайдеров и переносимость путей. Runtime, реальное PostgreSQL/backup/restore и external consumer требуют отдельной проверки свежего целого комплекта.
+Source compile-check выполняется отдельно от подготовки комплектов. Metadata tests проверяют manifests/hashes/SDK closure, отсутствие чужих провайдеров в каждом комплекте и переносимость путей. Runtime, реальное PostgreSQL/SQL Server/backup/restore и external consumer требуют отдельной проверки свежего целого комплекта.

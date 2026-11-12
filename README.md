@@ -4,7 +4,7 @@ Bounded каталог диалогов, durable lifecycle/fencing и append-onl
 
 AgentBridge — C#-библиотека для приложений на **.NET 10**. Она ведёт диалог с моделью через **codex-lb**, сохраняет историю в БД, собирает и сжимает рабочий контекст, а при необходимости вызывает инструменты вашего приложения.
 
-Библиотека подключается обычными DLL. Единственный провайдер хранения — **PostgreSQL**. Её можно использовать в ASP.NET Core, настольном приложении или другом SDK-style проекте: интерфейс пользователя и запуск приложения остаются у вас.
+Библиотека подключается обычными DLL. Поддерживаются **PostgreSQL и Microsoft SQL Server** через отдельные модули. Её можно использовать в ASP.NET Core, настольном приложении или другом SDK-style проекте: интерфейс пользователя и запуск приложения остаются у вас.
 
 Обычный путь работы: **подключить DLL → настроить зависимости → подготовить БД → создать диалог → отправлять сообщения**.
 
@@ -32,15 +32,16 @@ AgentBridge — C#-библиотека для приложений на **.NET 
 <Import Project="vendor/AgentBridge/AgentBridge.Delivery.props" />
 ```
 
-Restore создаёт packages.lock.json; при существующем lock импорт включает locked mode. Подготовка PostgreSQL-комплекта настроена для win-x64/linux-x64/linux-arm64; новая поставка после удаления остальных провайдеров ещё не собрана. Native/resources выбирает SDK. Вариант с полным DLL-комплектом описан ниже.
+Restore создаёт packages.lock.json; при существующем lock импорт включает locked mode. Подготовка PostgreSQL и SQL Server комплектов настроена для win-x64/linux-x64/linux-arm64; свежую поставку нужно подготовить отдельно. Native/resources выбирает SDK. Вариант с полным DLL-комплектом описан ниже.
 
 Выберите комплект, соответствующий **машине приложения**, и скопируйте его целиком, например в `vendor/AgentBridge/PostgreSql/win-x64`.
 
 | База данных | Подготовленные варианты |
 | --- | --- |
 | PostgreSQL | `win-x64`, `linux-x64`, `linux-arm64` (матрица подготовки; runtime проверяется отдельно) |
+| SQL Server | `win-x64`, `linux-x64`, `linux-arm64` (RID клиента; сервер и runtime проверяются отдельно) |
 
-Исходники подготовки находятся в `tests/Delivery/Build`. Новые комплекты после перехода на PostgreSQL в этой задаче не собирались; существующие ignored artifacts относятся к прежним поставкам. Перед бинарным подключением нужна свежая целая поставка. [Форматы и ограничения](<Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md>).
+Исходники подготовки находятся в `tests/Delivery/Build`. Свежие комплекты после восстановления SQL Server нужно подготовить отдельно; существующие ignored artifacts относятся к прежним поставкам. Перед бинарным подключением нужна свежая целая поставка. [Форматы и ограничения](<Documentation/Technical documentation/28-provider-modules-and-shared-delivery.md>).
 
 Добавьте в `.csproj` приложения свойства и импорт комплекта. Пример для Windows x64 и PostgreSQL:
 
@@ -167,7 +168,7 @@ builder.Services.AddAgentBridge(builder.Configuration,
 
 Регистрация подключает хранение, транспорт, работу с контекстом и прикладные сценарии. Она **не обращается к БД или codex-lb и не запускает миграции**. Подробности владения зависимостями — в [руководстве регистрации](<Documentation/Technical documentation/26-integration-registration.md>).
 
-Приложение явно вызывает `AddAgentBridgePostgreSql` из `AgentBridge.Persistence.PostgreSql` до facade. `Database.Provider=PostgreSql` обязателен. SQLite/SQL Server удалены; их прежние имена и числовые значения отклоняются без fallback.
+Приложение явно вызывает `AddAgentBridgePostgreSql` из `AgentBridge.Persistence.PostgreSql` до facade. `Database.Provider=PostgreSql` обязателен. Для MSSQL используйте `AddAgentBridgeSqlServer()` из `AgentBridge.Persistence.SqlServer`, `Database.Provider=SqlServer` и соответствующий комплект. SQLite=0 остаётся неподдерживаемым; PostgreSql=1 и SqlServer=2 сохранены.
 
 ## 4. Подготовьте базу данных
 
@@ -175,7 +176,7 @@ builder.Services.AddAgentBridge(builder.Configuration,
 
 Для этого предусмотрена отдельная регистрация `AddAgentBridgeDatabaseMaintenance` и явные операции инициализации или обновления. Первую установку и обновление существующей БД приложение выбирает самостоятельно. На время обслуживания оно останавливает записи и другие экземпляры, а для обновления задаёт параметры резервного копирования.
 
-[Подключение PostgreSQL](<Documentation/Technical documentation/12-postgresql-provider.md>) · [Пример регистрации](tests/Delivery/Consumer/StrictConfigurationRegistration.cs) · [Обслуживание БД](<Documentation/Technical documentation/06-database-maintenance.md>).
+[Подключение PostgreSQL](<Documentation/Technical documentation/12-postgresql-provider.md>) · [SQL Server](<Documentation/Technical documentation/12-sql-server-provider.md>) · [Пример регистрации](tests/Delivery/Consumer/StrictConfigurationRegistration.cs) · [Обслуживание БД](<Documentation/Technical documentation/06-database-maintenance.md>).
 
 ## 5. Создайте диалог и отправьте сообщение
 
@@ -258,7 +259,7 @@ bool completed = result.Status == AgentRunStatus.Completed && result.TerminalSav
 
 ## Текущее состояние проверок
 
-Переход на единственный PostgreSQL изменяет исходный API модулей и состав поставки. PostgreSQL migration IDs и схема сохранены; новые бинарные комплекты и приложения-потребители нужно пересобрать.
+SQL Server API и прежние migrations восстановлены из истории; PostgreSQL схема и migration IDs сохранены. Новые бинарные комплекты и приложения-потребители нужно пересобрать. SQLite не поддерживается.
 
 Compile-check исходников не подтверждает PostgreSQL/backup/restore, Linux runtime, live API или совместимость старых комплектов. В этой задаче приложение, БД и Docker не запускались.
 
@@ -269,5 +270,6 @@ Compile-check исходников не подтверждает PostgreSQL/back
 - [Конфигурация](<Documentation/Technical documentation/05-configuration-and-lifecycle.md>)
 - [DLL-комплекты и платформы](<Documentation/Technical documentation/24-dll-delivery.md>)
 - [PostgreSQL](<Documentation/Technical documentation/12-postgresql-provider.md>)
+- [SQL Server](<Documentation/Technical documentation/12-sql-server-provider.md>)
 - [Техническая документация](<Documentation/Technical documentation/README.md>) · [Бизнес-логика](<Documentation/Business logic/README.md>)
 - [Действующая спецификация](openspec/specs/agent-runtime/spec.md) · [Решение](agent-bridge.slnx)

@@ -9,11 +9,13 @@ namespace AgentBridge.Persistence.EfCore.Tests;
 /// <summary>Проверки выбора БД через публичную DI-границу без провайдера и подключения.</summary>
 public class DatabaseConfigurationTests
 {
-    /// <summary>PostgreSQL выбирается явно, строка подключения только сохраняется в options.</summary>
+    /// <summary>Поддерживаемый provider выбирается явно, строка подключения только сохраняется в options.</summary>
     [Theory]
     [InlineData(DatabaseProvider.PostgreSql)]
+    [InlineData(DatabaseProvider.SqlServer)]
     public void ProviderIsExplicitAndCanBeBoundWithoutDatabase(DatabaseProvider selected)
     {
+        // Arrange
         IConfigurationRoot configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Provider"] = selected.ToString(),
@@ -22,8 +24,12 @@ public class DatabaseConfigurationTests
         ServiceCollection services = new();
         services.AddDatabaseConfiguration(configuration);
         using ServiceProvider provider = services.BuildServiceProvider();
+
+        // Act
         provider.GetRequiredService<IStartupValidator>().Validate();
         DatabaseOptions options = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+
+        // Assert
         Assert.Equal(selected, options.Provider);
         Assert.Equal("Password=synthetic-connection-secret", options.ConnectionString);
         Assert.Null(provider.GetService<IConfiguration>());
@@ -51,10 +57,10 @@ public class DatabaseConfigurationTests
     [Theory]
     [InlineData(-1)]
     [InlineData(0)]
-    [InlineData(2)]
     [InlineData(99)]
     public void UnsupportedLocalProviderIsRejectedWithoutConnectionSecret(int selected)
     {
+        // Arrange
         ServiceCollection services = new();
         services.AddDatabaseConfiguration(options =>
         {
@@ -62,7 +68,11 @@ public class DatabaseConfigurationTests
             options.ConnectionString = "Password=synthetic-connection-secret";
         });
         using ServiceProvider provider = services.BuildServiceProvider();
+
+        // Act
         OptionsValidationException error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IOptions<DatabaseOptions>>().Value);
+
+        // Assert
         Assert.Contains("не поддержан локальным контрактом", error.Message);
         Assert.DoesNotContain("обязателен", error.Message);
         Assert.DoesNotContain("synthetic-connection-secret", error.ToString());
@@ -111,7 +121,6 @@ public class DatabaseConfigurationTests
     [InlineData("Provider", "2147483648")]
     [InlineData("Provider", "99")]
     [InlineData("Provider", "SQLite")]
-    [InlineData("Provider", "SqlServer")]
     [InlineData("ConnectionString", null)]
     [InlineData("ConnectionString", " ")]
     [InlineData("ConnectionString", "Password=\"synthetic-secret")]

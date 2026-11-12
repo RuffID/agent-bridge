@@ -19,7 +19,7 @@
 | `adapters/AgentBridge.Sub2Api/AgentBridge.Sub2Api.csproj` | `AgentBridge.Sub2Api.dll`, подготовка options/портов без HTTP операций | Ядро, локальный HttpClientLibrary |
 | `adapters/AgentBridge.Responses/` | Единые internal исходники, отдельной сборки нет | Compile/Link в CodexLb и Sub2Api |
 | `adapters/AgentBridge.Integration/AgentBridge.Integration.csproj` | `AgentBridge.Integration.dll`, [стандартная регистрация](26-integration-registration.md) | Ядро, CodexLb, Sub2Api, EF adapter; ядро не зависит от facade/ASP.NET Core |
-| `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и maintenance PostgreSQL |
+| `adapters/AgentBridge.Persistence.EfCore/AgentBridge.Persistence.EfCore.csproj` | `AgentBridge.Persistence.EfCore.dll` | Ядро, локальный EFCoreLibrary CRUD и общий maintenance; PostgreSQL/SQL Server — отдельные модули |
 | `tests/AgentBridge.Tests/AgentBridge.Tests.csproj` | Проверки ядра | Ядро |
 | `tests/AgentBridge.CodexLb.Tests/AgentBridge.CodexLb.Tests.csproj` | Проверки транспорта | Адаптер codex-lb |
 | `tests/AgentBridge.Sub2Api.Tests/AgentBridge.Sub2Api.Tests.csproj` | Изолированные DI/shared/baseline/API проверки | Integration и disconnected SQL Server module |
@@ -48,10 +48,10 @@ HttpClientLibrary и EFCoreLibrary — обязательные основы а�
 | Ядро/Application | Сценарий агента, контекст, инструменты, чистые порты хранения и модели | Общие контракты, без конкретного HTTP-клиента и EF Core |
 | Адаптер codex-lb | Wire DTO, Responses/SSE, compact, нормализация ошибок | HttpClientLibrary и контракт транспорта ядра |
 | EF-инфраструктура | DbContext, модели хранения, репозитории и сценарные UoW | EFCoreLibrary и контракты хранения ядра |
-| Провайдеры БД | Конфигурация PostgreSQL | Соответствующий EF Core provider и общая EF-инфраструктура |
+| Провайдеры БД | Конфигурация PostgreSQL или SQL Server | Соответствующий EF Core provider и общая EF-инфраструктура |
 | Подключающее приложение | DI, конфигурация, права, бизнес-данные, инструменты и UI | Нужные DLL AgentBridge |
 
-Общее EF-хранилище используется с выбранным провайдером. Не требуется дублировать все репозитории отдельно для PostgreSQL.
+Общее EF-хранилище используется с выбранным провайдером. Не требуется дублировать все репозитории отдельно для PostgreSQL и SQL Server.
 
 ## Обязанности типов
 
